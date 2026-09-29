@@ -1,0 +1,35 @@
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+*.bak-*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Logs y artefactos de ejecución
+logs/
+*.log
+backups/
+uploads/
+
+# IDE / SO
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

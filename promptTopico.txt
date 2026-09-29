@@ -1,0 +1,1653 @@
+# PROMPT
+
+## Sistema Integral de Gestión de Atención del Tópico de Salud — CSJ Lima
+
+---
+
+## 1. ROL QUE DEBE ASUMIR LA IA
+
+Actúa como un equipo multidisciplinario senior encargado de analizar, diseñar, desarrollar y documentar un sistema institucional de alta calidad.
+
+Debes asumir simultáneamente los siguientes roles:
+
+* Arquitecto de software senior.
+* Arquitecto de bases de datos PostgreSQL.
+* Backend developer senior especializado en FastAPI/Python.
+* Frontend developer senior especializado en React + TypeScript.
+* Especialista en UX/UI para sistemas institucionales.
+* Especialista en seguridad de aplicaciones.
+* Especialista en auditoría y trazabilidad.
+* Especialista en diseño de APIs REST.
+* Especialista en modelado de procesos y reglas de negocio.
+* Especialista en sistemas institucionales.
+* QA/Test Engineer.
+* DevOps orientado a despliegues en infraestructura local/LAN.
+* Analista funcional.
+
+Tu objetivo NO es crear un CRUD básico.
+
+Debes diseñar un sistema institucional profesional, mantenible, seguro, escalable, modular, auditable y preparado para futuras ampliaciones.
+
+Antes de escribir código debes comprender completamente el problema, identificar supuestos, detectar inconsistencias, proponer mejoras y definir una arquitectura coherente.
+
+No debes tomar decisiones importantes de arquitectura de manera arbitraria.
+
+Cuando exista más de una alternativa, explica brevemente las opciones y recomienda una justificando técnicamente la decisión.
+
+---
+
+# 2. CONTEXTO INSTITUCIONAL
+
+El sistema será utilizado en la Corte Superior de Justicia de Lima (CSJ Lima), Poder Judicial del Perú.
+
+Actualmente existen dos sedes que cuentan con un tópico de atención para trabajadores que poseen EPS Rímac:
+
+* Sede Javier Alzamora Valdez.
+* Sede Anselmo Barreto.
+
+En dichos tópicos se brinda atención médica de baja complejidad a los trabajadores que cuentan con EPS Rímac.
+
+La atención médica es realizada por personal médico de la Clínica Internacional.
+
+El sistema que se desarrollará NO reemplaza ni interfiere con el sistema médico de la Clínica Internacional.
+
+El sistema pertenece al ámbito administrativo/operativo de la Corte Superior de Justicia de Lima y tendrá como finalidad gestionar la solicitud, programación, cola, seguimiento administrativo, notificaciones y trazabilidad de las atenciones.
+
+El sistema NO debe convertirse en una historia clínica.
+
+No debe almacenar información clínica innecesaria.
+
+Debe existir una separación clara entre:
+
+1. Información administrativa necesaria para gestionar la atención.
+2. Información clínica/médica, que corresponde al ámbito del profesional de salud y del sistema médico correspondiente.
+
+---
+
+# 3. PROBLEMA ACTUAL
+
+Actualmente la encargada del tópico recibe solicitudes de atención mediante llamadas telefónicas o presencialmente.
+
+Para cada trabajador se solicitan y registran datos como:
+
+* DNI.
+* Nombres.
+* Apellidos.
+* Edad.
+* Sexo.
+* Correo institucional.
+* Número de teléfono.
+* Dependencia.
+* Sede.
+* Otros datos administrativos necesarios.
+
+La información actualmente se registra en archivos Excel.
+
+Esto genera problemas:
+
+* Digitación manual.
+* Repetición de datos.
+* Posibles errores.
+* Dificultad para controlar cupos.
+* Dificultad para conocer la posición en la cola.
+* Necesidad de realizar consultas telefónicas.
+* Ausencia de trazabilidad adecuada.
+* Dificultad para generar estadísticas.
+* Dependencia de archivos Excel.
+* Riesgo de inconsistencias.
+* Dificultad para controlar cancelaciones.
+* Dificultad para controlar inasistencias.
+* Dificultad para administrar dos sedes.
+* Ausencia de una auditoría centralizada.
+
+El objetivo es transformar este proceso en un sistema institucional digital.
+
+---
+
+# 4. FUENTES DE DATOS EXISTENTES
+
+Actualmente existen archivos Excel que contienen información de trabajadores que cuentan con EPS Rímac.
+
+También existe información histórica de las atenciones realizadas.
+
+Estos Excel serán la fuente inicial para construir la base de datos PostgreSQL.
+
+IMPORTANTE:
+
+NO debes simplemente copiar las columnas del Excel y crear una tabla gigante.
+
+Debes:
+
+1. Analizar la estructura.
+2. Detectar duplicados.
+3. Normalizar información.
+4. Separar entidades.
+5. Definir claves primarias.
+6. Definir claves foráneas.
+7. Definir restricciones.
+8. Definir índices.
+9. Definir campos obligatorios/opcionales.
+10. Definir reglas de integridad.
+11. Preparar un mecanismo seguro de importación.
+12. Mantener trazabilidad de la migración.
+
+La información importada desde Excel debe poder validarse antes de ser incorporada definitivamente.
+
+---
+
+# 5. OBJETIVO GENERAL
+
+Desarrollar un:
+
+## SISTEMA INTEGRAL DE GESTIÓN DE ATENCIÓN DEL TÓPICO DE SALUD
+
+que permita administrar:
+
+* Trabajadores habilitados.
+* Sedes.
+* Capacidad diaria.
+* Horarios.
+* Turnos.
+* Cola de atención.
+* Registro de atenciones.
+* Cancelaciones.
+* Inasistencias.
+* Atención.
+* Notificaciones.
+* Consultas.
+* Reportes.
+* Auditoría.
+* Seguridad.
+* Configuración.
+
+El sistema debe ser modular y permitir evolucionar progresivamente.
+
+---
+
+# 6. FASE 1
+
+La primera versión tendrá una característica fundamental:
+
+## EL REGISTRO DE ATENCIONES SERÁ REALIZADO POR LA ENCARGADA DEL TÓPICO.
+
+El trabajador NO registrará directamente su atención en la primera fase.
+
+El trabajador podrá posteriormente disponer de una interfaz de consulta.
+
+El flujo inicial será:
+
+TRABAJADOR
+↓
+llamada o solicitud presencial
+↓
+ENCARGADA
+↓
+busca DNI
+↓
+verifica trabajador habilitado
+↓
+registra solicitud
+↓
+sistema genera turno
+↓
+sistema coloca en cola
+↓
+encargada gestiona cola
+↓
+trabajador recibe notificación
+↓
+trabajador acude al tópico
+↓
+encargada marca atención
+↓
+sistema registra trazabilidad.
+
+---
+
+# 7. FUTURAS FASES
+
+La arquitectura debe permitir posteriormente:
+
+### Fase 2
+
+El trabajador puede solicitar directamente una atención.
+
+### Fase 3
+
+Autenticación mediante cuenta institucional/AD/LDAP.
+
+### Fase 4
+
+Integraciones con otros sistemas institucionales, si corresponde.
+
+### Fase 5
+
+Mayor automatización de notificaciones.
+
+### Fase 6
+
+Paneles estadísticos avanzados.
+
+IMPORTANTE:
+
+No desarrollar funcionalidades futuras innecesarias en la primera versión.
+
+Pero diseñar la arquitectura para que puedan incorporarse sin rehacer el sistema.
+
+---
+
+# 8. SEDES
+
+Actualmente existen:
+
+### Sede 1
+
+Javier Alzamora Valdez.
+
+### Sede 2
+
+Anselmo Barreto.
+
+La capacidad debe ser independiente por sede.
+
+Ejemplo:
+
+Alzamora:
+20 atenciones/día.
+
+Anselmo:
+20 atenciones/día.
+
+Pero estos valores deben ser configurables.
+
+NO codificar "20" directamente en el código.
+
+---
+
+# 9. CONFIGURACIÓN POR SEDE
+
+Cada sede debe poder tener:
+
+* Capacidad diaria.
+* Horario.
+* Turno mañana.
+* Turno tarde.
+* Duración de turno.
+* Tiempo de tolerancia.
+* Estado activo/inactivo.
+* Parámetros de notificación.
+* Otras configuraciones necesarias.
+
+Ejemplo:
+
+SEDE ALZAMORA
+
+Capacidad:
+20
+
+Turno mañana:
+08:00 - 12:00
+
+Turno tarde:
+14:00 - 17:00
+
+Duración:
+15 minutos
+
+SEDE ANSELMO
+
+Puede tener valores diferentes.
+
+No asumir que ambas sedes tienen exactamente la misma configuración.
+
+---
+
+# 10. TURNOS
+
+Actualmente se trabaja con intervalos de aproximadamente 15 minutos.
+
+Este valor debe ser configurable.
+
+No asumir que siempre será 15 minutos.
+
+Puede ser:
+
+* 10 minutos.
+* 15 minutos.
+* 20 minutos.
+* 30 minutos.
+
+La configuración debe permitir modificarlo sin modificar código.
+
+---
+
+# 11. REGLA PRINCIPAL DE ORDEN
+
+La atención se realiza por:
+
+## ORDEN DE REGISTRO DE LA ENCARGADA.
+
+Ejemplo:
+
+08:05 → trabajador A → turno 001
+
+08:08 → trabajador B → turno 002
+
+08:12 → trabajador C → turno 003
+
+La cola debe respetar ese orden.
+
+No debe existir reordenamiento arbitrario.
+
+Si en el futuro se requiere prioridad especial, deberá diseñarse como una regla explícita y auditable.
+
+---
+
+# 12. CAPACIDAD DIARIA
+
+La capacidad máxima debe ser configurable independientemente por sede.
+
+Ejemplo:
+
+Alzamora:
+
+20
+
+Anselmo:
+
+20
+
+Cuando se alcanza el máximo:
+
+El sistema debe impedir nuevas solicitudes normales.
+
+Debe mostrar claramente:
+
+"Se ha alcanzado la capacidad máxima de atención para esta sede en la fecha seleccionada."
+
+La capacidad debe poder liberarse cuando corresponda según las reglas de cancelación/no presentación.
+
+---
+
+# 13. CANCELACIÓN
+
+Un trabajador puede comunicarse con la encargada y solicitar cancelar su atención.
+
+Ejemplo:
+
+"Me atenderé en una clínica y ya no necesito acudir."
+
+La encargada debe poder cancelar el registro.
+
+IMPORTANTE:
+
+NO eliminar físicamente el registro.
+
+Debe cambiarse el estado.
+
+Ejemplo:
+
+REGISTRADO
+→ CANCELADO
+
+Debe almacenarse:
+
+* Fecha.
+* Hora.
+* Usuario que canceló.
+* Motivo.
+* Estado anterior.
+* Estado nuevo.
+* Observación opcional.
+* Sede.
+* Turno.
+
+La cancelación debe generar un registro de auditoría.
+
+---
+
+# 14. INASISTENCIA
+
+Si un trabajador solicita atención pero no se presenta:
+
+La encargada debe poder marcar:
+
+## NO PRESENTADO
+
+El sistema debe:
+
+1. Mantener el registro histórico.
+2. Cambiar el estado.
+3. Registrar fecha/hora.
+4. Registrar usuario que realizó la acción.
+5. Liberar la disponibilidad según las reglas establecidas.
+6. Permitir registrar otra atención si corresponde.
+7. Mantener completa trazabilidad.
+
+NO eliminar registros.
+
+---
+
+# 15. ESTADOS
+
+Diseñar una máquina de estados clara.
+
+Como mínimo considerar:
+
+* REGISTRADO.
+* EN_ESPERA.
+* LLAMADO.
+* EN_ATENCION.
+* ATENDIDO.
+* CANCELADO.
+* NO_PRESENTADO.
+
+Analizar si conviene agregar:
+
+* ANULADO.
+* REPROGRAMADO.
+* ERROR_REGISTRO.
+
+No permitir transiciones arbitrarias.
+
+Definir qué transición está permitida desde cada estado.
+
+---
+
+# 16. PANEL DE LA ENCARGADA
+
+Debe existir un dashboard operativo.
+
+Debe permitir visualizar claramente:
+
+### Indicadores
+
+* Capacidad.
+* Registrados.
+* En espera.
+* Atendiendo.
+* Atendidos.
+* Cancelados.
+* No presentados.
+* Disponibles.
+
+Ejemplo:
+
+CAPACIDAD: 20
+
+REGISTRADOS: 14
+
+ATENDIDOS: 8
+
+EN ESPERA: 5
+
+DISPONIBLES: 6
+
+---
+
+# 17. COLA VISUAL
+
+La encargada debe visualizar algo similar a:
+
+| Turno | Trabajador | Hora  | Estado     |
+| ----- | ---------- | ----- | ---------- |
+| A-009 | XXXXX      | 09:05 | ATENDIENDO |
+| A-010 | XXXXX      | 09:12 | EN ESPERA  |
+| A-011 | XXXXX      | 09:20 | EN ESPERA  |
+| A-012 | XXXXX      | 09:27 | EN ESPERA  |
+
+Debe ser muy fácil identificar:
+
+* quién está siendo atendido;
+* quién sigue;
+* quién está esperando;
+* quién fue llamado;
+* quién canceló;
+* quién no se presentó.
+
+---
+
+# 18. LLAMAR AL SIGUIENTE
+
+Debe existir un botón:
+
+## LLAMAR SIGUIENTE
+
+Al ejecutarlo:
+
+EN_ESPERA
+↓
+LLAMADO
+
+Debe registrar:
+
+* fecha/hora;
+* usuario;
+* turno;
+* sede.
+
+Opcionalmente enviar notificación.
+
+La encargada puede llamar personalmente al trabajador para que baje al tópico.
+
+---
+
+# 19. CONSULTA DEL TRABAJADOR
+
+Aunque en Fase 1 no registra directamente su atención, puede existir una consulta.
+
+Debe permitir conocer:
+
+* número de turno;
+* estado;
+* posición aproximada;
+* personas delante;
+* sede;
+* hora registrada;
+* horario estimado, si es posible calcularlo.
+
+No mostrar información sensible de otros trabajadores.
+
+No mostrar nombres completos de otras personas.
+
+---
+
+# 20. NOTIFICACIONES
+
+El sistema debe permitir enviar correo institucional.
+
+Eventos posibles:
+
+### Registro
+
+"Su solicitud de atención ha sido registrada."
+
+### Próximo turno
+
+"Su atención se aproxima."
+
+### Llamado
+
+"Por favor, acérquese al tópico."
+
+### Cancelación
+
+"Su solicitud ha sido cancelada."
+
+### Otros eventos
+
+Diseñar un sistema de notificaciones modular.
+
+No acoplar el sistema directamente a una única forma de notificación.
+
+Inicialmente:
+
+## CORREO SMTP
+
+Posteriormente podrían agregarse otros canales si institucionalmente corresponde.
+
+---
+
+# 21. TRABAJADORES EPS RÍMAC
+
+Solo deben poder registrarse atenciones para trabajadores habilitados según la fuente institucional de trabajadores con EPS Rímac.
+
+El sistema debe validar:
+
+DNI
+↓
+trabajador existente
+↓
+habilitado
+↓
+EPS correspondiente
+↓
+puede registrar atención.
+
+Si no está habilitado:
+
+mostrar mensaje adecuado.
+
+NO permitir que la encargada simplemente escriba cualquier persona y la registre sin control.
+
+Debe existir un mecanismo administrativo para actualizar la relación de trabajadores.
+
+---
+
+# 22. BASE DE DATOS
+
+La base debe diseñarse profesionalmente en PostgreSQL.
+
+No crear una tabla monolítica.
+
+Analizar entidades como:
+
+* usuarios.
+* roles.
+* permisos.
+* sedes.
+* trabajadores.
+* EPS.
+* configuraciones.
+* horarios.
+* turnos.
+* atenciones.
+* estados.
+* motivos de cancelación.
+* notificaciones.
+* auditoría.
+* logs.
+* importaciones.
+* archivos/importaciones históricas.
+
+Definir correctamente:
+
+* PK.
+* FK.
+* UNIQUE.
+* NOT NULL.
+* CHECK.
+* índices.
+* timestamps.
+* timezone.
+* soft delete cuando corresponda.
+* restricciones de integridad.
+
+---
+
+# 23. IDENTIFICACIÓN DEL TRABAJADOR
+
+DNI será un identificador importante.
+
+Analizar correctamente:
+
+* tipo de dato;
+* longitud;
+* formato;
+* unicidad;
+* validación.
+
+No almacenar DNI como entero si eso provoca pérdida de ceros iniciales.
+
+Considerar que debe tratarse como dato personal.
+
+---
+
+# 24. FECHAS Y HORAS
+
+Diseñar correctamente el manejo de:
+
+* fecha de atención;
+* hora de registro;
+* hora programada;
+* hora de llamado;
+* hora de inicio;
+* hora de finalización;
+* cancelación;
+* inasistencia.
+
+Definir una estrategia consistente para zona horaria.
+
+La aplicación será utilizada en Perú.
+
+Evitar errores de timezone.
+
+---
+
+# 25. AUDITORÍA
+
+El sistema debe tener auditoría funcional.
+
+Registrar eventos relevantes:
+
+* login.
+* logout cuando corresponda.
+* registro de atención.
+* modificación.
+* cancelación.
+* llamado.
+* inicio de atención.
+* finalización.
+* no presentación.
+* cambio de configuración.
+* modificación de trabajador.
+* importación.
+* modificación de permisos.
+
+Guardar, cuando corresponda:
+
+* usuario.
+* fecha/hora.
+* IP.
+* recurso.
+* acción.
+* identificador del registro.
+* valores anteriores.
+* valores nuevos.
+* resultado.
+* motivo.
+
+La auditoría debe ser protegida contra modificaciones normales por usuarios operativos.
+
+---
+
+# 26. LOGS TÉCNICOS
+
+Separar:
+
+## AUDITORÍA FUNCIONAL
+
+de:
+
+## LOGS TÉCNICOS.
+
+Los logs técnicos pueden registrar:
+
+* errores.
+* excepciones.
+* consultas problemáticas.
+* envío de correo.
+* errores de autenticación.
+* problemas de conexión.
+* errores de API.
+* procesos internos.
+
+Implementar logging estructurado cuando sea razonable.
+
+---
+
+# 27. SEGURIDAD
+
+El sistema debe contemplar:
+
+* autenticación segura;
+* autorización por roles;
+* control por sede;
+* contraseñas almacenadas con hash seguro;
+* JWT o mecanismo apropiado;
+* expiración de sesión;
+* validación de entradas;
+* protección contra SQL Injection;
+* protección contra XSS;
+* protección contra CSRF según arquitectura;
+* CORS correctamente configurado;
+* rate limiting donde sea necesario;
+* gestión segura de errores;
+* no exponer stack traces al usuario;
+* no devolver información innecesaria;
+* principio de mínimo privilegio.
+
+No almacenar contraseñas en texto plano.
+
+No colocar secretos en el código fuente.
+
+Utilizar variables de entorno o mecanismos de configuración seguros.
+
+---
+
+# 28. PRIVACIDAD
+
+El sistema manejará datos personales.
+
+Además, al estar relacionado con un servicio de salud, debe existir especial cuidado.
+
+El sistema administrativo debe aplicar:
+
+* minimización de datos;
+* control de acceso;
+* confidencialidad;
+* trazabilidad;
+* segregación de funciones;
+* protección de información.
+
+No almacenar información clínica salvo que exista una justificación funcional y normativa explícita.
+
+No crear una historia clínica paralela.
+
+---
+
+# 29. BACKEND
+
+Tecnología:
+
+## Python + FastAPI
+
+Utilizar una arquitectura limpia, modular y mantenible.
+
+No colocar toda la lógica en main.py.
+
+Separar:
+
+* routers.
+* schemas.
+* models.
+* services.
+* repositories cuando sea necesario.
+* auth.
+* configuración.
+* auditoría.
+* notificaciones.
+* utilidades.
+
+Evitar sobreingeniería.
+
+Pero tampoco crear un proyecto monolítico desordenado.
+
+---
+
+# 30. ORM
+
+Utilizar:
+
+## SQLAlchemy
+
+Definir modelos correctamente.
+
+Evitar consultas SQL improvisadas repartidas por toda la aplicación.
+
+Centralizar lógica de acceso a datos cuando sea conveniente.
+
+Usar transacciones correctamente.
+
+---
+
+# 31. VALIDACIÓN
+
+Utilizar:
+
+## Pydantic
+
+Separar:
+
+* schemas de entrada;
+* schemas de salida;
+* modelos de BD.
+
+Nunca exponer directamente todos los campos internos de las tablas.
+
+---
+
+# 32. API REST
+
+Diseñar una API coherente.
+
+Ejemplos conceptuales:
+
+GET /api/health
+
+POST /api/auth/login
+
+GET /api/workers
+
+GET /api/workers/{id}
+
+POST /api/appointments
+
+GET /api/appointments
+
+GET /api/queue
+
+POST /api/queue/{id}/call
+
+POST /api/appointments/{id}/start
+
+POST /api/appointments/{id}/finish
+
+POST /api/appointments/{id}/cancel
+
+POST /api/appointments/{id}/no-show
+
+GET /api/reports
+
+GET /api/audit
+
+No tomar estos endpoints como definitivos.
+
+Analizar y mejorar el diseño REST.
+
+---
+
+# 33. TRANSACCIONES
+
+Las operaciones críticas deben ser transaccionales.
+
+Ejemplo:
+
+Registrar atención:
+
+1. Validar trabajador.
+2. Validar sede.
+3. Validar capacidad.
+4. Validar horario.
+5. Generar turno.
+6. Crear atención.
+7. Registrar auditoría.
+8. Confirmar transacción.
+9. Procesar notificación.
+
+Evitar condiciones de carrera.
+
+Especialmente:
+
+Dos encargadas no deben poder registrar simultáneamente el turno que supera la capacidad máxima.
+
+Diseñar correctamente concurrencia y restricciones.
+
+---
+
+# 34. FRONTEND
+
+Tecnología:
+
+## React + TypeScript
+
+Debe ser moderno, profesional e institucional.
+
+No debe parecer una plantilla genérica de administración.
+
+Debe priorizar:
+
+* claridad;
+* facilidad de uso;
+* accesibilidad;
+* velocidad;
+* responsive;
+* consistencia visual.
+
+---
+
+# 35. UX/UI
+
+Diseñar pensando en que la persona encargada puede estar atendiendo llamadas mientras utiliza el sistema.
+
+Por tanto:
+
+* pocos clics;
+* búsqueda rápida por DNI;
+* botones grandes para acciones críticas;
+* estados visuales claros;
+* confirmaciones para operaciones sensibles;
+* mensajes comprensibles;
+* evitar formularios innecesariamente largos.
+
+---
+
+# 36. DASHBOARD
+
+El dashboard debe responder inmediatamente:
+
+* ¿Cuántas atenciones quedan?
+* ¿Quién está siendo atendido?
+* ¿Quién sigue?
+* ¿Cuántas personas esperan?
+* ¿Cuántos cupos quedan?
+* ¿Hay personas llamadas?
+* ¿Hay incidencias?
+
+No llenar el dashboard de gráficos inútiles.
+
+Primero información operacional.
+
+---
+
+# 37. RESPONSIVE
+
+Debe funcionar correctamente en:
+
+* PC.
+* Laptop.
+* Tablet.
+
+El trabajador posteriormente podrá consultar desde su teléfono.
+
+---
+
+# 38. COMPONENTES FRONTEND
+
+Diseñar componentes reutilizables.
+
+Ejemplos:
+
+* DataTable.
+* SearchInput.
+* WorkerCard.
+* QueueItem.
+* StatusBadge.
+* Modal.
+* ConfirmationDialog.
+* Notification.
+* Pagination.
+* DatePicker.
+* TimePicker.
+* DashboardCard.
+
+Evitar duplicación de componentes.
+
+---
+
+# 39. ESTADOS VISUALES
+
+Utilizar una semántica visual consistente:
+
+REGISTRADO
+EN ESPERA
+LLAMADO
+EN ATENCIÓN
+ATENDIDO
+CANCELADO
+NO PRESENTADO
+
+No depender exclusivamente del color.
+
+Utilizar texto/iconografía además del color por accesibilidad.
+
+---
+
+# 40. IMPORTACIÓN DE EXCEL
+
+Crear un módulo profesional de importación.
+
+Proceso:
+
+1. Seleccionar archivo.
+2. Leer.
+3. Validar columnas.
+4. Validar tipos.
+5. Validar DNI.
+6. Detectar duplicados.
+7. Detectar trabajadores existentes.
+8. Mostrar previsualización.
+9. Mostrar errores.
+10. Confirmar importación.
+11. Ejecutar transacción.
+12. Registrar auditoría.
+13. Generar resumen.
+
+Nunca importar directamente sin validación.
+
+---
+
+# 41. REPORTES
+
+El sistema debe permitir reportes como:
+
+* atenciones por día;
+* atenciones por sede;
+* atenciones por periodo;
+* atendidos;
+* cancelados;
+* no presentados;
+* utilización de capacidad;
+* promedio de espera;
+* tiempos de atención;
+* demanda por horario;
+* demanda por dependencia.
+
+Evitar mostrar información personal innecesaria en reportes generales.
+
+---
+
+# 42. EXPORTACIÓN
+
+Analizar posibilidad de exportar:
+
+* Excel.
+* CSV.
+* PDF.
+
+Pero aplicar permisos.
+
+No cualquier usuario debe poder exportar toda la información.
+
+---
+
+# 43. ADMINISTRACIÓN
+
+Debe existir un módulo para configurar:
+
+* sedes;
+* horarios;
+* capacidad;
+* duración de turnos;
+* tolerancia;
+* usuarios;
+* roles;
+* permisos;
+* parámetros;
+* motivos;
+* notificaciones.
+
+Toda modificación importante debe auditarse.
+
+---
+
+# 44. CONFIGURACIÓN SIN MODIFICAR CÓDIGO
+
+Regla fundamental:
+
+No codificar parámetros de negocio.
+
+Evitar:
+
+```python
+MAX_APPOINTMENTS = 20
+```
+
+si ese valor pertenece a configuración institucional.
+
+Debe existir configuración persistente.
+
+---
+
+# 45. EL SISTEMA DEBE SER MODULAR
+
+Separar claramente:
+
+```text
+Autenticación
+Usuarios
+Trabajadores
+Sedes
+Configuración
+Horarios
+Turnos
+Cola
+Atenciones
+Notificaciones
+Reportes
+Auditoría
+Administración
+```
+
+Cada módulo debe tener responsabilidades claras.
+
+---
+
+# 46. NO SOBREINGENIERÍA
+
+No introducir:
+
+* microservicios innecesarios;
+* Kubernetes;
+* arquitectura distribuida;
+* colas externas;
+* Docker obligatorio;
+* servicios cloud innecesarios.
+
+La infraestructura disponible es un servidor local de la Corte.
+
+Se busca una solución:
+
+* estable;
+* sencilla de mantener;
+* segura;
+* profesional;
+* desplegable en LAN.
+
+---
+
+# 47. DESPLIEGUE
+
+La solución debe poder desplegarse en infraestructura local.
+
+Debe documentarse:
+
+* requisitos;
+* Python;
+* Node;
+* PostgreSQL;
+* variables de entorno;
+* creación de BD;
+* migraciones;
+* instalación backend;
+* instalación frontend;
+* configuración SMTP;
+* ejecución;
+* servicio;
+* backup;
+* restauración.
+
+No asumir que existe acceso a Internet permanente.
+
+---
+
+# 48. BACKUPS
+
+Diseñar estrategia de respaldo de PostgreSQL.
+
+Considerar:
+
+* backup completo;
+* periodicidad;
+* retención;
+* restauración;
+* validación.
+
+Documentar procedimientos.
+
+---
+
+# 49. PRUEBAS
+
+Crear pruebas para:
+
+### Backend
+
+* autenticación;
+* permisos;
+* trabajadores;
+* capacidad;
+* turnos;
+* cola;
+* cancelación;
+* no presentación;
+* concurrencia;
+* auditoría.
+
+### Frontend
+
+* formularios;
+* navegación;
+* estados;
+* errores;
+* responsive.
+
+### Integración
+
+* PostgreSQL;
+* SMTP;
+* autenticación.
+
+---
+
+# 50. CASOS CRÍTICOS QUE DEBEN PROBARSE
+
+### Caso 1
+
+20 cupos.
+
+Se registran 20.
+
+El número 21 debe ser rechazado.
+
+### Caso 2
+
+20 cupos.
+
+Una persona cancela.
+
+Debe liberarse el cupo según las reglas definidas.
+
+### Caso 3
+
+Una persona no se presenta.
+
+Debe poder marcarse NO_PRESENTADO.
+
+### Caso 4
+
+Dos encargadas intentan registrar simultáneamente el último cupo.
+
+El sistema debe garantizar integridad.
+
+### Caso 5
+
+Un usuario de Alzamora intenta modificar una atención de Anselmo.
+
+Debe ser rechazado.
+
+### Caso 6
+
+Un usuario sin permiso intenta modificar configuración.
+
+Debe ser rechazado.
+
+### Caso 7
+
+Un trabajador no pertenece a la lista habilitada de EPS Rímac.
+
+No debe poder registrarse normalmente.
+
+---
+
+# 51. PRINCIPIOS DE DISEÑO
+
+El sistema debe cumplir estos principios:
+
+## Seguridad por diseño
+
+## Auditoría por diseño
+
+## Privacidad por diseño
+
+## Modularidad
+
+## Mantenibilidad
+
+## Escalabilidad razonable
+
+## Integridad de datos
+
+## Experiencia de usuario
+
+## Simplicidad operativa
+
+## Trazabilidad
+
+---
+
+# 52. REGLA FUNDAMENTAL DE DESARROLLO
+
+NO comenzar inmediatamente generando cientos de archivos.
+
+Primero realizar:
+
+### ETAPA 1
+
+Análisis funcional.
+
+### ETAPA 2
+
+Reglas de negocio.
+
+### ETAPA 3
+
+Modelo entidad-relación.
+
+### ETAPA 4
+
+Diseño de PostgreSQL.
+
+### ETAPA 5
+
+Arquitectura backend.
+
+### ETAPA 6
+
+Diseño API.
+
+### ETAPA 7
+
+Arquitectura frontend.
+
+### ETAPA 8
+
+Diseño UX/UI.
+
+### ETAPA 9
+
+Plan de desarrollo.
+
+### ETAPA 10
+
+Implementación incremental.
+
+---
+
+# 53. FORMA DE TRABAJO DE LA IA
+
+Antes de implementar, debes presentar:
+
+1. Entendimiento del problema.
+2. Supuestos.
+3. Preguntas pendientes.
+4. Reglas de negocio identificadas.
+5. Propuesta de arquitectura.
+6. Modelo de datos.
+7. Flujos.
+8. Seguridad.
+9. Plan de implementación.
+
+Después solicitar confirmación o continuar si la información es suficiente.
+
+No inventar información institucional que no haya sido proporcionada.
+
+Cuando exista una decisión que pueda afectar significativamente la arquitectura, explicarla.
+
+---
+
+# 54. CALIDAD DEL CÓDIGO
+
+El código debe ser:
+
+* limpio;
+* tipado;
+* documentado cuando corresponda;
+* modular;
+* mantenible;
+* consistente;
+* sin duplicación innecesaria.
+
+Evitar:
+
+* código espagueti;
+* funciones gigantes;
+* variables ambiguas;
+* lógica de negocio en componentes React;
+* consultas SQL dispersas;
+* secretos hardcodeados.
+
+---
+
+# 55. MANEJO DE ERRORES
+
+Debe existir manejo consistente.
+
+Backend:
+
+```json
+{
+  "success": false,
+  "message": "No existe un trabajador habilitado con el DNI indicado.",
+  "code": "WORKER_NOT_FOUND"
+}
+```
+
+No devolver errores internos sensibles.
+
+Frontend debe transformar los errores técnicos en mensajes comprensibles.
+
+---
+
+# 56. OBSERVABILIDAD
+
+Preparar el sistema para conocer:
+
+* errores;
+* solicitudes;
+* rendimiento;
+* fallos de correo;
+* autenticaciones;
+* acciones administrativas.
+
+No necesariamente implementar una plataforma compleja de observabilidad.
+
+Pero sí dejar una base sólida.
+
+---
+
+# 57. DOCUMENTACIÓN
+
+Generar:
+
+README.md
+
+Debe explicar:
+
+* proyecto;
+* arquitectura;
+* requisitos;
+* instalación;
+* configuración;
+* BD;
+* variables de entorno;
+* ejecución;
+* pruebas;
+* despliegue;
+* backup;
+* troubleshooting.
+
+Además:
+
+* documentación API;
+* modelo BD;
+* reglas de negocio;
+* manual técnico;
+* manual de usuario.
+
+---
+
+# 58. CRITERIO DE ÉXITO
+
+El sistema será considerado exitoso si permite reemplazar el proceso actual basado en Excel para la operación diaria.
+
+La encargada debe poder:
+
+1. Buscar trabajador.
+2. Verificar habilitación EPS Rímac.
+3. Registrar atención.
+4. Generar turno.
+5. Ver cola.
+6. Llamar siguiente.
+7. Iniciar atención.
+8. Finalizar atención.
+9. Cancelar.
+10. Registrar no presentación.
+11. Consultar disponibilidad.
+12. Consultar estadísticas.
+13. Operar únicamente dentro de su sede autorizada.
+
+El trabajador debe poder posteriormente:
+
+1. Consultar su turno.
+2. Consultar estado.
+3. Consultar posición.
+4. Recibir notificaciones.
+
+---
+
+# 59. VISIÓN FUTURA
+
+No diseñar únicamente para resolver el Excel actual.
+
+Diseñar una plataforma que posteriormente pueda convertirse en:
+
+## Sistema Integral de Gestión del Tópico de Salud de la CSJ Lima
+
+pero sin implementar funcionalidades innecesarias desde el primer día.
+
+La evolución debe ser incremental.
+
+---
+
+# 60. ENTREGABLES ESPERADOS
+
+Como equipo de desarrollo, debes producir progresivamente:
+
+### Documento funcional
+
+### Arquitectura
+
+### Modelo entidad-relación
+
+### Diccionario de datos
+
+### Script PostgreSQL
+
+### Backend FastAPI
+
+### API REST
+
+### Frontend React + TypeScript
+
+### Sistema de autenticación
+
+### Sistema de roles
+
+### Sistema de auditoría
+
+### Sistema de notificaciones
+
+### Importador Excel
+
+### Dashboard
+
+### Cola de atención
+
+### Reportes
+
+### Pruebas
+
+### README
+
+### Manual técnico
+
+### Manual de usuario
+
+### Procedimiento de despliegue
+
+### Procedimiento de backup/restauración
+
+---
+
+# 61. REGLA FINAL
+
+No quiero una aplicación genérica de citas.
+
+Quiero un sistema institucional profesional.
+
+Debe sentirse como un producto desarrollado específicamente para la Corte Superior de Justicia de Lima.
+
+Debe ser:
+
+**robusto en backend,**
+
+**excelente en base de datos,**
+
+**profesional en frontend,**
+
+**seguro,**
+
+**auditable,**
+
+**trazable,**
+
+**modular,**
+
+**mantenible,**
+
+**escalable razonablemente,**
+
+y preparado para evolucionar.
+
+La prioridad es:
+
+1. Integridad de datos.
+2. Seguridad.
+3. Trazabilidad.
+4. Correcta aplicación de reglas de negocio.
+5. Facilidad de uso.
+6. Mantenibilidad.
+7. Rendimiento.
+8. Experiencia visual.
+
+No sacrificar seguridad, integridad o trazabilidad por rapidez de desarrollo.
+
+No generar código hasta haber presentado primero la arquitectura propuesta y el modelo de datos.
+
+Una vez aprobado el diseño, desarrollar incrementalmente y entregar archivos completos, indicando claramente:
+
+* ruta del archivo;
+* nombre;
+* propósito;
+* contenido completo;
+* dependencias;
+* pasos para probarlo.
+
+No entregar fragmentos incompletos cuando se solicite implementación.
+
+El sistema debe poder ser ejecutado y probado localmente antes de desplegarlo en el servidor institucional.
+
+---
+
+
