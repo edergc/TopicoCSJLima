@@ -19,9 +19,10 @@ from app.modules.audit import service as audit
 from app.modules.auth.service import validate_password_policy
 from app.modules.sites.models import Site
 from app.modules.users.models import AppUser, Role
+from app.modules.users.service import generate_temporary_password
 
 
-def create_admin(username: str, full_name: str, email: str | None) -> int:
+def create_admin(username: str, full_name: str, email: str | None, temporary: bool = False) -> int:
     settings = get_settings()
     factory = build_session_factory(build_engine(settings.database_url, settings))
     with factory() as db:
@@ -29,22 +30,26 @@ def create_admin(username: str, full_name: str, email: str | None) -> int:
         if db.scalar(select(AppUser.id).where(AppUser.username == username)):
             print(f"El usuario '{username}' ya existe.", file=sys.stderr)
             return 1
-        password = getpass.getpass("Contraseña: ")
-        if password != getpass.getpass("Repita la contraseña: "):
-            print("Las contraseñas no coinciden.", file=sys.stderr)
-            return 1
-        try:
-            validate_password_policy(db, password, username)
-        except Exception as exc:
-            print(f"Contraseña inválida: {getattr(exc, 'details', None) or exc}", file=sys.stderr)
-            return 1
+        if temporary:
+            # Contraseña temporal: el sistema obliga a cambiarla en el primer ingreso.
+            password = generate_temporary_password()
+        else:
+            password = getpass.getpass("Contraseña: ")
+            if password != getpass.getpass("Repita la contraseña: "):
+                print("Las contraseñas no coinciden.", file=sys.stderr)
+                return 1
+            try:
+                validate_password_policy(db, password, username)
+            except Exception as exc:
+                print(f"Contraseña inválida: {getattr(exc, 'details', None) or exc}", file=sys.stderr)
+                return 1
         user = AppUser(
             username=username,
             full_name=full_name,
             email=email,
             auth_provider="LOCAL",
             password_hash=hash_password(password),
-            must_change_password=False,
+            must_change_password=temporary,
             is_active=True,
             failed_login_attempts=0,
         )
@@ -62,6 +67,9 @@ def create_admin(username: str, full_name: str, email: str | None) -> int:
         )
         db.commit()
         print(f"Administrador '{username}' creado con acceso a todas las sedes.")
+        if temporary:
+            print(f"Contraseña temporal: {password}")
+            print("Se pedirá cambiarla en el primer ingreso. No la comparta por canales inseguros.")
         return 0
 
 
@@ -99,12 +107,15 @@ def main() -> int:
     p.add_argument("--username", required=True)
     p.add_argument("--full-name", required=True)
     p.add_argument("--email")
+    p.add_argument(
+        "--temporary", action="store_true", help="Genera una contraseña temporal (cambio obligatorio al ingresar)"
+    )
     sub.add_parser("verify-audit", help="Verificar la integridad de la auditoría")
     p = sub.add_parser("send-test-email", help="Probar la configuración de correo")
     p.add_argument("--to", required=True)
     args = parser.parse_args()
     if args.command == "create-admin":
-        return create_admin(args.username, args.full_name, args.email)
+        return create_admin(args.username, args.full_name, args.email, args.temporary)
     if args.command == "verify-audit":
         return verify_audit()
     return send_test_email(args.to)

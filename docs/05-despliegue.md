@@ -108,11 +108,35 @@ El instalador:
 ```powershell
 cd backend
 .\.venv\Scripts\python -m app.cli create-admin --username admin --full-name "Nombre Apellido"
+# o con contraseña temporal generada (cambio obligatorio en el primer ingreso):
+.\.venv\Scripts\python -m app.cli create-admin --username admin --full-name "Nombre Apellido" --temporary
 ```
 
 Pide la contraseña de forma interactiva, crea el usuario con acceso a todas las sedes y lo registra en la auditoría. Los demás usuarios se crean desde **Administración → Usuarios y roles**.
 
-### 3.5 Certificado HTTPS
+### 3.5 HTTP o HTTPS — decisión vigente
+
+**Configuración actual: HTTP en la LAN** (`install.ps1 -TlsMode none`), acceso en `http://172.20.1.51:42000`.
+
+**Motivo:** el servidor no pertenece a un dominio (WORKGROUP), no hay una CA institucional disponible ni un nombre DNS. Con HTTPS, cada PC mostraría "La conexión no es privada" hasta instalar el certificado a mano en todos los equipos de ambas sedes. Acostumbrar al personal a ignorar esa advertencia es peor para la seguridad.
+
+**Riesgo aceptado:** dentro de la red institucional, el tráfico (credenciales, DNI, nombres, atenciones) viaja sin cifrar y podría ser capturado por alguien con acceso a la red.
+
+**Controles que se mantienen:**
+- solo el puerto 42000 abierto;
+- API accesible solo desde el propio servidor;
+- contraseñas con Argon2id y bloqueo por intentos;
+- sesiones cortas;
+- auditoría inalterable;
+- CSP estricta.
+
+**Migración a HTTPS** (un comando), cuando TI disponga de alguna de estas opciones:
+- un certificado emitido por una CA que los equipos ya reconozcan, más un nombre DNS (`-TlsMode files`);
+- la distribución del certificado raíz a los equipos mediante la consola de dominio de la PJ (`-TlsMode internal`).
+
+Con HTTPS activo, `http://` se redirige automáticamente a `https://` en el mismo puerto.
+
+### 3.6 Certificado HTTPS (cuando se adopte)
 
 **Opción A — CA interna de Caddy (`-TlsMode internal`, por defecto).** Caddy emite su propio certificado. Para que los navegadores no muestren advertencias, distribuya el certificado raíz a los equipos de la red:
 
@@ -128,7 +152,7 @@ Pide la contraseña de forma interactiva, crea el usuario con acceso a todas las
 
 Registre en el DNS interno el nombre (p. ej., `topico.csjlima.gob.pe`) apuntando a la IP del servidor.
 
-### 3.6 Correo institucional (SMTP)
+### 3.7 Correo institucional (SMTP)
 
 Edite `backend\.env`:
 
@@ -149,7 +173,7 @@ cd backend; .\.venv\Scripts\python -m app.cli send-test-email --to su.correo@pj.
 Restart-Service TopicoCSJ-API -Force; Start-Service TopicoCSJ-Web
 ```
 
-### 3.7 Verificación posterior a la instalación
+### 3.8 Verificación posterior a la instalación
 
 ```powershell
 deploy\windows\status.ps1

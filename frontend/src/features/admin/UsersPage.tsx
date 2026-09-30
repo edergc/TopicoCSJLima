@@ -3,6 +3,7 @@ import { Fragment, useMemo, useState } from "react";
 
 import type { Permission, Role, User, UserWithPassword } from "@/shared/api/types";
 import { useAuth, useUser } from "@/shared/auth/AuthProvider";
+import { copyText } from "@/shared/lib/clipboard";
 import { cn } from "@/shared/lib/cn";
 import { fmt } from "@/shared/lib/format";
 import { useDebounced, useDocumentTitle } from "@/shared/lib/hooks";
@@ -57,7 +58,8 @@ const MODULE_LABEL: Record<string, string> = {
 function TemporaryPassword({ result, onClose }: { result: UserWithPassword; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
   const copy = () =>
-    void navigator.clipboard.writeText(result.temporary_password).then(() => {
+    void copyText(result.temporary_password).then((ok) => {
+      if (!ok) return; // la contraseña queda seleccionable para copiarla manualmente
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
