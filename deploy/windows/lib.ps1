@@ -95,3 +95,41 @@ function Write-Log([string]$File, [string]$Message) {
     Add-Content -Path $File -Value $line -Encoding UTF8
     Write-Host $line
 }
+
+function Stop-ProcessTree([int]$ProcessId) {
+    Get-CimInstance Win32_Process -Filter "ParentProcessId=$ProcessId" -ErrorAction SilentlyContinue |
+        ForEach-Object { Stop-ProcessTree $_.ProcessId }
+    Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+}
+
+function Stop-TopicoServices([int[]]$Ports) {
+    <# Detiene los servicios del Tópico y elimina procesos remanentes de SU propio árbol
+       (envoltorios WinSW, uvicorn y sus workers, Caddy) que sigan ocupando los puertos del sistema.
+       Nunca toca procesos de otras aplicaciones: solo python/caddy/envoltorios TopicoCSJ. #>
+    foreach ($id in $script:ServiceWeb, $script:ServiceApi) {
+        $svc = Get-Service $id -ErrorAction SilentlyContinue
+        if ($svc -and $svc.Status -ne "Stopped") {
+            Stop-Service $id -Force -ErrorAction SilentlyContinue
+            try { $svc.WaitForStatus("Stopped", [TimeSpan]::FromSeconds(45)) } catch { }
+        }
+    }
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -in "$($script:ServiceApi).exe", "$($script:ServiceWeb).exe" } |
+        ForEach-Object { Stop-ProcessTree $_.ProcessId }
+    foreach ($port in $Ports) {
+        Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue | ForEach-Object {
+            $ownerId = $_.OwningProcess
+            $owner = Get-Process -Id $ownerId -ErrorAction SilentlyContinue
+            if ($owner) {
+                if ($owner.ProcessName -in "python", "caddy") { Stop-ProcessTree $ownerId }
+            } else {
+                # Windows reporta como dueño a un proceso ya terminado: el socket lo retienen sus hijos
+                # (workers de uvicorn que heredaron el socket).
+                Get-CimInstance Win32_Process -Filter "ParentProcessId=$ownerId" -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Name -in "python.exe", "caddy.exe" } |
+                    ForEach-Object { Stop-ProcessTree $_.ProcessId }
+            }
+        }
+    }
+    Start-Sleep -Seconds 2
+}

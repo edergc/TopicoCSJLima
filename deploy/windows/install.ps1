@@ -76,6 +76,10 @@ foreach ($key in "DATABASE_URL", "DATABASE_MIGRATION_URL") {
 $pgDump = Find-PgTool "pg_dump"
 Write-Ok "PostgreSQL: $(& $pgDump --version)"
 
+if (-not $SkipServices) {
+    # Actualización: se detienen los servicios propios (y sus procesos) antes de reemplazar binarios.
+    Stop-TopicoServices -Ports @($WebPort, $ApiPort)
+}
 foreach ($port in $WebPort, $ApiPort) {
     $listener = Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($listener) {
@@ -173,21 +177,29 @@ Write-Ok "Frontend publicado en $($Dirs.Web)"
 # --------------------------------------------------------------------------------- 4. Caddy
 Write-Step "Proxy web y HTTPS (Caddy)"
 $caddyExe = Join-Path $Dirs.Services "caddy.exe"
+# En una actualización, el binario está en uso por el servicio: se detiene antes de reemplazarlo
+# (el servicio se reinstala e inicia más adelante).
+if ((Get-Service $ServiceWeb -ErrorAction SilentlyContinue).Status -eq "Running") {
+    Stop-Service $ServiceWeb -Force
+    (Get-Service $ServiceWeb).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(30))
+}
 Copy-Item (Join-Path $BinDir "caddy.exe") $caddyExe -Force
 $addresses = @($HostNames) + @("localhost") | Select-Object -Unique
+# Si alguien escribe http:// en el puerto HTTPS, se le redirige a https:// (en lugar de un error 400).
+$httpToHttps = "`n`tservers {`n`t`tlistener_wrappers {`n`t`t`thttp_redirect`n`t`t`ttls`n`t`t}`n`t}"
 switch ($TlsMode) {
     "internal" {
         $siteAddress = ($addresses | ForEach-Object { "https://${_}:$WebPort" }) -join ", "
         $tlsDirective = "tls internal"
         # Solo el puerto $WebPort: sin redirector HTTP en :80 (en este servidor lo usa otra aplicación)
-        $globalTls = "skip_install_trust`n`tauto_https disable_redirects"
+        $globalTls = "skip_install_trust`n`tauto_https disable_redirects$httpToHttps"
         $hsts = 'Strict-Transport-Security "max-age=31536000"'
     }
     "files" {
         if (-not (Test-Path $CertFile) -or -not (Test-Path $KeyFile)) { throw "Indique -CertFile y -KeyFile existentes." }
         $siteAddress = ($addresses | ForEach-Object { "https://${_}:$WebPort" }) -join ", "
         $tlsDirective = "tls `"$CertFile`" `"$KeyFile`""
-        $globalTls = "auto_https disable_redirects"
+        $globalTls = "auto_https disable_redirects$httpToHttps"
         $hsts = 'Strict-Transport-Security "max-age=31536000"'
     }
     "none" {
@@ -240,9 +252,17 @@ if (-not $SkipServices) {
         if (Get-Service $svc.Id -ErrorAction SilentlyContinue) {
             Invoke-Native { & $wrapper stop } | Out-Null
             Invoke-Native { & $wrapper uninstall } | Out-Null
-            Start-Sleep -Seconds 2
         }
-        Copy-Item (Join-Path $BinDir "WinSW-x64.exe") $wrapper -Force
+        # Espera a que el proceso del servicio termine de verdad (libera el ejecutable y el puerto).
+        for ($i = 0; $i -lt 60; $i++) {
+            $running = Get-CimInstance Win32_Process -Filter "Name='$($svc.Id).exe'" -ErrorAction SilentlyContinue
+            if (-not $running -and -not (Get-Service $svc.Id -ErrorAction SilentlyContinue)) { break }
+            Start-Sleep -Seconds 1
+        }
+        if (-not ((Test-Path $wrapper) -and (Test-ToolHash (Join-Path $BinDir "WinSW-x64.exe")) -and
+                  ((Get-FileHash $wrapper).Hash -eq (Get-FileHash (Join-Path $BinDir "WinSW-x64.exe")).Hash))) {
+            Copy-Item (Join-Path $BinDir "WinSW-x64.exe") $wrapper -Force
+        }
         $xml = (Get-Content (Join-Path $PSScriptRoot "config\$($svc.Template)") -Raw -Encoding UTF8).
             Replace("{{SERVICE_ID}}", $svc.Id).Replace("{{API_PORT}}", "$ApiPort").Replace("{{WEB_PORT}}", "$WebPort").
             Replace("{{PYTHON}}", $VenvPython).Replace("{{WORKERS}}", "$Workers").Replace("{{BACKEND_DIR}}", $BackendDir).
