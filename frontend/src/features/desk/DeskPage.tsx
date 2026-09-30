@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarX2, RefreshCw } from "lucide-react";
+import { AlertTriangle, CalendarX2, MonitorPlay, RefreshCw } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { AppointmentDrawer } from "@/features/appointments/components/AppointmentDrawer";
@@ -85,6 +85,15 @@ export default function DeskPage() {
               {b.block === "AM" ? "Mañana" : "Tarde"} {b.start.slice(0, 5)}–{b.end.slice(0, 5)}
             </span>
           ))}
+          <a
+            href={`/pantalla/${site.code.toLowerCase()}`}
+            target="_blank"
+            rel="noopener"
+            title="Abrir la pantalla de turnos de la sala de espera (TV)"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-panel px-2.5 py-1 font-medium text-brand-700 ring-1 ring-line hover:ring-brand-300"
+          >
+            <MonitorPlay className="size-3.5" aria-hidden /> Pantalla de sala
+          </a>
           <span className={cn("inline-flex items-center gap-1.5", queue.isFetching && "text-brand-700")} aria-live="polite">
             <RefreshCw className={cn("size-3.5", queue.isFetching && "animate-spin")} aria-hidden />
             {data ? `Actualizado ${fmt.time(data.generated_at)}` : "Cargando…"}

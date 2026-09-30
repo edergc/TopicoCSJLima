@@ -181,11 +181,22 @@ deploy\windows\status.ps1
 
 - [ ] Los servicios `TopicoCSJ-API`, `TopicoCSJ-Web` y PostgreSQL están en ejecución.
 - [ ] La API escucha solo en `127.0.0.1:42001`.
-- [ ] `https://<servidor>:42000` abre la pantalla de inicio de sesión desde **otro equipo** de la red.
+- [ ] `http://<servidor>:42000` abre la pantalla de inicio de sesión desde **otro equipo** de la red.
+- [ ] `http://<servidor>:42000/pantalla` muestra la pantalla de turnos.
 - [ ] El administrador inicial puede ingresar.
 - [ ] Llega el correo de prueba (si SMTP está configurado).
 - [ ] Un backup manual funciona: `deploy\windows\backup\backup.ps1`.
 - [ ] La verificación de restauración funciona: `deploy\windows\backup\verify-backup.ps1`.
+
+### 3.9 TV de la sala de espera (pantalla de turnos)
+
+Cualquier PC o mini-PC conectado a la TV, con Chrome o Edge, en la red institucional. Para que arranque sola, sin clics y con sonido, cree un acceso directo en la carpeta *Inicio* (`shell:startup`) del usuario de ese equipo:
+
+```
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk --autoplay-policy=no-user-gesture-required --no-first-run http://172.20.1.51:42000/pantalla/alz
+```
+
+(`/pantalla/bar` para la sede Anselmo Barreto). Con `--kiosk` se muestra a pantalla completa; `Alt+F4` la cierra. Configure el equipo para que **no suspenda ni apague la pantalla** (Opciones de energía → Nunca). En HTTP el navegador no permite bloquear el reposo desde la página.
 
 ## 4. Actualización a una nueva versión
 

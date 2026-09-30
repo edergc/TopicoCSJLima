@@ -132,11 +132,32 @@ En **Atenciones** puede buscar por fecha, estado, sede o DNI. Al hacer clic en u
 
 ## 3. Consulta del turno (para trabajadores)
 
-Los trabajadores pueden ver el estado de su turno desde su celular o PC en `https://<servidor>:42000/consulta`, ingresando su **DNI** y el **código de turno** (p. ej., A-011).
+Los trabajadores pueden ver el estado de su turno desde su celular o PC en `http://<servidor>:42000/consulta`, ingresando su **DNI** y el **código de turno** (p. ej., A-011).
 
 Verán su posición, cuántas personas tienen delante y la hora aproximada. Por privacidad, la consulta no muestra datos de otras personas.
 
 ![Consulta del turno](manual/img/16-consulta-movil.png)
+
+### 3.1 Pantalla de turnos de la sala de espera (TV)
+
+Una TV o monitor en la sala de espera puede mostrar, en tiempo real, **a quién se está llamando** y **quiénes siguen**:
+
+- Dirección: `http://<servidor>:42000/pantalla` → elegir la sede (p. ej. `http://172.20.1.51:42000/pantalla/alz`). No requiere usuario ni contraseña.
+- La encargada también la abre desde la **Mesa de atención** con el botón **Pantalla de sala** (se abre en otra pestaña, para arrastrarla a la TV).
+- Al abrirla, pulse **Iniciar pantalla**: pasa a pantalla completa y cada llamado se anuncia con una **campanilla y por voz** ("Turno A 11. Milagros P. Por favor, acérquese al tópico"). Si se vuelve a llamar a alguien, se anuncia de nuevo.
+- Se actualiza sola cada 4 segundos. El indicador **EN LÍNEA** pasa a **RECONECTANDO** si se pierde la red; al volver, continúa sola.
+- Al mover el mouse aparecen los botones de silenciar y de pantalla completa.
+
+Por privacidad solo se muestra el **código de turno y el nombre abreviado** (nombre + inicial del apellido). Nunca DNI, correo, dependencia ni datos de salud. El administrador puede, en *Configuración → Parámetros*:
+
+| Parámetro | Efecto |
+|---|---|
+| `display.enabled` | Activa o desactiva la pantalla |
+| `display.show_names` | Si es "No", muestra solo el código de turno |
+| `display.voice_enabled` | Si es "No", solo suena la campanilla |
+| `display.message` | Mensaje informativo al pie de la pantalla |
+
+![Pantalla de turnos](manual/img/19-pantalla-turnos.png)
 
 ---
 

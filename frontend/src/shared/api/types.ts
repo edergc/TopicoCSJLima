@@ -53,6 +53,9 @@ export type ReasonAdmin = S["ReasonAdminOut"];
 export type Template = S["TemplateOut"];
 export type TemplatePreview = S["TemplatePreviewOut"];
 export type PublicTicketStatus = S["PublicTicketStatusOut"];
+export type DisplayBoard = S["DisplayBoardOut"];
+export type DisplaySite = S["DisplaySiteOut"];
+export type DisplayTicket = S["DisplayTicketOut"];
 
 export interface Page<T> {
   items: T[];

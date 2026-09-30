@@ -111,3 +111,5 @@ Todas las transiciones aceptan `{version}` para el control de concurrencia optim
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/public/ticket-status?document_number=&ticket_code=` | Requiere ambos datos. Devuelve estado, posición, personas delante y hora estimada. El nombre va enmascarado y no se exponen datos de terceros. Rate limit: 20/min |
+| GET | `/public/display/sites` | Sedes activas con pantalla de turnos. Rate limit: 60/min |
+| GET | `/public/display/{site_code}` | Pantalla de la sala de espera: turnos llamados (el más reciente primero, con `call_count` para detectar re-llamados), en atención y siguientes (máx. 8) con hora estimada. Solo código de turno y nombre abreviado ("Ana R."; `null` si `display.show_names` = false). 404 `DISPLAY_DISABLED` si `display.enabled` = false. Rate limit: 120/min |

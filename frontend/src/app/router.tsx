@@ -50,6 +50,8 @@ function NotFound() {
 export const router = createBrowserRouter([
   { path: "/login", lazy: page(() => import("@/features/auth/LoginPage")) },
   { path: "/consulta", lazy: page(() => import("@/features/public/PublicStatusPage")) },
+  { path: "/pantalla", lazy: page(() => import("@/features/display/DisplaySelectPage")) },
+  { path: "/pantalla/:siteCode", lazy: page(() => import("@/features/display/DisplayPage")) },
   {
     element: <RequireAuth />,
     errorElement: <RouteError />,

@@ -124,7 +124,7 @@ Scripts de soporte (`backend/scripts/`):
 | XSS | React con escape por defecto, `dangerouslySetInnerHTML` prohibido por lint, CSP `script-src 'self'` y plantillas de correo en sandbox |
 | Inyección SQL | Solo consultas parametrizadas (ORM/psycopg) |
 | Mínimo privilegio en la BD | La aplicación no tiene DDL ni `DELETE` en tablas de negocio, y actualiza por columna los datos sensibles |
-| Privacidad | Sin datos clínicos; lecturas de ficha y exportaciones nominales auditadas; consulta pública con DNI y código y nombre enmascarado |
+| Privacidad | Sin datos clínicos; lecturas de ficha y exportaciones nominales auditadas; consulta pública con DNI y código y nombre enmascarado; pantalla de sala solo con código de turno y nombre abreviado (desactivable) |
 
 ## 5. Observabilidad
 

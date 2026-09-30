@@ -138,6 +138,7 @@ MESSAGES: dict[str, str] = {
     # Consulta pública
     "PUBLIC_TICKET_NOT_FOUND": "No se encontró un turno con los datos ingresados. Verifique el DNI y el código de turno.",
     "PUBLIC_STATUS_DISABLED": "La consulta de turnos no está disponible en este momento.",
+    "DISPLAY_DISABLED": "La pantalla de turnos no está habilitada.",
 }
 
 # Restricciones de la BD → error de negocio (última línea de defensa).
