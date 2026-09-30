@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     smtp_password: SecretStr | None = None
     smtp_from: str | None = None
     smtp_timeout_seconds: int = 15
+    # false solo si el servidor SMTP institucional usa un certificado autofirmado (el canal sigue cifrado)
+    smtp_tls_verify: bool = True
     notifications_worker_enabled: bool = True
     notifications_poll_seconds: float = 5.0
 

@@ -59,16 +59,20 @@ class SmtpEmailChannel:
         assert s.smtp_host
         assert s.smtp_from
         email = _build_email(message, s.smtp_from)
+        context = ssl.create_default_context()
+        if not s.smtp_tls_verify:  # certificado autofirmado: cifra sin validar la identidad del servidor
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
         try:
             if s.smtp_security == "ssl":
                 client: smtplib.SMTP = smtplib.SMTP_SSL(
-                    s.smtp_host, s.smtp_port, timeout=s.smtp_timeout_seconds, context=ssl.create_default_context()
+                    s.smtp_host, s.smtp_port, timeout=s.smtp_timeout_seconds, context=context
                 )
             else:
                 client = smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=s.smtp_timeout_seconds)
             with client:
                 if s.smtp_security == "starttls":
-                    client.starttls(context=ssl.create_default_context())
+                    client.starttls(context=context)
                 if s.smtp_username and s.smtp_password:
                     client.login(s.smtp_username, s.smtp_password.get_secret_value())
                 client.send_message(email)

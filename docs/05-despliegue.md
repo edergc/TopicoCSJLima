@@ -146,7 +146,7 @@ Pruebe la configuración y reinicie la API:
 
 ```powershell
 cd backend; .\.venv\Scripts\python -m app.cli send-test-email --to su.correo@pj.gob.pe
-Restart-Service TopicoCSJ-API
+Restart-Service TopicoCSJ-API -Force; Start-Service TopicoCSJ-Web
 ```
 
 ### 3.7 Verificación posterior a la instalación
@@ -179,7 +179,7 @@ El instalador es idempotente: actualiza las dependencias, aplica las migraciones
 | Tarea | Comando |
 |---|---|
 | Estado general | `deploy\windows\status.ps1` |
-| Reiniciar la API | `Restart-Service TopicoCSJ-API` |
+| Reiniciar la API (reinicia también la web, que depende de ella) | `Restart-Service TopicoCSJ-API -Force; Start-Service TopicoCSJ-Web` |
 | Reiniciar la web | `Restart-Service TopicoCSJ-Web` |
 | Detener todo | `Stop-Service TopicoCSJ-Web, TopicoCSJ-API` |
 | Verificar la auditoría | `deploy\windows\backup\verify-audit.ps1` |
@@ -206,7 +206,7 @@ Cada respuesta de la API incluye la cabecera `X-Request-ID`, que aparece tambié
    - `backend\.env` contiene las contraseñas de la base de datos y el secreto JWT.
    - Restrinja su acceso: `icacls backend\.env /inheritance:r /grant Administradores:F /grant "NT AUTHORITY\SYSTEM:F" /grant "NT AUTHORITY\LOCAL SERVICE:R"`.
    - Nunca lo versione (está en `.gitignore`).
-5. **Rotación de contraseñas de la base de datos:** vuelva a ejecutar `bootstrap.ps1` y luego `Restart-Service TopicoCSJ-API`.
+5. **Rotación de contraseñas de la base de datos:** vuelva a ejecutar `bootstrap.ps1` y luego `Restart-Service TopicoCSJ-API -Force; Start-Service TopicoCSJ-Web`.
 6. **PostgreSQL:** mantenga actualizado el servidor y limite en `pg_hba.conf` las redes que pueden conectarse.
 
 ## 7. Desinstalación
