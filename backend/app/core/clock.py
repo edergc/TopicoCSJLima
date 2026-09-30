@@ -47,3 +47,18 @@ class FixedClock(Clock):
         from datetime import timedelta
 
         self._instant = self._instant + timedelta(**delta)
+
+
+class OffsetClock(Clock):
+    """Reloj real desplazado para iniciar en un instante dado (solo desarrollo/capacitación).
+
+    El tiempo sigue avanzando normalmente; permite simular, p. ej., una mañana de atención.
+    """
+
+    def __init__(self, start: datetime) -> None:
+        if start.tzinfo is None:
+            raise ValueError("OffsetClock requiere un datetime con zona horaria")
+        self._offset = start - datetime.now(UTC)
+
+    def now(self) -> datetime:
+        return datetime.now(UTC) + self._offset

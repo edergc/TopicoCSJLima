@@ -4,6 +4,7 @@ Aquí solo va configuración TÉCNICA (conexiones, secretos, entorno, SMTP). Los
 negocio (capacidad, horarios, tolerancias...) viven en la base de datos.
 """
 
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
@@ -71,7 +72,11 @@ class Settings(BaseSettings):
 
     # --- Aplicación ---------------------------------------------------------
     public_app_url: str | None = None  # URL de la consulta pública (se incluye en correos)
+    # Solo desarrollo/capacitación: inicia el reloj del sistema en este instante (ignorado en producción).
+    dev_clock_start: datetime | None = None
     max_upload_mb: int = 10
+    # Build del frontend (frontend/dist). Si se define, el backend sirve la interfaz en el mismo origen.
+    frontend_dist: Path | None = None
 
     _check_urls = field_validator(
         "database_url",

@@ -1,0 +1,118 @@
+/*
+ * Sistema de diseño — Tópico de Salud · CSJ Lima
+ *
+ * Tokens semánticos (no colores sueltos en los componentes):
+ *   brand      acento institucional granate (ajustable al manual de identidad oficial)
+ *   ink        texto        · surface/panel  fondos        · line   bordes
+ *   status-*   estados de la atención (siempre acompañados de ícono + texto)
+ */
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+@theme {
+  --font-sans: "Inter Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "Consolas", monospace;
+
+  /* Marca institucional */
+  --color-brand-50: #fbf4f5;
+  --color-brand-100: #f5e3e6;
+  --color-brand-200: #ebc5cc;
+  --color-brand-300: #d99aa6;
+  --color-brand-500: #a83a4d;
+  --color-brand-600: #93263a;
+  --color-brand-700: #7a1e2c;
+  --color-brand-800: #611824;
+  --color-brand-900: #45111a;
+
+  /* Neutros cálidos */
+  --color-ink: #1c1917;
+  --color-ink-muted: #57534e;
+  --color-ink-soft: #78716c;
+  --color-ink-faint: #a8a29e;
+  --color-surface: #f6f5f3;
+  --color-panel: #ffffff;
+  --color-sunken: #efedea;
+  --color-line: #e7e5e4;
+  --color-line-strong: #d6d3d1;
+
+  /* Estados de la atención */
+  --color-status-registered: #475569;
+  --color-status-registered-bg: #f1f5f9;
+  --color-status-waiting: #a16207;
+  --color-status-waiting-bg: #fef9e7;
+  --color-status-called: #1d4ed8;
+  --color-status-called-bg: #eff4ff;
+  --color-status-inservice: #6d28d9;
+  --color-status-inservice-bg: #f4f0ff;
+  --color-status-done: #047857;
+  --color-status-done-bg: #ecfdf3;
+  --color-status-cancelled: #57534e;
+  --color-status-cancelled-bg: #f5f5f4;
+  --color-status-noshow: #b91c1c;
+  --color-status-noshow-bg: #fef2f2;
+
+  /* Retroalimentación */
+  --color-success: #047857;
+  --color-warning: #b45309;
+  --color-danger: #b91c1c;
+  --color-info: #1d4ed8;
+
+  --radius-card: 0.875rem;
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.04), 0 1px 3px rgb(28 25 23 / 0.06);
+  --shadow-raised: 0 4px 12px -2px rgb(28 25 23 / 0.08), 0 2px 4px -2px rgb(28 25 23 / 0.06);
+  --shadow-overlay: 0 24px 48px -12px rgb(28 25 23 / 0.25);
+
+  --animate-pulse-ring: pulse-ring 1.8s ease-out infinite;
+  --animate-fade-in: fade-in 160ms ease-out;
+  --animate-slide-up: slide-up 200ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgb(29 78 216 / 0.35); }
+    70% { box-shadow: 0 0 0 8px rgb(29 78 216 / 0); }
+    100% { box-shadow: 0 0 0 0 rgb(29 78 216 / 0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(6px) scale(0.99); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-surface text-ink font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+  ::selection {
+    @apply bg-brand-100 text-brand-900;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "cv11", "ss01";
+}
+
+@utility card {
+  @apply bg-panel rounded-[var(--radius-card)] border border-line shadow-[var(--shadow-card)];
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

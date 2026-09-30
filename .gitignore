@@ -33,3 +33,6 @@ uploads/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Frontend generado
+frontend/openapi.json

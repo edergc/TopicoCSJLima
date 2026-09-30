@@ -10,11 +10,14 @@ from openpyxl import Workbook
 from app.core.clock import INSTITUTION_TZ
 from app.modules.auth.dependencies import ServiceContext, require
 from app.modules.reports import service as reports
+from app.modules.reports.schemas import ReportSummaryOut
 
 router = APIRouter(prefix="/reports", tags=["Reportes"])
 
 
-@router.get("/summary", summary="Indicadores agregados del periodo (sin datos personales)")
+@router.get(
+    "/summary", response_model=ReportSummaryOut, summary="Indicadores agregados del periodo (sin datos personales)"
+)
 def summary(
     ctx: Annotated[ServiceContext, Depends(require("report:read"))],
     date_from: date | None = None,

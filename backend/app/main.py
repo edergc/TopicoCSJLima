@@ -14,7 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
 import app.modules.registry  # noqa: F401  (registra todos los modelos ORM)
-from app.core.clock import Clock
+from app.core.clock import Clock, OffsetClock
 from app.core.config import API_PREFIX, Settings, get_settings
 from app.core.db import build_engine, build_session_factory
 from app.core.errors import error_response, register_exception_handlers
@@ -93,6 +93,9 @@ def create_app(settings: Settings | None = None, *, clock: Clock | None = None) 
         lifespan=lifespan,
     )
     app.state.settings = settings
+    if clock is None and settings.dev_clock_start is not None and not settings.is_production:
+        clock = OffsetClock(settings.dev_clock_start)
+        log.warning("dev_clock_enabled", start=settings.dev_clock_start.isoformat())
     app.state.clock = clock or Clock()
     app.state.engine = engine
     app.state.session_factory = session_factory
@@ -119,9 +122,9 @@ def create_app(settings: Settings | None = None, *, clock: Clock | None = None) 
 
     health = APIRouter(tags=["Salud"])
 
-    @health.get("/health", summary="Liveness")
-    def liveness() -> dict[str, str]:
-        return {"status": "ok", "version": VERSION}
+    @health.get("/health", summary="Liveness + hora del sistema (sincroniza los relojes de los clientes)")
+    def liveness(request: Request) -> dict[str, str]:
+        return {"status": "ok", "version": VERSION, "server_time": request.app.state.clock.now().isoformat()}
 
     @health.get("/health/ready", summary="Readiness (verifica PostgreSQL)")
     def readiness() -> JSONResponse:
@@ -136,4 +139,8 @@ def create_app(settings: Settings | None = None, *, clock: Clock | None = None) 
     app.include_router(health, prefix=API_PREFIX)
     for router in _routers():
         app.include_router(router, prefix=API_PREFIX)
+    if settings.frontend_dist is not None:
+        from app.core.frontend import mount_frontend
+
+        mount_frontend(app, settings.frontend_dist)  # debe ir al final: incluye la ruta comodín del SPA
     return app
