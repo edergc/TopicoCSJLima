@@ -1,8 +1,8 @@
-"""Fixtures para pruebas de la base de datos contra PostgreSQL real.
+"""Fixtures compartidas. Todas las pruebas usan PostgreSQL real (base topico_csj_test).
 
-Al iniciar la sesión se destruye y recrea el esquema de la base de PRUEBAS, y se
-verifica el ciclo completo de migraciones (upgrade → downgrade → upgrade).
-No se usa SQLite: las pruebas dependen de FOR UPDATE, índices parciales, EXCLUDE y triggers.
+Al iniciar la sesión se destruye y recrea el esquema y se verifica el ciclo completo de
+migraciones (upgrade → downgrade → upgrade). No se usa SQLite: el sistema depende de
+FOR UPDATE, índices parciales, EXCLUDE y triggers.
 """
 
 import argparse
@@ -12,16 +12,16 @@ import psycopg
 import pytest
 from alembic import command
 from alembic.config import Config
+from pydantic import SecretStr
 
-from app.core.config import BACKEND_DIR, DB_SCHEMA, get_settings, to_libpq_url
+from app.core.config import BACKEND_DIR, DB_SCHEMA, Settings, get_settings, to_libpq_url
 
-from .helpers import connect
+from .db.helpers import connect
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     for item in items:
-        if "tests/db/" in item.nodeid.replace("\\", "/"):
-            item.add_marker(pytest.mark.db)
+        item.add_marker(pytest.mark.db)
 
 
 def _alembic_config() -> Config:
@@ -50,6 +50,23 @@ def migrated_db(db_urls: tuple[str, str]) -> None:
     command.upgrade(cfg, "head")
 
 
+@pytest.fixture(scope="session")
+def test_settings() -> Settings:
+    base = get_settings()
+    assert base.test_database_url
+    return base.model_copy(
+        update={
+            "environment": "test",
+            "database_url": base.test_database_url,
+            "jwt_secret": SecretStr("pruebas-" + "x" * 40),
+            "log_dir": None,
+            "email_backend": "disabled",
+            "notifications_worker_enabled": False,
+            "cors_origins": [],
+        }
+    )
+
+
 @pytest.fixture
 def app_db(db_urls: tuple[str, str]) -> Iterator[psycopg.Connection]:
     """Conexión con el rol de la APLICACIÓN (privilegios mínimos), en autocommit."""
@@ -71,6 +88,6 @@ def app_url(db_urls: tuple[str, str]) -> str:
 
 @pytest.fixture
 def user_id(app_db: psycopg.Connection) -> int:
-    from .helpers import create_user
+    from .db.helpers import create_user
 
     return create_user(app_db)

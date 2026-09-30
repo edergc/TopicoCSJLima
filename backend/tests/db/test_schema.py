@@ -67,7 +67,9 @@ def test_reference_data_loaded(app_db: psycopg.Connection) -> None:
         "SUPERVISOR",
     ]
     assert scalar(app_db, "SELECT count(*) FROM site_setting_version WHERE valid_from = DATE '2026-01-01'") == 2
-    assert scalar(app_db, "SELECT count(*) FROM site_schedule") == 20  # 2 sedes x 5 días x 2 bloques
+    assert (
+        scalar(app_db, "SELECT count(*) FROM site_schedule WHERE valid_from = DATE '2026-01-01'") == 20
+    )  # 2 sedes x 5 días x 2 bloques
     assert scalar(app_db, "SELECT count(*) FROM notification_template") == 4
 
 

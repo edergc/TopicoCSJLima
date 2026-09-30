@@ -1,0 +1,186 @@
+"""Casos de uso de configuración de sede (todos auditados)."""
+
+from datetime import date, timedelta
+
+from sqlalchemy import select, text
+
+from app.core.errors import BusinessRuleError, NotFoundError
+from app.modules.appointments.models import ServiceDay
+from app.modules.audit.service import diff, snapshot
+from app.modules.auth.dependencies import ServiceContext
+from app.modules.sites import service as sites
+from app.modules.sites.models import Site, SiteClosure, SiteSchedule, SiteSettingVersion
+from app.modules.sites.schemas import CapacityAdjustIn, ClosureIn, ScheduleIn, SettingVersionIn, SiteUpdateIn
+
+_SETTING_FIELDS = (
+    "valid_from",
+    "daily_capacity",
+    "slot_minutes",
+    "tolerance_minutes",
+    "max_concurrent_in_service",
+    "registration_cutoff_minutes",
+    "upcoming_notice_ahead",
+    "allow_reregister_after_no_show",
+    "allow_reregister_after_cancel",
+    "notifications_enabled",
+)
+_SITE_FIELDS = ("name", "short_name", "address", "location_note", "is_active")
+
+
+class SiteConfigService:
+    def __init__(self, ctx: ServiceContext) -> None:
+        self.ctx = ctx
+        self.db = ctx.db
+
+    def update_site(self, site_id: int, data: SiteUpdateIn) -> Site:
+        self.ctx.require_site(site_id, action="SITE_UPDATE")
+        site = sites.get_site(self.db, site_id)
+        before = snapshot(site, _SITE_FIELDS)
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(site, field, value)
+        site.updated_by = self.ctx.user.id
+        b, a = diff(before, snapshot(site, _SITE_FIELDS))
+        self.ctx.audit(
+            action="SITE_UPDATE", resource_type="site", resource_id=site.id, site_id=site.id, before=b, after=a
+        )
+        self.db.commit()
+        return site
+
+    def save_setting_version(self, site_id: int, data: SettingVersionIn) -> SiteSettingVersion:
+        """Crea (o reemplaza, si aún no está vigente) la versión de configuración con vigencia futura."""
+        self.ctx.require_site(site_id, action="SITE_SETTINGS_CHANGE")
+        sites.get_site(self.db, site_id)
+        sites.ensure_future_date(self.ctx.clock, data.valid_from)
+
+        previous = sites.effective_setting(self.db, site_id, data.valid_from)
+        version = self.db.scalar(
+            select(SiteSettingVersion).where(
+                SiteSettingVersion.site_id == site_id, SiteSettingVersion.valid_from == data.valid_from
+            )
+        )
+        before = snapshot(previous, _SETTING_FIELDS) if previous else None
+        values = data.model_dump()
+        if version is None:
+            version = SiteSettingVersion(site_id=site_id, created_by=self.ctx.user.id, **values)
+            self.db.add(version)
+        else:
+            for field, value in values.items():
+                setattr(version, field, value)
+            version.updated_by = self.ctx.user.id
+        self.db.flush()
+        self.ctx.audit(
+            action="SITE_SETTINGS_CHANGE",
+            resource_type="site_setting_version",
+            resource_id=version.id,
+            site_id=site_id,
+            reason=data.change_reason,
+            before=before,
+            after=snapshot(version, _SETTING_FIELDS),
+        )
+        self.db.commit()
+        return version
+
+    def replace_schedule(self, site_id: int, data: ScheduleIn) -> list[SiteSchedule]:
+        """Nuevo horario semanal desde valid_from; el vigente se cierra el día anterior."""
+        self.ctx.require_site(site_id, action="SITE_SCHEDULE_CHANGE")
+        sites.get_site(self.db, site_id)
+        sites.ensure_future_date(self.ctx.clock, data.valid_from)
+        sites.assert_no_future_schedule_after(self.db, site_id, data.valid_from)
+
+        keys = [(b.weekday, b.block) for b in data.blocks]
+        if len(keys) != len(set(keys)):
+            raise BusinessRuleError("SCHEDULE_OVERLAP", "Hay bloques repetidos para el mismo día.")
+
+        current = sites.schedule_rows(self.db, site_id, data.valid_from)
+        before = [snapshot(r, ("weekday", "block", "start_time", "end_time")) for r in current]
+        for row in current:
+            row.valid_to = data.valid_from - timedelta(days=1)
+            row.updated_by = self.ctx.user.id
+        self.db.flush()
+
+        new_rows = [
+            SiteSchedule(site_id=site_id, valid_from=data.valid_from, created_by=self.ctx.user.id, **b.model_dump())
+            for b in data.blocks
+        ]
+        self.db.add_all(new_rows)
+        self.db.flush()
+        self.ctx.audit(
+            action="SITE_SCHEDULE_CHANGE",
+            resource_type="site",
+            resource_id=site_id,
+            site_id=site_id,
+            reason=data.change_reason,
+            before={"blocks": before},
+            after={"valid_from": data.valid_from, "blocks": [b.model_dump() for b in data.blocks]},
+        )
+        self.db.commit()
+        return new_rows
+
+    def add_closure(self, site_id: int, data: ClosureIn) -> SiteClosure:
+        self.ctx.require_site(site_id, action="SITE_CLOSURE_ADD")
+        sites.get_site(self.db, site_id)
+        if data.closure_date < self.ctx.clock.today():
+            raise BusinessRuleError("DATE_NOT_ALLOWED", "No se pueden registrar cierres en fechas pasadas.")
+        closure = SiteClosure(
+            site_id=site_id, closure_date=data.closure_date, reason=data.reason, created_by=self.ctx.user.id
+        )
+        self.db.add(closure)
+        self.db.flush()
+        self.ctx.audit(
+            action="SITE_CLOSURE_ADD",
+            resource_type="site_closure",
+            resource_id=closure.id,
+            site_id=site_id,
+            after=snapshot(closure, ("closure_date", "reason")),
+        )
+        self.db.commit()
+        return closure
+
+    def remove_closure(self, site_id: int, closure_id: int) -> None:
+        self.ctx.require_site(site_id, action="SITE_CLOSURE_REMOVE")
+        closure = self.db.get(SiteClosure, closure_id)
+        if closure is None or closure.site_id != site_id:
+            raise NotFoundError()
+        if closure.closure_date < self.ctx.clock.today():
+            raise BusinessRuleError("DATE_NOT_ALLOWED", "No se pueden eliminar cierres de fechas pasadas.")
+        before = snapshot(closure, ("closure_date", "reason"))
+        self.db.delete(closure)
+        self.ctx.audit(
+            action="SITE_CLOSURE_REMOVE",
+            resource_type="site_closure",
+            resource_id=closure_id,
+            site_id=site_id,
+            before=before,
+        )
+        self.db.commit()
+
+    def adjust_capacity(self, site_id: int, day: date, data: CapacityAdjustIn) -> ServiceDay:
+        """Ajuste explícito y auditado de la capacidad de un día ya abierto o por abrir (RN-08)."""
+        self.ctx.require_site(site_id, action="SERVICE_DAY_CAPACITY_ADJUST")
+        sites.get_site(self.db, site_id)
+        if day < self.ctx.clock.today():
+            raise BusinessRuleError("DATE_NOT_ALLOWED", "No se puede ajustar la capacidad de días pasados.")
+        day_id = self.db.scalar(text("SELECT topico.ensure_service_day(:s, :d)"), {"s": site_id, "d": day})
+        service_day = self.db.scalar(select(ServiceDay).where(ServiceDay.id == day_id).with_for_update(key_share=True))
+        assert service_day is not None
+        if data.capacity < service_day.occupied_count:
+            raise BusinessRuleError(
+                "CAPACITY_BELOW_OCCUPIED",
+                f"La capacidad no puede ser menor que los {service_day.occupied_count} cupos ya ocupados.",
+            )
+        before = {"capacity": service_day.capacity}
+        service_day.capacity = data.capacity
+        service_day.capacity_adjusted_at = self.ctx.clock.now()
+        service_day.capacity_adjusted_by = self.ctx.user.id
+        service_day.capacity_adjust_reason = data.reason
+        self.ctx.audit(
+            action="SERVICE_DAY_CAPACITY_ADJUST",
+            resource_type="service_day",
+            resource_id=service_day.id,
+            site_id=site_id,
+            reason=data.reason,
+            before=before,
+            after={"capacity": data.capacity, "service_date": day},
+        )
+        self.db.commit()
+        return service_day
