@@ -8,7 +8,7 @@ import { defineConfig } from "vite";
 // En desarrollo, /api se redirige al backend: el navegador ve un solo origen,
 // igual que en producción (proxy inverso). Así no se necesita CORS y la cookie
 // de sesión (SameSite=Strict, Path=/api/v1/auth) funciona sin cambios.
-const API_TARGET = process.env.VITE_API_TARGET ?? "http://127.0.0.1:8000";
+const API_TARGET = process.env.VITE_API_TARGET ?? "http://127.0.0.1:42001";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -16,7 +16,8 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   server: {
-    port: 5173,
+    port: 42000,
+    strictPort: true,
     proxy: { "/api": { target: API_TARGET, changeOrigin: false } },
   },
   build: {

@@ -73,7 +73,7 @@ SELECT DISTINCT ON (site_id) site_id, valid_from, daily_capacity, slot_minutes, 
 
 ## 5. Backup y restauración
 
-Los scripts automatizados (programación diaria, retención y verificación de restauración) se entregan en la fase de despliegue. Procedimiento manual equivalente:
+Automatizados en `deploy/windows/backup/`: backup diario con retención, restauración de prueba semanal en la base aislada `topico_csj_verify` y restauración guiada. Ver **docs/06-backup-restauracion.md**. Procedimiento manual equivalente:
 
 ```powershell
 # Backup completo (formato custom, comprimido), con el rol propietario

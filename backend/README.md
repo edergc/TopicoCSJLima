@@ -50,11 +50,11 @@ python -m venv .venv
 .\.venv\Scripts\python -m app.cli create-admin --username admin --full-name "Administrador del Sistema"
 
 # 4) Ejecutar
-.\.venv\Scripts\uvicorn app.main:create_app --factory --reload --port 8000
+.\.venv\Scripts\uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 42001
 ```
 
-- API: `http://localhost:8000/api/v1`
-- Documentación interactiva (solo fuera de producción): `http://localhost:8000/api/v1/docs`
+- API: `http://localhost:42001/api/v1`
+- Documentación interactiva (solo fuera de producción): `http://localhost:42001/api/v1/docs`
 - En Windows, si la consola muestra caracteres extraños: `$env:PYTHONUTF8=1`
 
 ## Configuración

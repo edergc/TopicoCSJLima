@@ -36,3 +36,6 @@ Thumbs.db
 
 # Frontend generado
 frontend/openapi.json
+
+# Binarios de despliegue (se obtienen con deploy/windows/get-tools.ps1)
+deploy/windows/bin/

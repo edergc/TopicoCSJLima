@@ -19,7 +19,7 @@ createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <TooltipProvider>
           <RouterProvider router={router} />
-          <Toaster position="top-right" richColors closeButton duration={5000} toastOptions={{ className: "font-sans" }} />
+          <Toaster position="bottom-right" richColors closeButton duration={5000} toastOptions={{ className: "font-sans" }} />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

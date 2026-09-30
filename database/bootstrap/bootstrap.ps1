@@ -5,7 +5,7 @@
 .DESCRIPTION
     - Solicita la contraseña del superusuario de PostgreSQL (no se guarda).
     - Genera contraseñas aleatorias robustas para los roles topico_owner y topico_app.
-    - Ejecuta bootstrap.sql para la base principal y (opcionalmente) la base de pruebas.
+    - Ejecuta bootstrap.sql para la base principal, la de verificación de backups y (opcional) la de pruebas.
     - Escribe/actualiza las cadenas de conexión en backend/.env (fuera del control de versiones).
 
     Es idempotente: re-ejecutarlo rota las contraseñas y actualiza backend/.env.
@@ -21,6 +21,7 @@ param(
     [string]$SuperUser = "postgres",
     [string]$Database = "topico_csj",
     [string]$TestDatabase = "topico_csj_test",
+    [string]$VerifyDatabase = "topico_csj_verify",
     [switch]$SkipTestDatabase,
     [string]$EnvFile = (Join-Path $PSScriptRoot "..\..\backend\.env")
 )
@@ -66,7 +67,8 @@ $ownerPassword = New-RandomPassword
 $appPassword = New-RandomPassword
 $bootstrapSql = Join-Path $PSScriptRoot "bootstrap.sql"
 
-$databases = @($Database)
+# La base de verificación recibe restauraciones de prueba de los backups (verify-backup.ps1).
+$databases = @($Database, $VerifyDatabase)
 if (-not $SkipTestDatabase) { $databases += $TestDatabase }
 
 try {

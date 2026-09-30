@@ -46,12 +46,12 @@ src/
 ```powershell
 npm install
 npm run gen:api        # regenera los tipos desde el backend (tras cambiar la API)
-npm run dev            # http://localhost:5173 ; /api se redirige al backend
+npm run dev            # http://localhost:42000 ; /api se redirige al backend (42001)
 ```
 
-Variables opcionales: `VITE_API_TARGET` (URL del backend en desarrollo; por defecto `http://127.0.0.1:8000`).
+Variables opcionales: `VITE_API_TARGET` (URL del backend en desarrollo; por defecto `http://127.0.0.1:42001`).
 
-> En el servidor institucional de desarrollo, los puertos 5173, 5180, 8000 y 8010 los usan otras aplicaciones. Use, por ejemplo:
+> En el servidor institucional, 42000/42001 los usan los servicios de producción (y 5173, 5180, 8000 y 8010, otras aplicaciones). Para desarrollar ahí, use otros puertos, por ejemplo:
 > `$env:VITE_API_TARGET="http://127.0.0.1:8765"; npx vite --host 127.0.0.1 --port 5790`
 
 ## Calidad
@@ -65,7 +65,9 @@ npm run build          # build de producción en dist/
 
 ## Producción
 
-`npm run build` genera `dist/`. El backend lo sirve en el **mismo origen** que la API: se define `FRONTEND_DIST=<ruta>/frontend/dist` en `backend/.env`. Con eso:
+`npm run build` genera `dist/`. En la instalación estándar (`deploy/windows/install.ps1`), **Caddy** sirve el build en el puerto 42000 (HTTPS, CSP estricta, caché inmutable de assets) y redirige `/api` a la API en `127.0.0.1:42001`: mismo origen, sin CORS.
+
+Alternativa sin proxy: el backend puede servir el build si se define `FRONTEND_DIST=<ruta>/frontend/dist` en `backend/.env`. Con eso:
 - hay un solo servicio que instalar;
 - no se necesita CORS;
 - los assets con hash llevan caché inmutable;

@@ -63,6 +63,13 @@ def test_settings() -> Settings:
             "email_backend": "disabled",
             "notifications_worker_enabled": False,
             "cors_origins": [],
+            # Independiente de la configuración de despliegue que tenga el .env local
+            "cookie_secure": False,
+            "trusted_proxy_count": 0,
+            "docs_enabled": None,
+            "dev_clock_start": None,
+            "frontend_dist": None,
+            "public_app_url": None,
         }
     )
 

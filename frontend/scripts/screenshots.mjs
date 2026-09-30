@@ -20,7 +20,7 @@ const shot = async (page, name, fullPage = false) => {
 const want = (name) => only.length === 0 || only.includes(name);
 
 async function loggedIn(viewport, user = USER) {
-  const context = await browser.newContext({ viewport, locale: "es-PE", timezoneId: "America/Lima" });
+  const context = await browser.newContext({ viewport, locale: "es-PE", timezoneId: "America/Lima", ignoreHTTPSErrors: true });
   const page = await context.newPage();
   page.on("pageerror", (e) => console.error("ERROR JS:", e.message));
   page.on("console", (m) => m.type() === "error" && console.error("consola:", m.text()));
@@ -33,7 +33,7 @@ async function loggedIn(viewport, user = USER) {
 }
 
 if (want("login")) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "es-PE" });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "es-PE", ignoreHTTPSErrors: true });
   const page = await context.newPage();
   await page.goto(`${baseUrl}/login`);
   await shot(page, "01-login");
@@ -100,7 +100,7 @@ await tour("admin.demo", [
 await tour("auditor.demo", [["15-auditoria", "/auditoria", "Registro inalterable"]]);
 
 if (want("16-consulta-movil")) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "es-PE", isMobile: true, deviceScaleFactor: 2 });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "es-PE", isMobile: true, deviceScaleFactor: 2, ignoreHTTPSErrors: true });
   const page = await context.newPage();
   await page.goto(`${baseUrl}/consulta`);
   await page.getByLabel("DNI").fill(process.env.PUBLIC_DNI ?? "41200137");
@@ -108,6 +108,27 @@ if (want("16-consulta-movil")) {
   await page.getByRole("button", { name: "Consultar" }).click();
   await page.getByText(/Posición|Su atención|turno/).first().waitFor();
   await shot(page, "16-consulta-movil", true);
+  await context.close();
+}
+
+if (want("17-turno-registrado") || want("18-cancelar")) {
+  const { context, page } = await loggedIn({ width: 1440, height: 900 });
+  await page.goto(`${baseUrl}/mesa`);
+  await page.getByText("En espera").first().waitFor();
+  if (want("17-turno-registrado")) {
+    await page.getByLabel("DNI del trabajador").fill(process.env.REGISTER_DNI ?? "41204384");
+    await page.getByText("Habilitado · EPS Rímac vigente").waitFor();
+    await page.getByRole("button", { name: /Registrar turno/ }).click();
+    await page.getByText("Turno registrado").waitFor();
+    await shot(page, "17-turno-registrado");
+  }
+  if (want("18-cancelar")) {
+    await page.getByRole("button", { name: /Acciones del turno/ }).last().click();
+    await page.getByRole("menuitem", { name: "Cancelar" }).click();
+    await page.getByText("Motivo").first().waitFor();
+    await page.waitForTimeout(500);
+    await shot(page, "18-cancelar");
+  }
   await context.close();
 }
 

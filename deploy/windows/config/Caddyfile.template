@@ -1,0 +1,69 @@
+# =============================================================================
+#  Tópico de Salud CSJ Lima — Caddy (frontend + proxy inverso de la API)
+#  GENERADO por install.ps1 a partir de config\Caddyfile.template. No editar a mano:
+#  los cambios se pierden en la próxima instalación/actualización.
+# =============================================================================
+{
+	admin off
+	storage file_system "{{CADDY_DATA}}"
+	{{GLOBAL_TLS}}
+	log {
+		output file "{{LOG_DIR}}\caddy.log" {
+			roll_size 20MiB
+			roll_keep 10
+		}
+		format json
+	}
+}
+
+{{SITE_ADDRESS}} {
+	{{TLS_DIRECTIVE}}
+	encode zstd gzip
+
+	log {
+		output file "{{LOG_DIR}}\access.log" {
+			roll_size 50MiB
+			roll_keep 20
+		}
+		format json
+	}
+
+	header {
+		{{HSTS}}
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# --- API: solo accesible a través de este proxy (el backend escucha en 127.0.0.1) ---
+	handle /api/* {
+		request_body {
+			max_size 12MB
+		}
+		reverse_proxy 127.0.0.1:{{API_PORT}} {
+			# Se REEMPLAZA (no se concatena): el cliente no puede falsificar su IP en la auditoría.
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Real-IP {remote_host}
+			health_uri /api/v1/health
+			health_interval 30s
+		}
+	}
+
+	# --- Archivos con hash en el nombre: caché inmutable ---
+	handle /assets/* {
+		root * "{{WEB_ROOT}}"
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# --- Aplicación de una sola página: toda ruta desconocida devuelve index.html ---
+	handle {
+		root * "{{WEB_ROOT}}"
+		try_files {path} /index.html
+		header Cache-Control "no-cache"
+		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		file_server
+	}
+}

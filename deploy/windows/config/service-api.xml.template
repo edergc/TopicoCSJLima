@@ -1,0 +1,25 @@
+<!-- Servicio de Windows (WinSW) de la API. GENERADO por install.ps1. -->
+<service>
+  <id>{{SERVICE_ID}}</id>
+  <name>Tópico de Salud CSJ Lima — API</name>
+  <description>Backend FastAPI del Sistema de Gestión del Tópico de Salud (escucha solo en 127.0.0.1:{{API_PORT}}).</description>
+  <executable>{{PYTHON}}</executable>
+  <arguments>-m uvicorn app.main:create_app --factory --host 127.0.0.1 --port {{API_PORT}} --workers {{WORKERS}} --no-server-header --timeout-graceful-shutdown 20</arguments>
+  <workingdirectory>{{BACKEND_DIR}}</workingdirectory>
+  <env name="PYTHONUTF8" value="1" />
+  <env name="PYTHONDONTWRITEBYTECODE" value="1" />
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <depend>{{PG_SERVICE}}</depend>
+  <onfailure action="restart" delay="10 sec" />
+  <onfailure action="restart" delay="30 sec" />
+  <onfailure action="restart" delay="60 sec" />
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>30 sec</stoptimeout>
+  <logpath>{{LOG_DIR}}</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>10</keepFiles>
+  </log>
+  {{SERVICE_ACCOUNT}}
+</service>

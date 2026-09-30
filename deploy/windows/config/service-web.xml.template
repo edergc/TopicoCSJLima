@@ -1,0 +1,25 @@
+<!-- Servicio de Windows (WinSW) del frontend + proxy inverso (Caddy). GENERADO por install.ps1. -->
+<service>
+  <id>{{SERVICE_ID}}</id>
+  <name>Tópico de Salud CSJ Lima — Web</name>
+  <description>Interfaz web y proxy HTTPS del Sistema de Gestión del Tópico de Salud (puerto {{WEB_PORT}}).</description>
+  <executable>{{CADDY}}</executable>
+  <arguments>run --config "{{CADDYFILE}}" --adapter caddyfile</arguments>
+  <workingdirectory>{{CADDY_HOME}}</workingdirectory>
+  <env name="HOME" value="{{CADDY_HOME}}" />
+  <env name="XDG_DATA_HOME" value="{{CADDY_HOME}}\data" />
+  <env name="XDG_CONFIG_HOME" value="{{CADDY_HOME}}\config" />
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <depend>{{API_SERVICE}}</depend>
+  <onfailure action="restart" delay="10 sec" />
+  <onfailure action="restart" delay="30 sec" />
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>15 sec</stoptimeout>
+  <logpath>{{LOG_DIR}}</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+  {{SERVICE_ACCOUNT}}
+</service>
