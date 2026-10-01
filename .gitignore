@@ -39,3 +39,6 @@ frontend/openapi.json
 
 # Binarios de despliegue (se obtienen con deploy/windows/get-tools.ps1)
 deploy/windows/bin/
+
+# Documento de datos de prueba (contiene contraseñas de demostración)
+DATOS-DE-PRUEBA.xlsx

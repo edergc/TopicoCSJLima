@@ -41,12 +41,20 @@ from app.modules.workers.models import Department, Insurer, Worker, WorkerCovera
 from app.shared.text import normalize_key
 
 DEMO_PASSWORD = "Demo-Topico-2026"
+# Los usuarios ingresan con su DNI (convención institucional). DNI ficticios de demostración.
+ADMIN_DEMO, SUPERVISOR_DEMO, OPERATOR_ALZ, OPERATOR_BAR, AUDITOR_DEMO = (
+    "40000001",
+    "40000002",
+    "40000003",
+    "40000004",
+    "40000005",
+)
 USERS = [
-    ("admin.demo", "Administración del Sistema (demo)", "ADMIN", ("ALZ", "BAR")),
-    ("supervisor.demo", "Rosa Villanueva Paredes", "SUPERVISOR", ("ALZ", "BAR")),
-    ("encargada.alz", "Carmen Quispe Huamán", "OPERATOR", ("ALZ",)),
-    ("encargada.bar", "Lucía Ramos Mendoza", "OPERATOR", ("BAR",)),
-    ("auditor.demo", "Jorge Salazar Ríos", "AUDITOR", ("ALZ", "BAR")),
+    (ADMIN_DEMO, "Administración del Sistema (demo)", "ADMIN", ("ALZ", "BAR")),
+    (SUPERVISOR_DEMO, "Rosa Villanueva Paredes", "SUPERVISOR", ("ALZ", "BAR")),
+    (OPERATOR_ALZ, "Carmen Quispe Huamán", "OPERATOR", ("ALZ",)),
+    (OPERATOR_BAR, "Lucía Ramos Mendoza", "OPERATOR", ("BAR",)),
+    (AUDITOR_DEMO, "Jorge Salazar Ríos", "AUDITOR", ("ALZ", "BAR")),
 ]
 FIRST = [
     "JUAN CARLOS",
@@ -141,7 +149,7 @@ def seed_reference(session_factory: object, rng: random.Random, *, with_email: b
             email = (
                 None
                 if (i % 9 == 4 or not with_email)
-                else f"{first.split()[0].lower()}.{normalize_key(paternal).lower()}{i}@pj.gob.pe"
+                else f"{normalize_key(first.split()[0]).lower()}.{normalize_key(paternal).lower()}{i}@pj.gob.pe"
             )
             worker = Worker(
                 document_type="DNI",
@@ -171,6 +179,9 @@ def main() -> int:
     parser.add_argument("--history-days", type=int, default=0, help="Días hábiles anteriores con jornadas completas")
     parser.add_argument("--allow-production", action="store_true")
     parser.add_argument("--test-email", default=None, help="Correo del trabajador de prueba (recibe notificaciones)")
+    parser.add_argument(
+        "--report", default="../DATOS-DE-PRUEBA.xlsx", help="Excel con accesos, trabajadores y atenciones"
+    )
     args = parser.parse_args()
 
     settings = get_settings()
@@ -209,8 +220,8 @@ def main() -> int:
         tokens[username] = (clock.now(), headers)
         return headers
 
-    sites = {s["code"]: s["id"] for s in client.get(f"{API_PREFIX}/sites", headers=login("admin.demo")).json()}
-    operators = {"ALZ": "encargada.alz", "BAR": "encargada.bar"}
+    sites = {s["code"]: s["id"] for s in client.get(f"{API_PREFIX}/sites", headers=login(ADMIN_DEMO)).json()}
+    operators = {"ALZ": OPERATOR_ALZ, "BAR": OPERATOR_BAR}
 
     def has_data(site: str, when: dt.date) -> bool:
         r = client.get(
@@ -295,27 +306,27 @@ def main() -> int:
 
         # Primeras atenciones del día: llamar → iniciar → finalizar
         for appt in registered[:4]:
-            act("encargada.alz", appt, "call")
+            act(OPERATOR_ALZ, appt, "call")
             clock.advance(minutes=3)
-            act("encargada.alz", appt, "start")
+            act(OPERATOR_ALZ, appt, "start")
             clock.advance(minutes=rng.randint(9, 14))
-            act("encargada.alz", appt, "finish")
-        cancel_reason = next(r for r in reasons("encargada.alz", "CANCEL") if r["code"] == "ATENCION_EXTERNA")
+            act(OPERATOR_ALZ, appt, "finish")
+        cancel_reason = next(r for r in reasons(OPERATOR_ALZ, "CANCEL") if r["code"] == "ATENCION_EXTERNA")
         act(
-            "encargada.alz",
+            OPERATOR_ALZ,
             registered[4],
             "cancel",
             reason_id=cancel_reason["id"],
             note="Se atenderá en la clínica por la tarde",
         )
-        act("encargada.alz", registered[5], "call")
+        act(OPERATOR_ALZ, registered[5], "call")
         clock.advance(minutes=11)
-        act("encargada.alz", registered[5], "no-show")
-        act("encargada.alz", registered[6], "call")
+        act(OPERATOR_ALZ, registered[5], "no-show")
+        act(OPERATOR_ALZ, registered[6], "call")
         clock.advance(minutes=2)
-        act("encargada.alz", registered[6], "start")
+        act(OPERATOR_ALZ, registered[6], "start")
         clock.advance(minutes=4)
-        act("encargada.alz", registered[7], "call")
+        act(OPERATOR_ALZ, registered[7], "call")
 
         for dni in today_pool[20:26]:
             register("BAR", dni, "PHONE")
@@ -324,6 +335,21 @@ def main() -> int:
         _set_test_email(app.state.session_factory, covered[30], args.test_email)
 
     print(f"Jornada de demostración generada para el {day:%d/%m/%Y} (hasta las {clock.local_now():%H:%M}).")
+    if args.report:
+        from scripts.demo_report import write_report
+
+        base_url = settings.public_app_url.removesuffix("/consulta") if settings.public_app_url else ""
+        path = write_report(
+            app.state.session_factory,
+            args.report,
+            users=USERS,
+            password=DEMO_PASSWORD,
+            base_url=base_url,
+            test_dni=covered[30],
+            test_email=args.test_email,
+            uncovered_dni=dnis[7],
+        )
+        print(f"Documento con accesos y datos de prueba: {path}")
     print(f"Usuarios (contraseña: {DEMO_PASSWORD}): " + ", ".join(u[0] for u in USERS))
     print(f"DNI habilitado de ejemplo: {covered[30]} · DNI sin cobertura: {dnis[7]}")
     if not args.now:
