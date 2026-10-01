@@ -48,6 +48,7 @@ function InServiceCard({ appointment, onAction, onOpen, busy }: { appointment: A
         <p className="truncate text-sm font-medium text-ink">{appointment.worker.display_name}</p>
         <p className="text-[13px] text-ink-muted">
           Desde las {fmt.time(appointment.started_at)} · {formatDuration(elapsed)}
+          {appointment.doctor_name && <> · {appointment.doctor_name}</>}
         </p>
       </button>
       {appointment.allowed_actions.includes("FINISH") && (

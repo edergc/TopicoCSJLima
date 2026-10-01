@@ -24,6 +24,7 @@ EXPECTED_TABLES = {
     "insurer",
     "worker",
     "worker_coverage",
+    "doctor",
     "reason",
     "appointment_status",
     "appointment_status_transition",

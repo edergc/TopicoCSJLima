@@ -101,6 +101,11 @@ MESSAGES: dict[str, str] = {
     "COVERAGE_OVERLAP": "La vigencia indicada se superpone con otra cobertura del trabajador.",
     # Sedes / agenda
     "SITE_NOT_FOUND": "La sede no existe.",
+    "DOCTOR_NOT_FOUND": "El médico no existe en esta sede.",
+    "DOCTOR_DUPLICATE_CMP": "Ya existe un médico con ese número de colegiatura (CMP) en la sede.",
+    "DOCTOR_DUPLICATE_DOCUMENT": "Ya existe un médico con ese DNI en la sede.",
+    "DOCTOR_REQUIRED": "Seleccione el médico que realizará la atención.",
+    "DOCTOR_INVALID": "El médico seleccionado no está activo en esta sede.",
     "SITE_INACTIVE": "La sede se encuentra inactiva.",
     "SITE_CLOSED_ON_DATE": "El tópico de esta sede no atiende en la fecha seleccionada.",
     "SITE_NO_SCHEDULE": "La sede no tiene horario de atención para la fecha seleccionada.",
@@ -156,6 +161,8 @@ CONSTRAINT_ERRORS: dict[str, tuple[type[AppError], str]] = {
     "ex_site_schedule_time_overlap": (ConflictError, "SCHEDULE_OVERLAP"),
     "ck_site_setting_version_effective_immutable": (ConflictError, "SETTING_VERSION_IMMUTABLE"),
     "uq_site_closure_site_date": (ConflictError, "CLOSURE_EXISTS"),
+    "uq_doctor_site_cmp": (ConflictError, "DOCTOR_DUPLICATE_CMP"),
+    "uq_doctor_site_document": (ConflictError, "DOCTOR_DUPLICATE_DOCUMENT"),
     "uq_import_batch_confirmed_file": (ConflictError, "IMPORT_ALREADY_CONFIRMED"),
 }
 

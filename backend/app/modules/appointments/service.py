@@ -28,7 +28,7 @@ from app.modules.audit import service as audit
 from app.modules.auth.dependencies import ServiceContext
 from app.modules.notifications import service as notifications
 from app.modules.sites import service as sites
-from app.modules.sites.models import Site, SiteSettingVersion
+from app.modules.sites.models import Doctor, Site, SiteSettingVersion
 from app.modules.workers import service as workers
 
 # Acciones que solo se ejecutan sobre la cola del día en curso.
@@ -194,6 +194,8 @@ class AppointmentService:
                 appointment.queued_at = now
             case Action.START:
                 self._check_concurrent_in_service(service_day)
+                doctor_id = self._resolve_doctor(appointment.site_id, data.doctor_id)
+                appointment.doctor = self.db.get(Doctor, doctor_id) if doctor_id else None
                 appointment.started_at, appointment.started_by = now, ctx.user.id
             case Action.FINISH:
                 appointment.finished_at, appointment.finished_by = now, ctx.user.id
@@ -226,11 +228,27 @@ class AppointmentService:
             site_id=appointment.site_id,
             reason=reason.label if reason else None,
             before={"status": current},
-            after={"status": target, "ticket_code": appointment.ticket_code, "note": data.note},
+            after={
+                "status": target,
+                "ticket_code": appointment.ticket_code,
+                "note": data.note,
+                **({"doctor_id": appointment.doctor_id} if action == Action.START else {}),
+            },
         )
         self._notify_after(appointment, action, reason, now)
         db.commit()
         return appointment
+
+    def _resolve_doctor(self, site_id: int, doctor_id: int | None) -> int | None:
+        """Médico que atiende: el indicado, o el único activo de la sede. Sin médicos registrados → None."""
+        active = list(self.db.scalars(select(Doctor.id).where(Doctor.site_id == site_id, Doctor.is_active)))
+        if doctor_id is not None:
+            if doctor_id not in active:
+                raise BusinessRuleError("DOCTOR_INVALID")
+            return doctor_id
+        if len(active) > 1:
+            raise BusinessRuleError("DOCTOR_REQUIRED")
+        return active[0] if active else None
 
     # ================================================================ consultas
     def get(self, public_id: uuid.UUID) -> Appointment:

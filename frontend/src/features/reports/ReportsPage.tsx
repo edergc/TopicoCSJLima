@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { BarChart3, CalendarCheck2, Clock3, Download, Gauge, Timer, UserX } from "lucide-react";
+import { BarChart3, CalendarCheck2, Clock3, Download, FileSpreadsheet, FileText, Gauge, Stethoscope, Timer, UserX } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { api } from "@/shared/api/client";
@@ -101,7 +101,7 @@ export default function ReportsPage() {
     }));
   }, [data]);
 
-  const exportReport = (report: "daily" | "appointments", format: "xlsx" | "csv") =>
+  const exportReport = (report: "summary" | "daily" | "appointments", format: "xlsx" | "pdf" | "csv") =>
     void api
       .download("/reports/export", { report, format, ...params })
       .then(() => notify.success("Exportación generada", "La descarga quedó registrada en la auditoría."))
@@ -125,28 +125,36 @@ export default function ReportsPage() {
         title="Reportes"
         description="Indicadores agregados del servicio. No incluyen datos personales; el listado nominal requiere un permiso específico."
         actions={
-          can("report:export") && (
-            <Menu>
-              <MenuTrigger asChild>
-                <Button variant="secondary" icon={<Download className="size-4" />}>
-                  Exportar
-                </Button>
-              </MenuTrigger>
-              <MenuContent>
-                <MenuLabel>Resumen diario (agregado)</MenuLabel>
-                <MenuItem onSelect={() => exportReport("daily", "xlsx")}>Excel (.xlsx)</MenuItem>
-                <MenuItem onSelect={() => exportReport("daily", "csv")}>CSV</MenuItem>
-                {can("report:read_nominal") && (
-                  <>
-                    <MenuSeparator />
-                    <MenuLabel>Listado nominal (datos personales)</MenuLabel>
-                    <MenuItem onSelect={() => exportReport("appointments", "xlsx")}>Excel (.xlsx)</MenuItem>
-                    <MenuItem onSelect={() => exportReport("appointments", "csv")}>CSV</MenuItem>
-                  </>
-                )}
-              </MenuContent>
-            </Menu>
-          )
+          <Menu>
+            <MenuTrigger asChild>
+              <Button variant="secondary" icon={<Download className="size-4" />}>
+                Exportar
+              </Button>
+            </MenuTrigger>
+            <MenuContent>
+              <MenuLabel>Reporte de indicadores (periodo y sede seleccionados)</MenuLabel>
+              <MenuItem onSelect={() => exportReport("summary", "pdf")}>
+                <FileText className="size-4" /> PDF
+              </MenuItem>
+              <MenuItem onSelect={() => exportReport("summary", "xlsx")}>
+                <FileSpreadsheet className="size-4" /> Excel (.xlsx)
+              </MenuItem>
+              <MenuItem onSelect={() => exportReport("daily", "csv")}>Detalle por día (CSV)</MenuItem>
+              {can("report:export") && can("report:read_nominal") && (
+                <>
+                  <MenuSeparator />
+                  <MenuLabel>Listado nominal (datos personales)</MenuLabel>
+                  <MenuItem onSelect={() => exportReport("appointments", "pdf")}>
+                    <FileText className="size-4" /> PDF
+                  </MenuItem>
+                  <MenuItem onSelect={() => exportReport("appointments", "xlsx")}>
+                    <FileSpreadsheet className="size-4" /> Excel (.xlsx)
+                  </MenuItem>
+                  <MenuItem onSelect={() => exportReport("appointments", "csv")}>CSV</MenuItem>
+                </>
+              )}
+            </MenuContent>
+          </Menu>
         }
       />
 
@@ -283,6 +291,26 @@ export default function ReportsPage() {
               </div>
             </Card>
           </div>
+
+          {data && data.by_doctor.length > 0 && (
+            <Card>
+              <CardHeader
+                title="Atenciones por médico"
+                description="Atenciones finalizadas en el periodo y duración promedio."
+                icon={<Stethoscope className="size-[18px]" />}
+              />
+              <div className="p-5">
+                <BarList
+                  ariaLabel="Atenciones por médico"
+                  color={SINGLE_SERIES_COLOR}
+                  items={data.by_doctor.map((d) => ({
+                    label: d.avg_service_minutes !== null ? `${d.doctor} · ${fmt.number(d.avg_service_minutes)} min prom.` : d.doctor,
+                    value: d.attended,
+                  }))}
+                />
+              </div>
+            </Card>
+          )}
 
           <Card>
             <CardHeader title="Detalle por día y sede" description="Los mismos datos del gráfico, en tabla." />

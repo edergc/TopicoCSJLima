@@ -75,6 +75,7 @@ Todas las transiciones aceptan `{version}` para el control de concurrencia optim
 | GET / POST | `/sites/{id}/settings` | configuración versionada (aplica desde mañana) |
 | GET / PUT | `/sites/{id}/schedules` | horario semanal por bloques |
 | GET / POST / DELETE | `/sites/{id}/closures` | días sin atención |
+| GET / POST / PATCH | `/sites/{id}/doctors[/{doctor_id}]` | médicos de la sede (lectura: `site:read`; alta y cambios: `site:configure`). Al iniciar una atención, `POST /appointments/{id}/start` acepta `doctor_id` (obligatorio si hay más de un médico activo; con uno solo se asigna automáticamente) |
 | PATCH | `/sites/{id}/service-days/{date}/capacity` | `service_day:adjust` (ajuste auditado del día) |
 
 ### Trabajadores e importación
@@ -92,7 +93,7 @@ Todas las transiciones aceptan `{version}` para el control de concurrencia optim
 | Método | Ruta | Permiso |
 |---|---|---|
 | GET | `/reports/summary?date_from&date_to&site_id` | `report:read` (agregados, sin datos personales) |
-| GET | `/reports/export?report=daily\|appointments&format=xlsx\|csv` | `report:export` (+ `report:read_nominal` para el listado nominal) |
+| GET | `/reports/export?report=summary\|daily\|appointments&format=pdf\|xlsx\|csv` | `summary` (PDF institucional o Excel con varias hojas) y `daily`: `report:read`. `appointments` (listado nominal): `report:export` + `report:read_nominal` |
 | GET | `/audit-events?...` | `audit:read` |
 | POST | `/audit-events/verify` | `audit:verify` |
 | GET | `/notifications?status=` · POST `/notifications/{id}/resend` | `notification:read` / `notification:resend` |

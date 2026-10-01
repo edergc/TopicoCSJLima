@@ -263,6 +263,41 @@ export interface paths {
         patch: operations["adjust_capacity_api_v1_sites__site_id__service_days__service_date__capacity_patch"];
         trace?: never;
     };
+    "/api/v1/sites/{site_id}/doctors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Médicos del tópico de la sede */
+        get: operations["list_doctors_api_v1_sites__site_id__doctors_get"];
+        put?: never;
+        /** Registrar médico */
+        post: operations["create_doctor_api_v1_sites__site_id__doctors_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/doctors/{doctor_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Modificar o desactivar médico */
+        patch: operations["update_doctor_api_v1_sites__site_id__doctors__doctor_id__patch"];
+        trace?: never;
+    };
     "/api/v1/workers/eligibility": {
         parameters: {
             query?: never;
@@ -784,7 +819,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Exportar (Excel/CSV). El listado nominal requiere permiso adicional */
+        /**
+         * Exportar reporte (Excel, PDF o CSV)
+         * @description summary: reporte de indicadores completo (Excel con varias hojas o PDF institucional). daily: detalle por día y sede. appointments: listado nominal (requiere report:export y report:read_nominal). Toda descarga queda en la auditoría.
+         */
         get: operations["export_api_v1_reports_export_get"];
         put?: never;
         post?: never;
@@ -1218,6 +1256,10 @@ export interface components {
             close_note: string | null;
             /** Admin Note */
             admin_note: string | null;
+            /** Doctor Id */
+            doctor_id?: number | null;
+            /** Doctor Name */
+            doctor_name?: string | null;
             /** Version */
             version: number;
             /** Allowed Actions */
@@ -1502,6 +1544,69 @@ export interface components {
             call_count: number;
             /** Estimated At */
             estimated_at: string | null;
+            /** Doctor */
+            doctor: string | null;
+        };
+        /** DoctorIn */
+        DoctorIn: {
+            /** Full Name */
+            full_name: string;
+            /** Document Number */
+            document_number?: string | null;
+            /**
+             * Cmp
+             * @description N.° de colegiatura del Colegio Médico del Perú
+             */
+            cmp?: string | null;
+            /** Specialty */
+            specialty?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+        };
+        /** DoctorOut */
+        DoctorOut: {
+            /** Id */
+            id: number;
+            /** Site Id */
+            site_id: number;
+            /** Full Name */
+            full_name: string;
+            /** Document Number */
+            document_number: string | null;
+            /** Cmp */
+            cmp: string | null;
+            /** Specialty */
+            specialty: string | null;
+            /** Phone */
+            phone: string | null;
+            /** Email */
+            email: string | null;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** DoctorUpdateIn */
+        DoctorUpdateIn: {
+            /** Full Name */
+            full_name?: string | null;
+            /** Document Number */
+            document_number?: string | null;
+            /** Cmp */
+            cmp?: string | null;
+            /** Specialty */
+            specialty?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Is Active */
+            is_active?: boolean | null;
         };
         /** EligibilityOut */
         EligibilityOut: {
@@ -1977,6 +2082,15 @@ export interface components {
             /** Count */
             count: number;
         };
+        /** ReportDoctorOut */
+        ReportDoctorOut: {
+            /** Doctor */
+            doctor: string;
+            /** Attended */
+            attended: number;
+            /** Avg Service Minutes */
+            avg_service_minutes: number | null;
+        };
         /** ReportHourOut */
         ReportHourOut: {
             /** Hour */
@@ -2007,6 +2121,8 @@ export interface components {
             by_department: components["schemas"]["ReportDepartmentOut"][];
             /** By Channel */
             by_channel: components["schemas"]["ReportChannelOut"][];
+            /** By Doctor */
+            by_doctor: components["schemas"]["ReportDoctorOut"][];
         };
         /** ReportTotalsOut */
         ReportTotalsOut: {
@@ -2346,6 +2462,11 @@ export interface components {
             reason_id?: number | null;
             /** Note */
             note?: string | null;
+            /**
+             * Doctor Id
+             * @description Al INICIAR: médico que atiende (obligatorio si la sede tiene más de uno activo).
+             */
+            doctor_id?: number | null;
         };
         /** UserCreateIn */
         UserCreateIn: {
@@ -3178,6 +3299,110 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AvailabilityOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_doctors_api_v1_sites__site_id__doctors_get: {
+        parameters: {
+            query?: {
+                active_only?: boolean;
+            };
+            header?: never;
+            path: {
+                site_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DoctorOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_doctor_api_v1_sites__site_id__doctors_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DoctorIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DoctorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_doctor_api_v1_sites__site_id__doctors__doctor_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+                doctor_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DoctorUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DoctorOut"];
                 };
             };
             /** @description Validation Error */
@@ -4298,8 +4523,8 @@ export interface operations {
     export_api_v1_reports_export_get: {
         parameters: {
             query?: {
-                report?: "daily" | "appointments";
-                format?: "xlsx" | "csv";
+                report?: "summary" | "daily" | "appointments";
+                format?: "xlsx" | "pdf" | "csv";
                 date_from?: string | null;
                 date_to?: string | null;
                 site_id?: number | null;

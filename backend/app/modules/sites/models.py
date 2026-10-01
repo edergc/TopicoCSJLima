@@ -93,3 +93,21 @@ class SystemParameter(Base):
         DateTime(timezone=True), server_default=FetchedValue(), server_onupdate=FetchedValue()
     )
     updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+
+
+class Doctor(TimestampMixin, Base):
+    """Médico del tópico de una sede (solo datos administrativos del profesional)."""
+
+    __tablename__ = "doctor"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(Integer, ForeignKey("site.id"))
+    full_name: Mapped[str] = mapped_column(String(150))
+    document_number: Mapped[str | None] = mapped_column(String(8))
+    cmp: Mapped[str | None] = mapped_column(String(6))
+    specialty: Mapped[str | None] = mapped_column(String(80))
+    phone: Mapped[str | None] = mapped_column(String(20))
+    email: Mapped[str | None] = mapped_column(String(150))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+    updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))

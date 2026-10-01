@@ -7,6 +7,7 @@ import type {
   AppointmentCreateIn,
   AppointmentEvent,
   Availability,
+  Doctor,
   Eligibility,
   NotificationItem,
   Page,
@@ -26,6 +27,7 @@ export const keys = {
   events: (id: string) => ["appointment", id, "events"] as const,
   notifications: (id: string) => ["appointment", id, "notifications"] as const,
   search: (params: object) => ["appointments", params] as const,
+  doctors: (siteId: number) => ["doctors", siteId] as const,
 };
 
 const QUEUE_REFRESH_MS = 5_000;
@@ -188,5 +190,15 @@ export function useAppointmentSearch(params: AppointmentSearch) {
     queryKey: keys.search(params),
     queryFn: ({ signal }) => api.get<Page<Appointment>>("/appointments", { ...params }, signal),
     placeholderData: keepPreviousData,
+  });
+}
+
+/** Médicos de la sede (todos; la mesa filtra los activos). */
+export function useDoctors(siteId: number | undefined) {
+  return useQuery({
+    queryKey: keys.doctors(siteId ?? 0),
+    queryFn: () => api.get<Doctor[]>(`/sites/${siteId}/doctors`),
+    enabled: siteId !== undefined,
+    staleTime: 60_000,
   });
 }

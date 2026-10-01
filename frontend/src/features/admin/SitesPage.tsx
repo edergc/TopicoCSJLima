@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, CalendarClock, CalendarOff, Gauge, History, MapPin, Plus, Settings2, Trash2 } from "lucide-react";
+import { Building2, CalendarClock, CalendarOff, Gauge, History, MapPin, Plus, Settings2, Stethoscope, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { api } from "@/shared/api/client";
@@ -31,6 +31,8 @@ import {
   Toggle,
   type Column,
 } from "@/shared/ui";
+
+import { DoctorsTab } from "./DoctorsTab";
 
 const WEEKDAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
@@ -497,6 +499,9 @@ export default function SitesPage() {
             <TabsTrigger value="schedule">
               <CalendarClock className="size-4" /> Horario
             </TabsTrigger>
+            <TabsTrigger value="doctors">
+              <Stethoscope className="size-4" /> Médicos
+            </TabsTrigger>
             <TabsTrigger value="closures">
               <CalendarOff className="size-4" /> Cierres
             </TabsTrigger>
@@ -514,6 +519,9 @@ export default function SitesPage() {
           </TabsContent>
           <TabsContent value="schedule">
             <ScheduleTab siteId={site.id} />
+          </TabsContent>
+          <TabsContent value="doctors">
+            <DoctorsTab siteId={site.id} />
           </TabsContent>
           <TabsContent value="closures">
             <ClosuresTab siteId={site.id} />

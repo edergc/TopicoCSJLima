@@ -20,6 +20,7 @@ dependencies = [
     "pyjwt>=2.9",
     "python-multipart>=0.0.9",
     "openpyxl>=3.1",
+    "reportlab>=4.2",
     "jinja2>=3.1",
     "structlog>=24.4",
     "slowapi>=0.1.9",
@@ -74,3 +75,7 @@ python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 exclude = ["alembic/versions"]
+
+[[tool.mypy.overrides]]
+module = ["reportlab.*"]
+ignore_missing_imports = true

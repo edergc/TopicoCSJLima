@@ -126,3 +126,40 @@ class ClosureOut(ApiOut):
 class CapacityAdjustIn(ApiModel):
     capacity: int = Field(ge=0, le=500)
     reason: Reason
+
+
+DoctorName = Annotated[str, StringConstraints(min_length=3, max_length=150)]
+DoctorDni = Annotated[str, StringConstraints(pattern=r"^\d{8}$")]
+DoctorCmp = Annotated[str, StringConstraints(pattern=r"^\d{1,6}$")]
+
+
+class DoctorIn(ApiModel):
+    full_name: DoctorName
+    document_number: DoctorDni | None = None
+    cmp: DoctorCmp | None = Field(default=None, description="N.° de colegiatura del Colegio Médico del Perú")
+    specialty: Annotated[str, StringConstraints(max_length=80)] | None = None
+    phone: Annotated[str, StringConstraints(max_length=20)] | None = None
+    email: Annotated[str, StringConstraints(max_length=150, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")] | None = None
+
+
+class DoctorUpdateIn(ApiModel):
+    full_name: DoctorName | None = None
+    document_number: DoctorDni | None = None
+    cmp: DoctorCmp | None = None
+    specialty: Annotated[str, StringConstraints(max_length=80)] | None = None
+    phone: Annotated[str, StringConstraints(max_length=20)] | None = None
+    email: Annotated[str, StringConstraints(max_length=150, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")] | None = None
+    is_active: bool | None = None
+
+
+class DoctorOut(ApiOut):
+    id: int
+    site_id: int
+    full_name: str
+    document_number: str | None
+    cmp: str | None
+    specialty: str | None
+    phone: str | None
+    email: str | None
+    is_active: bool
+    updated_at: datetime

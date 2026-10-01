@@ -46,6 +46,12 @@ class ReportChannelOut(ApiOut):
     count: int
 
 
+class ReportDoctorOut(ApiOut):
+    doctor: str
+    attended: int
+    avg_service_minutes: float | None
+
+
 class ReportSummaryOut(ApiOut):
     date_from: date
     date_to: date
@@ -55,3 +61,4 @@ class ReportSummaryOut(ApiOut):
     by_hour: list[ReportHourOut]
     by_department: list[ReportDepartmentOut]
     by_channel: list[ReportChannelOut]
+    by_doctor: list[ReportDoctorOut]

@@ -1,9 +1,11 @@
 """Administración, configuración de sede, auditoría y reportes."""
 
 import datetime as dt
+import io
 from collections.abc import Callable
 
 from fastapi.testclient import TestClient
+from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 
 from app.core.clock import FixedClock
@@ -191,6 +193,21 @@ def test_reports_and_exports(
     )
     assert nominal.headers["content-type"].startswith("application/vnd.openxmlformats")
 
-    # La encargada ve reportes agregados pero no puede exportar
+    # Reporte de indicadores completo: Excel con varias hojas y PDF institucional
+    xlsx = client.get(api("/reports/export"), params={"date_from": day, "date_to": day}, headers=supervisor.headers)
+    sheets = load_workbook(io.BytesIO(xlsx.content)).sheetnames
+    assert sheets == ["Resumen", "Por día", "Por médico", "Por dependencia", "Por canal", "Por hora"]
+    for report in ("summary", "appointments"):
+        pdf = client.get(
+            api("/reports/export"),
+            params={"report": report, "format": "pdf", "date_from": day, "date_to": day},
+            headers=supervisor.headers,
+        )
+        assert (pdf.status_code, pdf.headers["content-type"]) == (200, "application/pdf")
+        assert pdf.content.startswith(b"%PDF")
+
+    # La encargada descarga el reporte agregado (sin datos personales), pero no el listado nominal
     assert client.get(api("/reports/summary"), headers=operator.headers).status_code == 200
-    assert client.get(api("/reports/export"), headers=operator.headers).status_code == 403
+    assert client.get(api("/reports/export"), params={"format": "pdf"}, headers=operator.headers).status_code == 200
+    denied = client.get(api("/reports/export"), params={"report": "appointments"}, headers=operator.headers)
+    assert denied.status_code == 403

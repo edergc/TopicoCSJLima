@@ -9,8 +9,16 @@ from app.modules.appointments.models import ServiceDay
 from app.modules.audit.service import diff, snapshot
 from app.modules.auth.dependencies import ServiceContext
 from app.modules.sites import service as sites
-from app.modules.sites.models import Site, SiteClosure, SiteSchedule, SiteSettingVersion
-from app.modules.sites.schemas import CapacityAdjustIn, ClosureIn, ScheduleIn, SettingVersionIn, SiteUpdateIn
+from app.modules.sites.models import Doctor, Site, SiteClosure, SiteSchedule, SiteSettingVersion
+from app.modules.sites.schemas import (
+    CapacityAdjustIn,
+    ClosureIn,
+    DoctorIn,
+    DoctorUpdateIn,
+    ScheduleIn,
+    SettingVersionIn,
+    SiteUpdateIn,
+)
 
 _SETTING_FIELDS = (
     "valid_from",
@@ -25,6 +33,7 @@ _SETTING_FIELDS = (
     "notifications_enabled",
 )
 _SITE_FIELDS = ("name", "short_name", "address", "location_note", "is_active")
+_DOCTOR_FIELDS = ("full_name", "document_number", "cmp", "specialty", "phone", "email", "is_active")
 
 
 class SiteConfigService:
@@ -184,3 +193,37 @@ class SiteConfigService:
         )
         self.db.commit()
         return service_day
+
+    # ================================================================ médicos
+    def create_doctor(self, site_id: int, data: DoctorIn) -> Doctor:
+        self.ctx.require_site(site_id, action="DOCTOR_CREATE")
+        sites.get_site(self.db, site_id)
+        doctor = Doctor(site_id=site_id, **data.model_dump(), created_by=self.ctx.user.id, updated_by=self.ctx.user.id)
+        self.db.add(doctor)
+        self.db.flush()
+        self.ctx.audit(
+            action="DOCTOR_CREATE",
+            resource_type="doctor",
+            resource_id=doctor.id,
+            site_id=site_id,
+            after=snapshot(doctor, _DOCTOR_FIELDS),
+        )
+        self.db.commit()
+        return doctor
+
+    def update_doctor(self, site_id: int, doctor_id: int, data: DoctorUpdateIn) -> Doctor:
+        self.ctx.require_site(site_id, action="DOCTOR_UPDATE")
+        doctor = self.db.get(Doctor, doctor_id)
+        if doctor is None or doctor.site_id != site_id:
+            raise NotFoundError("DOCTOR_NOT_FOUND")
+        before = snapshot(doctor, _DOCTOR_FIELDS)
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(doctor, field, value)
+        doctor.updated_by = self.ctx.user.id
+        self.db.flush()
+        b, a = diff(before, snapshot(doctor, _DOCTOR_FIELDS))
+        self.ctx.audit(
+            action="DOCTOR_UPDATE", resource_type="doctor", resource_id=doctor.id, site_id=site_id, before=b, after=a
+        )
+        self.db.commit()
+        return doctor

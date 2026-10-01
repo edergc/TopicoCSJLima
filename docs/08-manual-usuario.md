@@ -170,7 +170,14 @@ Por privacidad solo se muestra el **código de turno y el nombre abreviado** (no
 - resultado diario frente a la capacidad, demanda por hora y dependencias con más solicitudes;
 - tabla detallada por día y sede.
 
-Con permiso de exportación, el botón **Exportar** genera un Excel o un CSV. El **listado nominal** (con datos personales) requiere un permiso adicional y queda registrado en la auditoría.
+El botón **Exportar** descarga el reporte del periodo y la sede elegidos:
+- **Reporte de indicadores en PDF:** documento institucional listo para imprimir o enviar, con los indicadores, el gráfico de atendidos por día y las tablas por médico, canal, hora, dependencia y día.
+- **Reporte de indicadores en Excel:** el mismo contenido en hojas separadas (Resumen, Por día, Por médico, Por dependencia, Por canal y Por hora), para analizarlo o hacer gráficos propios.
+- **Detalle por día (CSV).**
+
+Estos reportes no tienen datos personales, así que puede descargarlos cualquier usuario con acceso a Reportes. El **listado nominal** (PDF, Excel o CSV, con nombre y DNI de cada atención) requiere los permisos de exportación y de listado nominal. Toda descarga queda en la auditoría.
+
+La tarjeta **Atenciones por médico** muestra cuántas atenciones finalizó cada médico y su duración promedio.
 
 ![Reportes](manual/img/07-reportes.png)
 
@@ -179,6 +186,7 @@ Con permiso de exportación, el botón **Exportar** genera un Excel o un CSV. El
 En **Sedes y horarios** (para la sede elegida arriba):
 - **Configuración:** capacidad diaria, duración de turno, tolerancia, atenciones simultáneas, avisos por correo y reglas de re-registro. Los cambios se **programan desde una fecha futura**: el día en curso no se altera.
 - **Horario:** bloques de mañana y tarde por día de la semana.
+- **Médicos:** los médicos que atienden en el tópico de la sede (nombre, CMP, DNI, especialidad, teléfono). Al pulsar **Iniciar** en la Mesa de atención se registra qué médico atiende: si la sede tiene un solo médico activo se asigna solo; si tiene varios, el sistema pregunta cuál. Un médico que deja de atender se **desactiva** (su historial se conserva).
 - **Cierres:** feriados o días sin atención; bloquean el registro en esas fechas.
 - **Capacidad del día:** ajuste puntual de un día (p. ej., el médico atenderá medio turno), con motivo obligatorio.
 - **Datos de la sede:** nombre y ubicación del tópico (aparece en los correos de llamado).

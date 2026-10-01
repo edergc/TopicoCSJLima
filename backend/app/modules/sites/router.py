@@ -8,13 +8,16 @@ from app.core.errors import MESSAGES
 from app.modules.auth.dependencies import ServiceContext, require
 from app.modules.sites import service as sites
 from app.modules.sites.config_service import SiteConfigService
-from app.modules.sites.models import Site, SiteClosure
+from app.modules.sites.models import Doctor, Site, SiteClosure
 from app.modules.sites.schemas import (
     AvailabilityOut,
     BlockOut,
     CapacityAdjustIn,
     ClosureIn,
     ClosureOut,
+    DoctorIn,
+    DoctorOut,
+    DoctorUpdateIn,
     ScheduleIn,
     ScheduleRowOut,
     SettingVersionIn,
@@ -143,3 +146,22 @@ def adjust_capacity(
 ) -> AvailabilityOut:
     SiteConfigService(ctx).adjust_capacity(site_id, service_date, body)
     return availability(site_id, ctx, service_date)
+
+
+@router.get("/{site_id}/doctors", response_model=list[DoctorOut], summary="Médicos del tópico de la sede")
+def list_doctors(site_id: int, ctx: ReadCtx, active_only: bool = False) -> list[Doctor]:
+    ctx.require_site(site_id, action="DOCTOR_READ")
+    stmt = select(Doctor).where(Doctor.site_id == site_id)
+    if active_only:
+        stmt = stmt.where(Doctor.is_active)
+    return list(ctx.db.scalars(stmt.order_by(Doctor.is_active.desc(), Doctor.full_name)))
+
+
+@router.post("/{site_id}/doctors", response_model=DoctorOut, status_code=201, summary="Registrar médico")
+def create_doctor(site_id: int, body: DoctorIn, ctx: ConfigureCtx) -> Doctor:
+    return SiteConfigService(ctx).create_doctor(site_id, body)
+
+
+@router.patch("/{site_id}/doctors/{doctor_id}", response_model=DoctorOut, summary="Modificar o desactivar médico")
+def update_doctor(site_id: int, doctor_id: int, body: DoctorUpdateIn, ctx: ConfigureCtx) -> Doctor:
+    return SiteConfigService(ctx).update_doctor(site_id, doctor_id, body)

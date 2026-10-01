@@ -465,7 +465,12 @@ function TicketRow({
       <span className="text-[clamp(1.3rem,2.2vw,2.6rem)] font-bold tracking-tight">{ticket.ticket_code}</span>
       <span className="min-w-0 flex-1 truncate text-[clamp(1rem,1.6vw,1.9rem)] text-white/80">{ticket.name}</span>
       {tone === "called" && <span className="text-[clamp(0.75rem,1vw,1.15rem)] font-semibold tracking-widest text-amber-300 uppercase">Llamado</span>}
-      {tone === "service" && <span className="text-[clamp(0.75rem,1vw,1.15rem)] font-semibold tracking-widest text-white/60 uppercase">En atención</span>}
+      {tone === "service" && (
+        <span className="text-right leading-tight">
+          <span className="block text-[clamp(0.75rem,1vw,1.15rem)] font-semibold tracking-widest text-white/60 uppercase">En atención</span>
+          {ticket.doctor && <span className="block text-[clamp(0.75rem,1vw,1.15rem)] text-white/75">{ticket.doctor}</span>}
+        </span>
+      )}
       {!tone && ticket.estimated_at && (
         <span className="tabular text-[clamp(0.85rem,1.2vw,1.4rem)] text-white/55">≈ {fmt.time(ticket.estimated_at)}</span>
       )}

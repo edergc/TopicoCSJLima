@@ -70,6 +70,8 @@ def appointment_out(a: Appointment, ctx: ServiceContext, item: queue_view.QueueI
         close_reason=ReasonOut.model_validate(a.close_reason) if a.close_reason else None,
         close_note=a.close_note,
         admin_note=a.admin_note,
+        doctor_id=a.doctor_id,
+        doctor_name=a.doctor.full_name if a.doctor else None,
         version=a.version,
         allowed_actions=allowed_actions(a.status, ctx.user.permissions),
         position=item.position if item else None,

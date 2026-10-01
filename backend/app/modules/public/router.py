@@ -126,6 +126,7 @@ class DisplayTicketOut(ApiOut):
     called_at: datetime | None
     call_count: int
     estimated_at: datetime | None
+    doctor: str | None
 
 
 class DisplayBoardOut(ApiOut):
@@ -157,6 +158,7 @@ def _display_ticket(item: QueueItem, show_names: bool) -> DisplayTicketOut:
         called_at=appt.called_at,
         call_count=appt.call_count,
         estimated_at=item.estimated_at,
+        doctor=appt.doctor.full_name if appt.doctor else None,
     )
 
 

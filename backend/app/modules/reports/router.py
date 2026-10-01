@@ -6,11 +6,16 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
+from sqlalchemy import select
 
 from app.core.clock import INSTITUTION_TZ
+from app.modules.admin.parameters import get_str
 from app.modules.auth.dependencies import ServiceContext, require
+from app.modules.reports import documents
 from app.modules.reports import service as reports
+from app.modules.reports.documents import ReportMeta
 from app.modules.reports.schemas import ReportSummaryOut
+from app.modules.sites.models import Site
 
 router = APIRouter(prefix="/reports", tags=["Reportes"])
 
@@ -65,21 +70,59 @@ def _stream(rows: list[dict[str, Any]], fmt: str, filename: str) -> StreamingRes
     )
 
 
-@router.get("/export", summary="Exportar (Excel/CSV). El listado nominal requiere permiso adicional")
+_MEDIA = {
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "pdf": "application/pdf",
+}
+
+
+def _file(content: bytes, fmt: str, filename: str) -> StreamingResponse:
+    return StreamingResponse(
+        iter([content]),
+        media_type=_MEDIA[fmt],
+        headers={"Content-Disposition": f'attachment; filename="{filename}.{fmt}"'},
+    )
+
+
+def _meta(ctx: ServiceContext, f: reports.ReportFilter) -> ReportMeta:
+    names = list(ctx.db.scalars(select(Site.name).where(Site.id.in_(f.site_ids)).order_by(Site.id)))
+    return ReportMeta(
+        institution=get_str(ctx.db, "institution.name", "Corte Superior de Justicia de Lima"),
+        date_from=f.date_from,
+        date_to=f.date_to,
+        site_names=names,
+        generated_at=ctx.clock.now(),
+        generated_by=ctx.user.full_name,
+    )
+
+
+@router.get(
+    "/export",
+    summary="Exportar reporte (Excel, PDF o CSV)",
+    description=(
+        "summary: reporte de indicadores completo (Excel con varias hojas o PDF institucional). "
+        "daily: detalle por día y sede. appointments: listado nominal (requiere report:export y "
+        "report:read_nominal). Toda descarga queda en la auditoría."
+    ),
+)
 def export(
-    ctx: Annotated[ServiceContext, Depends(require("report:export"))],
-    report: Annotated[Literal["daily", "appointments"], Query()] = "daily",
-    format: Annotated[Literal["xlsx", "csv"], Query()] = "xlsx",
+    ctx: Annotated[ServiceContext, Depends(require("report:read"))],
+    report: Annotated[Literal["summary", "daily", "appointments"], Query()] = "summary",
+    format: Annotated[Literal["xlsx", "pdf", "csv"], Query()] = "xlsx",
     date_from: date | None = None,
     date_to: date | None = None,
     site_id: int | None = None,
 ) -> StreamingResponse:
     f = reports.resolve_filter(ctx, date_from, date_to, site_id)
-    if report == "appointments":
+    nominal = report == "appointments"
+    if nominal:
+        ctx.require_permission("report:export", action="REPORT_EXPORT_NOMINAL")
         ctx.require_permission("report:read_nominal", action="REPORT_EXPORT_NOMINAL")
         rows = reports.nominal_rows(ctx.db, f)
+        count = len(rows)
     else:
-        rows = reports.summary(ctx.db, f)["by_day"]
+        data = reports.summary(ctx.db, f)
+        count = len(data["by_day"])
     ctx.audit(
         action="REPORT_EXPORT",
         resource_type="report",
@@ -89,9 +132,20 @@ def export(
             "date_from": f.date_from,
             "date_to": f.date_to,
             "site_ids": f.site_ids,
-            "rows": len(rows),
-            "nominal": report == "appointments",
+            "rows": count,
+            "nominal": nominal,
         },
     )
     ctx.db.commit()
-    return _stream(rows, format, f"topico_{report}_{f.date_from:%Y%m%d}_{f.date_to:%Y%m%d}")
+
+    name = "listado_nominal" if nominal else "reporte_topico"
+    filename = f"{name}_{f.date_from:%Y%m%d}_{f.date_to:%Y%m%d}"
+    if nominal:
+        if format == "pdf":
+            return _file(documents.nominal_pdf(rows, _meta(ctx, f)), "pdf", filename)
+        return _stream(rows, format, filename)
+    if format == "pdf":
+        return _file(documents.summary_pdf(data, _meta(ctx, f)), "pdf", filename)
+    if format == "xlsx" and report == "summary":
+        return _file(documents.summary_xlsx(data, _meta(ctx, f)), "xlsx", filename)
+    return _stream(data["by_day"], format, filename)

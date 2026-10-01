@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 
 import { AppointmentDrawer } from "@/features/appointments/components/AppointmentDrawer";
 import { ACTIONS_WITH_REASON, ReasonActionDialog } from "@/features/appointments/components/ReasonActionDialog";
-import { useAvailability, useCallNext, useQueue, useTransition } from "@/features/appointments/api";
+import { useAvailability, useCallNext, useDoctors, useQueue, useTransition } from "@/features/appointments/api";
 import type { Appointment, AppointmentAction } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/AuthProvider";
 import { useSite } from "@/shared/auth/SiteProvider";
@@ -13,6 +13,7 @@ import { useDocumentTitle, useHotkey } from "@/shared/lib/hooks";
 import { errorMessage, notify } from "@/shared/lib/notify";
 import { Button, Callout, Skeleton } from "@/shared/ui";
 
+import { DoctorPickerDialog } from "./DoctorPickerDialog";
 import { KpiStrip } from "./KpiStrip";
 import { QueueBoard } from "./QueueBoard";
 import { RegisterPanel, type RegisterPanelHandle } from "./RegisterPanel";
@@ -37,12 +38,20 @@ export default function DeskPage() {
   const [issued, setIssued] = useState<Appointment | null>(null);
   const [dialog, setDialog] = useState<{ appointment: Appointment; action: AppointmentAction } | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [starting, setStarting] = useState<Appointment | null>(null);
+  const doctors = useDoctors(siteId);
+  const activeDoctors = doctors.data?.filter((d) => d.is_active) ?? [];
 
   const canOperate = can("appointment:operate");
 
   const handleAction = (appointment: Appointment, action: AppointmentAction) => {
     if (ACTIONS_WITH_REASON.has(action)) {
       setDialog({ appointment, action });
+      return;
+    }
+    // Con más de un médico activo, se elige quién atiende (con uno solo, el servidor lo asigna).
+    if (action === "START" && activeDoctors.length > 1) {
+      setStarting(appointment);
       return;
     }
     transition.mutate(
@@ -175,6 +184,17 @@ export default function DeskPage() {
         </div>
       </div>
 
+      {starting && (
+        <DoctorPickerDialog
+          appointment={starting}
+          doctors={activeDoctors}
+          loading={transition.isPending}
+          onClose={() => setStarting(null)}
+          onConfirm={(doctorId) =>
+            transition.mutate({ appointment: starting, action: "START", body: { doctor_id: doctorId } }, { onSuccess: () => setStarting(null) })
+          }
+        />
+      )}
       {dialog && <ReasonActionDialog appointment={dialog.appointment} action={dialog.action} onClose={() => setDialog(null)} />}
       <AppointmentDrawer appointmentId={detailId} onClose={() => setDetailId(null)} />
     </div>

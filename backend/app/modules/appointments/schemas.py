@@ -22,6 +22,9 @@ class TransitionIn(ApiModel):
     version: int | None = Field(default=None, description="Versión esperada (control de concurrencia).")
     reason_id: int | None = None
     note: Note | None = None
+    doctor_id: int | None = Field(
+        default=None, description="Al INICIAR: médico que atiende (obligatorio si la sede tiene más de uno activo)."
+    )
 
 
 class WorkerBriefOut(ApiOut):
@@ -61,6 +64,8 @@ class AppointmentOut(ApiOut):
     close_reason: ReasonOut | None
     close_note: str | None
     admin_note: str | None
+    doctor_id: int | None = None
+    doctor_name: str | None = None
     version: int
     allowed_actions: list[str]
     position: int | None = None

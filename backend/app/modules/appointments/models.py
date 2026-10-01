@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import INET, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base, TimestampMixin
-from app.modules.sites.models import Site
+from app.modules.sites.models import Doctor, Site
 from app.modules.workers.models import Worker
 
 
@@ -101,12 +101,14 @@ class Appointment(TimestampMixin, Base):
     closed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
     close_reason_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("reason.id"))
     close_note: Mapped[str | None] = mapped_column(String(300))
+    doctor_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("doctor.id"))
     version: Mapped[int] = mapped_column(Integer)
 
     worker: Mapped[Worker] = relationship(lazy="joined", innerjoin=True)
     site: Mapped[Site] = relationship(lazy="joined", innerjoin=True)
     service_day: Mapped[ServiceDay] = relationship(lazy="joined", innerjoin=True)
     close_reason: Mapped[Reason | None] = relationship(lazy="joined")
+    doctor: Mapped[Doctor | None] = relationship(lazy="joined")
 
     __mapper_args__ = {"version_id_col": version}  # noqa: RUF012
 

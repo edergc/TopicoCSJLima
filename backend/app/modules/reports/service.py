@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import BusinessRuleError
 from app.modules.appointments.models import Appointment, ServiceDay
 from app.modules.auth.dependencies import ServiceContext
-from app.modules.sites.models import Site
+from app.modules.sites.models import Doctor, Site
 from app.modules.workers.models import Department, Worker
 
 MAX_RANGE_DAYS = 366
@@ -127,6 +127,19 @@ def summary(db: Session, f: ReportFilter) -> dict[str, Any]:
         .group_by(Appointment.channel)
     ).all()
 
+    by_doctor = db.execute(
+        select(
+            func.coalesce(Doctor.full_name, "Sin médico asignado"),
+            func.count(),
+            func.avg(_minutes(Appointment.finished_at, Appointment.started_at)),
+        )
+        .select_from(Appointment)
+        .outerjoin(Doctor, Doctor.id == Appointment.doctor_id)
+        .where(base, Appointment.status == "ATENDIDO")
+        .group_by(Doctor.id, Doctor.full_name)
+        .order_by(func.count().desc())
+    ).all()
+
     def rnd(value: float | None) -> float | None:
         return round(float(value), 1) if value is not None else None
 
@@ -164,6 +177,7 @@ def summary(db: Session, f: ReportFilter) -> dict[str, Any]:
         "by_hour": [{"hour": int(h), "count": c} for h, c in by_hour],
         "by_department": [{"department": name, "count": c} for name, c in by_department],
         "by_channel": [{"channel": ch, "count": c} for ch, c in by_channel],
+        "by_doctor": [{"doctor": name, "attended": c, "avg_service_minutes": rnd(avg)} for name, c, avg in by_doctor],
     }
 
 
@@ -194,6 +208,7 @@ def nominal_rows(db: Session, f: ReportFilter) -> list[dict[str, Any]]:
             "fin": a.finished_at,
             "cierre": a.closed_at,
             "motivo_cierre": a.close_reason.label if a.close_reason else "",
+            "medico": a.doctor.full_name if a.doctor else "",
         }
         for a, w, dep, site in rows
     ]

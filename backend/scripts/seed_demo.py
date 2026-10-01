@@ -49,6 +49,10 @@ ADMIN_DEMO, SUPERVISOR_DEMO, OPERATOR_ALZ, OPERATOR_BAR, AUDITOR_DEMO = (
     "40000004",
     "40000005",
 )
+DEMO_DOCTORS = {
+    "ALZ": [("Dra. Patricia Medina Cárdenas", "045871"), ("Dr. Ricardo Alva Torres", "052336")],
+    "BAR": [("Dra. Gloria Huerta Salinas", "038412")],
+}
 USERS = [
     (ADMIN_DEMO, "Administración del Sistema (demo)", "ADMIN", ("ALZ", "BAR")),
     (SUPERVISOR_DEMO, "Rosa Villanueva Paredes", "SUPERVISOR", ("ALZ", "BAR")),
@@ -223,6 +227,29 @@ def main() -> int:
     sites = {s["code"]: s["id"] for s in client.get(f"{API_PREFIX}/sites", headers=login(ADMIN_DEMO)).json()}
     operators = {"ALZ": OPERATOR_ALZ, "BAR": OPERATOR_BAR}
 
+    # Médicos de demostración (solo si la sede aún no tiene médicos registrados)
+    for code, names in DEMO_DOCTORS.items():
+        url = f"{API_PREFIX}/sites/{sites[code]}/doctors"
+        if not client.get(url, headers=login(SUPERVISOR_DEMO)).json():
+            for name, cmp in names:
+                client.post(
+                    url,
+                    json={"full_name": name, "cmp": cmp, "specialty": "Medicina General"},
+                    headers=login(SUPERVISOR_DEMO),
+                ).raise_for_status()
+    doctors = {
+        code: [
+            d["id"]
+            for d in client.get(
+                f"{API_PREFIX}/sites/{sid}/doctors", params={"active_only": True}, headers=login(SUPERVISOR_DEMO)
+            ).json()
+        ]
+        for code, sid in sites.items()
+    }
+
+    def doctor_for(site: str) -> dict[str, object]:
+        return {"doctor_id": rng.choice(doctors[site])} if doctors.get(site) else {}
+
     def has_data(site: str, when: dt.date) -> bool:
         r = client.get(
             f"{API_PREFIX}/sites/{sites[site]}/queue", params={"date": when.isoformat()}, headers=login(operators[site])
@@ -281,7 +308,7 @@ def main() -> int:
                     act(user, appt, "no-show")
                     continue
                 clock.advance(minutes=rng.randint(1, 5))
-                act(user, appt, "start")
+                act(user, appt, "start", **doctor_for(site))
                 clock.advance(minutes=rng.randint(8, 18))
                 act(user, appt, "finish")
             print(f"  {when:%d/%m/%Y} {site}: {len(day_appts)} atenciones")
@@ -308,7 +335,7 @@ def main() -> int:
         for appt in registered[:4]:
             act(OPERATOR_ALZ, appt, "call")
             clock.advance(minutes=3)
-            act(OPERATOR_ALZ, appt, "start")
+            act(OPERATOR_ALZ, appt, "start", **doctor_for("ALZ"))
             clock.advance(minutes=rng.randint(9, 14))
             act(OPERATOR_ALZ, appt, "finish")
         cancel_reason = next(r for r in reasons(OPERATOR_ALZ, "CANCEL") if r["code"] == "ATENCION_EXTERNA")
@@ -324,7 +351,7 @@ def main() -> int:
         act(OPERATOR_ALZ, registered[5], "no-show")
         act(OPERATOR_ALZ, registered[6], "call")
         clock.advance(minutes=2)
-        act(OPERATOR_ALZ, registered[6], "start")
+        act(OPERATOR_ALZ, registered[6], "start", **doctor_for("ALZ"))
         clock.advance(minutes=4)
         act(OPERATOR_ALZ, registered[7], "call")
 

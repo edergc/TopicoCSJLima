@@ -56,6 +56,8 @@ export type PublicTicketStatus = S["PublicTicketStatusOut"];
 export type DisplayBoard = S["DisplayBoardOut"];
 export type DisplaySite = S["DisplaySiteOut"];
 export type DisplayTicket = S["DisplayTicketOut"];
+export type Doctor = S["DoctorOut"];
+export type ReportDoctor = S["ReportDoctorOut"];
 
 export interface Page<T> {
   items: T[];
