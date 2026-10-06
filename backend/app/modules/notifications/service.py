@@ -43,7 +43,16 @@ def build_context(
         "worker_first_name": appointment.worker.first_names.split()[0].title(),
         "ticket_code": appointment.ticket_code,
         "site_name": appointment.site.name,
-        "location_note": appointment.site.location_note or "",
+        "room_name": appointment.room.name if appointment.room else "",
+        "location_note": ", ".join(
+            part
+            for part in (
+                appointment.room.name if appointment.room else None,
+                appointment.room.location_note if appointment.room else None,
+                appointment.site.location_note,
+            )
+            if part
+        ),
         "service_date": f"{appointment.service_date:%d/%m/%Y}",
         "registered_time": f"{appointment.registered_at.astimezone(tz):%H:%M}",
         "people_ahead": people_ahead if people_ahead is not None else "",

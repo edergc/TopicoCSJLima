@@ -47,7 +47,7 @@
 			header_up X-Forwarded-For {remote_host}
 			header_up X-Real-IP {remote_host}
 			health_uri /api/v1/health
-			health_interval 30s
+			health_interval 5s
 		}
 	}
 

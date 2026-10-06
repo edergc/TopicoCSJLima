@@ -49,6 +49,10 @@ ADMIN_DEMO, SUPERVISOR_DEMO, OPERATOR_ALZ, OPERATOR_BAR, AUDITOR_DEMO = (
     "40000004",
     "40000005",
 )
+DEMO_ROOMS = {
+    "ALZ": [("Consultorio 1", "Primer piso"), ("Consultorio 2", "Primer piso, al fondo")],
+    "BAR": [("Consultorio 1", None)],
+}
 DEMO_DOCTORS = {
     "ALZ": [("Dra. Patricia Medina Cárdenas", "045871"), ("Dr. Ricardo Alva Torres", "052336")],
     "BAR": [("Dra. Gloria Huerta Salinas", "038412")],
@@ -247,6 +251,25 @@ def main() -> int:
         for code, sid in sites.items()
     }
 
+    for code, room_list in DEMO_ROOMS.items():
+        url = f"{API_PREFIX}/sites/{sites[code]}/rooms"
+        if not client.get(url, headers=login(SUPERVISOR_DEMO)).json():
+            for order, (name, note) in enumerate(room_list, 1):
+                body = {"name": name, "location_note": note, "sort_order": order}
+                client.post(url, json=body, headers=login(SUPERVISOR_DEMO)).raise_for_status()
+    rooms = {
+        code: [
+            r["id"]
+            for r in client.get(
+                f"{API_PREFIX}/sites/{sid}/rooms", params={"active_only": True}, headers=login(SUPERVISOR_DEMO)
+            ).json()
+        ]
+        for code, sid in sites.items()
+    }
+
+    def room_for(site: str) -> dict[str, object]:
+        return {"room_id": rng.choice(rooms[site])} if rooms.get(site) else {}
+
     def doctor_for(site: str) -> dict[str, object]:
         return {"doctor_id": rng.choice(doctors[site])} if doctors.get(site) else {}
 
@@ -302,7 +325,7 @@ def main() -> int:
                 if roll < 0.08:
                     act(user, appt, "cancel", reason_id=rng.choice(simple_cancel))
                     continue
-                act(user, appt, "call")
+                act(user, appt, "call", **room_for(site))
                 if roll < 0.15:
                     clock.advance(minutes=11)
                     act(user, appt, "no-show")
@@ -333,7 +356,7 @@ def main() -> int:
 
         # Primeras atenciones del día: llamar → iniciar → finalizar
         for appt in registered[:4]:
-            act(OPERATOR_ALZ, appt, "call")
+            act(OPERATOR_ALZ, appt, "call", **room_for("ALZ"))
             clock.advance(minutes=3)
             act(OPERATOR_ALZ, appt, "start", **doctor_for("ALZ"))
             clock.advance(minutes=rng.randint(9, 14))
@@ -346,14 +369,14 @@ def main() -> int:
             reason_id=cancel_reason["id"],
             note="Se atenderá en la clínica por la tarde",
         )
-        act(OPERATOR_ALZ, registered[5], "call")
+        act(OPERATOR_ALZ, registered[5], "call", **room_for("ALZ"))
         clock.advance(minutes=11)
         act(OPERATOR_ALZ, registered[5], "no-show")
-        act(OPERATOR_ALZ, registered[6], "call")
+        act(OPERATOR_ALZ, registered[6], "call", **room_for("ALZ"))
         clock.advance(minutes=2)
         act(OPERATOR_ALZ, registered[6], "start", **doctor_for("ALZ"))
         clock.advance(minutes=4)
-        act(OPERATOR_ALZ, registered[7], "call")
+        act(OPERATOR_ALZ, registered[7], "call", **room_for("ALZ"))
 
         for dni in today_pool[20:26]:
             register("BAR", dni, "PHONE")

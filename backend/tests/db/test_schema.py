@@ -25,6 +25,7 @@ EXPECTED_TABLES = {
     "worker",
     "worker_coverage",
     "doctor",
+    "consulting_room",
     "reason",
     "appointment_status",
     "appointment_status_transition",
@@ -60,7 +61,8 @@ def test_every_table_is_documented(owner_db: psycopg.Connection) -> None:
 def test_reference_data_loaded(app_db: psycopg.Connection) -> None:
     assert scalar(app_db, "SELECT count(*) FROM appointment_status") == 8
     assert scalar(app_db, "SELECT count(*) FROM appointment_status_transition") == 11
-    assert scalar(app_db, "SELECT array_agg(code ORDER BY code) FROM site") == ["ALZ", "BAR"]
+    # Sedes iniciales (las pruebas de la API pueden crear otras)
+    assert {"ALZ", "BAR"} <= set(scalar(app_db, "SELECT array_agg(code ORDER BY code) FROM site"))
     assert scalar(app_db, "SELECT array_agg(code ORDER BY code) FROM role") == [
         "ADMIN",
         "AUDITOR",

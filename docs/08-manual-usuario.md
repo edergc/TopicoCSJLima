@@ -183,9 +183,14 @@ La tarjeta **Atenciones por médico** muestra cuántas atenciones finalizó cada
 
 ### 4.2 Sedes y horarios
 
-En **Sedes y horarios** (para la sede elegida arriba):
+**Sedes con tópico** (solo administrador): lista de todas las sedes, incluidas las inactivas, con acceso a su pantalla de sala.
+- **Nueva sede:** cuando se habilite un tópico en otra sede, regístrela con su nombre, código (p. ej. `SJL`, que también es la dirección de su pantalla: `/pantalla/sjl`), prefijo de turnos (p. ej. `C` → C-001), capacidad, duración de la atención, tolerancia, días y horario de mañana/tarde. Queda operativa desde la fecha de inicio indicada y los administradores obtienen acceso automáticamente. Para que otras personas la operen, asígneles la sede en **Usuarios y roles**.
+- **Desactivar / Activar:** una sede inactiva deja de aparecer en el selector y en la pantalla de sala; su historial se conserva.
+
+Debajo, las pestañas configuran la **sede elegida en el selector superior**:
 - **Configuración:** capacidad diaria, duración de turno, tolerancia, atenciones simultáneas, avisos por correo y reglas de re-registro. Los cambios se **programan desde una fecha futura**: el día en curso no se altera.
 - **Horario:** bloques de mañana y tarde por día de la semana.
+- **Consultorios:** los consultorios del tópico (p. ej., «Consultorio 1», «Consultorio 2») con su ubicación. Al llamar, la persona ve en la pantalla de sala y en el correo **a qué consultorio acercarse**. Si hay un solo consultorio activo se asigna solo; si hay varios, la encargada elige en la Mesa de atención **desde qué consultorio llama** (el equipo lo recuerda). Un consultorio que deja de usarse se desactiva.
 - **Médicos:** los médicos que atienden en el tópico de la sede (nombre, CMP, DNI, especialidad, teléfono). Al pulsar **Iniciar** en la Mesa de atención se registra qué médico atiende: si la sede tiene un solo médico activo se asigna solo; si tiene varios, el sistema pregunta cuál. Un médico que deja de atender se **desactiva** (su historial se conserva).
 - **Cierres:** feriados o días sin atención; bloquean el registro en esas fechas.
 - **Capacidad del día:** ajuste puntual de un día (p. ej., el médico atenderá medio turno), con motivo obligatorio.

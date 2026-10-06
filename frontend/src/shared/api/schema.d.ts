@@ -133,6 +133,24 @@ export interface paths {
         /** Sedes autorizadas para el usuario */
         get: operations["list_sites_api_v1_sites_get"];
         put?: never;
+        /** Crear una sede nueva (con configuración y horario) */
+        post: operations["create_site_api_v1_sites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Todas las sedes, incluidas las inactivas (administración) */
+        get: operations["list_all_sites_api_v1_sites_all_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -296,6 +314,41 @@ export interface paths {
         head?: never;
         /** Modificar o desactivar médico */
         patch: operations["update_doctor_api_v1_sites__site_id__doctors__doctor_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/rooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultorios del tópico de la sede */
+        get: operations["list_rooms_api_v1_sites__site_id__rooms_get"];
+        put?: never;
+        /** Registrar consultorio */
+        post: operations["create_room_api_v1_sites__site_id__rooms_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/rooms/{room_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Modificar o desactivar consultorio */
+        patch: operations["update_room_api_v1_sites__site_id__rooms__room_id__patch"];
         trace?: never;
     };
     "/api/v1/workers/eligibility": {
@@ -1260,6 +1313,10 @@ export interface components {
             doctor_id?: number | null;
             /** Doctor Name */
             doctor_name?: string | null;
+            /** Room Id */
+            room_id?: number | null;
+            /** Room Name */
+            room_name?: string | null;
             /** Version */
             version: number;
             /** Allowed Actions */
@@ -1369,6 +1426,14 @@ export interface components {
              * @enum {string}
              */
             kind: "WORKERS_EPS" | "HISTORICAL_APPOINTMENTS";
+        };
+        /** CallNextIn */
+        CallNextIn: {
+            /**
+             * Room Id
+             * @description Consultorio al que se llama.
+             */
+            room_id?: number | null;
         };
         /** CapacityAdjustIn */
         CapacityAdjustIn: {
@@ -1546,6 +1611,8 @@ export interface components {
             estimated_at: string | null;
             /** Doctor */
             doctor: string | null;
+            /** Room */
+            room: string | null;
         };
         /** DoctorIn */
         DoctorIn: {
@@ -2169,6 +2236,49 @@ export interface components {
             /** Permission Codes */
             permission_codes: string[];
         };
+        /** RoomIn */
+        RoomIn: {
+            /** Name */
+            name: string;
+            /** Location Note */
+            location_note?: string | null;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+        };
+        /** RoomOut */
+        RoomOut: {
+            /** Id */
+            id: number;
+            /** Site Id */
+            site_id: number;
+            /** Name */
+            name: string;
+            /** Location Note */
+            location_note: string | null;
+            /** Sort Order */
+            sort_order: number;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** RoomUpdateIn */
+        RoomUpdateIn: {
+            /** Name */
+            name?: string | null;
+            /** Location Note */
+            location_note?: string | null;
+            /** Sort Order */
+            sort_order?: number | null;
+            /** Is Active */
+            is_active?: boolean | null;
+        };
         /** ScheduleBlockIn */
         ScheduleBlockIn: {
             /**
@@ -2310,6 +2420,52 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * SiteCreateIn
+         * @description Alta de una sede nueva con su configuración y horario iniciales (vigentes desde valid_from).
+         */
+        SiteCreateIn: {
+            /**
+             * Code
+             * @description Código corto, solo letras (p. ej. SJL). Se usa en la dirección de la pantalla de sala.
+             */
+            code: string;
+            /** Name */
+            name: string;
+            /** Short Name */
+            short_name: string;
+            /**
+             * Ticket Prefix
+             * @description Prefijo de los turnos (C → C-001). Único entre sedes.
+             */
+            ticket_prefix: string;
+            /** Address */
+            address?: string | null;
+            /** Location Note */
+            location_note?: string | null;
+            /**
+             * Valid From
+             * @description Inicio de atención; por defecto, hoy.
+             */
+            valid_from?: string | null;
+            /**
+             * Daily Capacity
+             * @default 20
+             */
+            daily_capacity: number;
+            /**
+             * Slot Minutes
+             * @default 15
+             */
+            slot_minutes: number;
+            /**
+             * Tolerance Minutes
+             * @default 10
+             */
+            tolerance_minutes: number;
+            /** Blocks */
+            blocks: components["schemas"]["ScheduleBlockIn"][];
         };
         /** SiteOut */
         SiteOut: {
@@ -2462,6 +2618,11 @@ export interface components {
             reason_id?: number | null;
             /** Note */
             note?: string | null;
+            /**
+             * Room Id
+             * @description Al LLAMAR: consultorio (obligatorio si la sede tiene más de uno activo).
+             */
+            room_id?: number | null;
             /**
              * Doctor Id
              * @description Al INICIAR: médico que atiende (obligatorio si la sede tiene más de uno activo).
@@ -2925,6 +3086,59 @@ export interface operations {
         };
     };
     list_sites_api_v1_sites_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteOut"][];
+                };
+            };
+        };
+    };
+    create_site_api_v1_sites_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_all_sites_api_v1_sites_all_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3416,6 +3630,110 @@ export interface operations {
             };
         };
     };
+    list_rooms_api_v1_sites__site_id__rooms_get: {
+        parameters: {
+            query?: {
+                active_only?: boolean;
+            };
+            header?: never;
+            path: {
+                site_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_room_api_v1_sites__site_id__rooms_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoomIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_room_api_v1_sites__site_id__rooms__room_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+                room_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoomUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     eligibility_api_v1_workers_eligibility_get: {
         parameters: {
             query: {
@@ -3693,7 +4011,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CallNextIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

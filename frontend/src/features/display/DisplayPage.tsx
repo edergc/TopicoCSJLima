@@ -59,7 +59,8 @@ function useAnnouncements(board: DisplayBoard | undefined, soundOn: boolean) {
         setHighlight(callKey(next));
         if (settings.current.soundOn && audioReady()) {
           await playChime();
-          if (settings.current.voice) await speak(announcementText(next.ticket_code, next.name, "al tópico"));
+          if (settings.current.voice)
+            await speak(announcementText(next.ticket_code, next.name, next.room ? `al ${next.room}` : "al tópico"));
         } else {
           await new Promise((r) => window.setTimeout(r, 2500));
         }
@@ -275,7 +276,7 @@ export default function DisplayPage() {
               </div>
               <div className="flex flex-wrap items-center gap-3 text-[clamp(0.95rem,1.4vw,1.6rem)]">
                 <span className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-2 font-semibold text-brand-900">
-                  <Stethoscope className="size-[1.1em]" aria-hidden /> Acérquese al tópico
+                  <Stethoscope className="size-[1.1em]" aria-hidden /> Acérquese {main.room ? `al ${main.room}` : "al tópico"}
                 </span>
                 {data?.site.location_note && (
                   <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2 text-white/85 ring-1 ring-white/15">
@@ -464,7 +465,11 @@ function TicketRow({
       )}
       <span className="text-[clamp(1.3rem,2.2vw,2.6rem)] font-bold tracking-tight">{ticket.ticket_code}</span>
       <span className="min-w-0 flex-1 truncate text-[clamp(1rem,1.6vw,1.9rem)] text-white/80">{ticket.name}</span>
-      {tone === "called" && <span className="text-[clamp(0.75rem,1vw,1.15rem)] font-semibold tracking-widest text-amber-300 uppercase">Llamado</span>}
+      {tone === "called" && (
+        <span className="text-[clamp(0.75rem,1vw,1.15rem)] font-semibold tracking-widest text-amber-300 uppercase">
+          {ticket.room ?? "Llamado"}
+        </span>
+      )}
       {tone === "service" && (
         <span className="text-right leading-tight">
           <span className="block text-[clamp(0.75rem,1vw,1.15rem)] font-semibold tracking-widest text-white/60 uppercase">En atención</span>

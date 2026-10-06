@@ -8,7 +8,7 @@ from app.core.errors import MESSAGES
 from app.modules.auth.dependencies import ServiceContext, require
 from app.modules.sites import service as sites
 from app.modules.sites.config_service import SiteConfigService
-from app.modules.sites.models import Doctor, Site, SiteClosure
+from app.modules.sites.models import ConsultingRoom, Doctor, Site, SiteClosure
 from app.modules.sites.schemas import (
     AvailabilityOut,
     BlockOut,
@@ -18,10 +18,14 @@ from app.modules.sites.schemas import (
     DoctorIn,
     DoctorOut,
     DoctorUpdateIn,
+    RoomIn,
+    RoomOut,
+    RoomUpdateIn,
     ScheduleIn,
     ScheduleRowOut,
     SettingVersionIn,
     SettingVersionOut,
+    SiteCreateIn,
     SiteOut,
     SiteSettingsOut,
     SiteUpdateIn,
@@ -31,11 +35,22 @@ router = APIRouter(prefix="/sites", tags=["Sedes"])
 
 ReadCtx = Annotated[ServiceContext, Depends(require("site:read"))]
 ConfigureCtx = Annotated[ServiceContext, Depends(require("site:configure"))]
+ManageCtx = Annotated[ServiceContext, Depends(require("site:manage"))]
 
 
 @router.get("", response_model=list[SiteOut], summary="Sedes autorizadas para el usuario")
 def list_sites(ctx: ReadCtx) -> list[Site]:
     return list(ctx.db.scalars(select(Site).where(Site.id.in_(ctx.user.site_ids)).order_by(Site.id)))
+
+
+@router.get("/all", response_model=list[SiteOut], summary="Todas las sedes, incluidas las inactivas (administración)")
+def list_all_sites(ctx: ManageCtx) -> list[Site]:
+    return list(ctx.db.scalars(select(Site).order_by(Site.id)))
+
+
+@router.post("", response_model=SiteOut, status_code=201, summary="Crear una sede nueva (con configuración y horario)")
+def create_site(body: SiteCreateIn, ctx: ManageCtx) -> Site:
+    return SiteConfigService(ctx).create_site(body)
 
 
 @router.get("/{site_id}", response_model=SiteOut)
@@ -165,3 +180,23 @@ def create_doctor(site_id: int, body: DoctorIn, ctx: ConfigureCtx) -> Doctor:
 @router.patch("/{site_id}/doctors/{doctor_id}", response_model=DoctorOut, summary="Modificar o desactivar médico")
 def update_doctor(site_id: int, doctor_id: int, body: DoctorUpdateIn, ctx: ConfigureCtx) -> Doctor:
     return SiteConfigService(ctx).update_doctor(site_id, doctor_id, body)
+
+
+@router.get("/{site_id}/rooms", response_model=list[RoomOut], summary="Consultorios del tópico de la sede")
+def list_rooms(site_id: int, ctx: ReadCtx, active_only: bool = False) -> list[ConsultingRoom]:
+    ctx.require_site(site_id, action="ROOM_READ")
+    stmt = select(ConsultingRoom).where(ConsultingRoom.site_id == site_id)
+    if active_only:
+        stmt = stmt.where(ConsultingRoom.is_active)
+    order = (ConsultingRoom.is_active.desc(), ConsultingRoom.sort_order, ConsultingRoom.name)
+    return list(ctx.db.scalars(stmt.order_by(*order)))
+
+
+@router.post("/{site_id}/rooms", response_model=RoomOut, status_code=201, summary="Registrar consultorio")
+def create_room(site_id: int, body: RoomIn, ctx: ConfigureCtx) -> ConsultingRoom:
+    return SiteConfigService(ctx).create_room(site_id, body)
+
+
+@router.patch("/{site_id}/rooms/{room_id}", response_model=RoomOut, summary="Modificar o desactivar consultorio")
+def update_room(site_id: int, room_id: int, body: RoomUpdateIn, ctx: ConfigureCtx) -> ConsultingRoom:
+    return SiteConfigService(ctx).update_room(site_id, room_id, body)

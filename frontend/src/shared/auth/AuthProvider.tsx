@@ -13,6 +13,8 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<Me>;
   logout: () => Promise<void>;
   applyToken: (token: TokenResponse) => void;
+  /** Vuelve a leer el usuario (p. ej., tras crear una sede: aparece en el selector). */
+  reloadUser: () => Promise<void>;
   can: (permission: string) => boolean;
   canAny: (...permissions: string[]) => boolean;
 }
@@ -78,6 +80,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [queryClient]);
 
+  const reloadUser = useCallback(async () => {
+    setUser(await api.get<Me>("/auth/me"));
+  }, []);
+
   const value = useMemo<AuthContextValue>(() => {
     const permissions = new Set(user?.permissions ?? []);
     return {
@@ -86,10 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       applyToken,
+      reloadUser,
       can: (permission) => permissions.has(permission),
       canAny: (...list) => list.some((p) => permissions.has(p)),
     };
-  }, [status, user, login, logout, applyToken]);
+  }, [status, user, login, logout, applyToken, reloadUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

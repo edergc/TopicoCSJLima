@@ -209,6 +209,7 @@ def nominal_rows(db: Session, f: ReportFilter) -> list[dict[str, Any]]:
             "cierre": a.closed_at,
             "motivo_cierre": a.close_reason.label if a.close_reason else "",
             "medico": a.doctor.full_name if a.doctor else "",
+            "consultorio": a.room.name if a.room else "",
         }
         for a, w, dep, site in rows
     ]

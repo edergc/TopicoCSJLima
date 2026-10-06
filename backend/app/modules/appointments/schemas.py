@@ -18,10 +18,17 @@ class AppointmentCreateIn(ApiModel):
     origin_appointment_id: uuid.UUID | None = Field(default=None, description="Atención original si es reprogramación")
 
 
+class CallNextIn(ApiModel):
+    room_id: int | None = Field(default=None, description="Consultorio al que se llama.")
+
+
 class TransitionIn(ApiModel):
     version: int | None = Field(default=None, description="Versión esperada (control de concurrencia).")
     reason_id: int | None = None
     note: Note | None = None
+    room_id: int | None = Field(
+        default=None, description="Al LLAMAR: consultorio (obligatorio si la sede tiene más de uno activo)."
+    )
     doctor_id: int | None = Field(
         default=None, description="Al INICIAR: médico que atiende (obligatorio si la sede tiene más de uno activo)."
     )
@@ -66,6 +73,8 @@ class AppointmentOut(ApiOut):
     admin_note: str | None
     doctor_id: int | None = None
     doctor_name: str | None = None
+    room_id: int | None = None
+    room_name: str | None = None
     version: int
     allowed_actions: list[str]
     position: int | None = None

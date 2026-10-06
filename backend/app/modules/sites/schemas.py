@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from typing import Annotated, Literal
 
-from pydantic import Field, StringConstraints, model_validator
+from pydantic import BeforeValidator, Field, StringConstraints, model_validator
 
 from app.shared.schemas import ApiModel, ApiOut
 
@@ -161,5 +161,52 @@ class DoctorOut(ApiOut):
     specialty: str | None
     phone: str | None
     email: str | None
+    is_active: bool
+    updated_at: datetime
+
+
+def _upper(value: object) -> object:
+    return value.strip().upper() if isinstance(value, str) else value
+
+
+class SiteCreateIn(ApiModel):
+    """Alta de una sede nueva con su configuración y horario iniciales (vigentes desde valid_from)."""
+
+    code: Annotated[str, BeforeValidator(_upper), StringConstraints(pattern=r"^[A-Z]{2,10}$")] = Field(
+        description="Código corto, solo letras (p. ej. SJL). Se usa en la dirección de la pantalla de sala."
+    )
+    name: Annotated[str, StringConstraints(min_length=3, max_length=120)]
+    short_name: Annotated[str, StringConstraints(min_length=2, max_length=40)]
+    ticket_prefix: Annotated[str, BeforeValidator(_upper), StringConstraints(pattern=r"^[A-Z]{1,3}$")] = Field(
+        description="Prefijo de los turnos (C → C-001). Único entre sedes."
+    )
+    address: Annotated[str, StringConstraints(max_length=250)] | None = None
+    location_note: Annotated[str, StringConstraints(max_length=250)] | None = None
+    valid_from: date | None = Field(default=None, description="Inicio de atención; por defecto, hoy.")
+    daily_capacity: int = Field(default=20, ge=1, le=500)
+    slot_minutes: int = Field(default=15, ge=5, le=120)
+    tolerance_minutes: int = Field(default=10, ge=0, le=120)
+    blocks: list[ScheduleBlockIn] = Field(min_length=1, max_length=14)
+
+
+class RoomIn(ApiModel):
+    name: Annotated[str, StringConstraints(min_length=2, max_length=60)]
+    location_note: Annotated[str, StringConstraints(max_length=150)] | None = None
+    sort_order: int = Field(default=0, ge=0, le=999)
+
+
+class RoomUpdateIn(ApiModel):
+    name: Annotated[str, StringConstraints(min_length=2, max_length=60)] | None = None
+    location_note: Annotated[str, StringConstraints(max_length=150)] | None = None
+    sort_order: int | None = Field(default=None, ge=0, le=999)
+    is_active: bool | None = None
+
+
+class RoomOut(ApiOut):
+    id: int
+    site_id: int
+    name: str
+    location_note: str | None
+    sort_order: int
     is_active: bool
     updated_at: datetime

@@ -127,6 +127,7 @@ class DisplayTicketOut(ApiOut):
     call_count: int
     estimated_at: datetime | None
     doctor: str | None
+    room: str | None
 
 
 class DisplayBoardOut(ApiOut):
@@ -159,6 +160,7 @@ def _display_ticket(item: QueueItem, show_names: bool) -> DisplayTicketOut:
         call_count=appt.call_count,
         estimated_at=item.estimated_at,
         doctor=appt.doctor.full_name if appt.doctor else None,
+        room=appt.room.name if appt.room else None,
     )
 
 
@@ -179,7 +181,9 @@ def display_board(request: Request, db: DbDep, clock: ClockDep, site_code: str) 
     show_names = get_bool(db, "display.show_names", True)
     snap = queue_view.build_snapshot(db, site, clock.today(), clock)
     # El llamado más reciente primero: es el que se muestra en grande.
-    calling = sorted(snap.called, key=lambda i: i.appointment.called_at or clock.now(), reverse=True)
+    calling = sorted(
+        snap.called, key=lambda i: (i.appointment.called_at or clock.now(), i.appointment.ticket_number), reverse=True
+    )
     pending = snap.waiting + snap.registered
     return DisplayBoardOut(
         site=DisplaySiteOut.model_validate(site),

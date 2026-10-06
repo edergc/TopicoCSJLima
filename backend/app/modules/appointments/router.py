@@ -11,6 +11,7 @@ from app.modules.appointments.schemas import (
     AppointmentCreateIn,
     AppointmentEventOut,
     AppointmentOut,
+    CallNextIn,
     IncidentOut,
     NotificationOut,
     QueueCountsOut,
@@ -72,6 +73,8 @@ def appointment_out(a: Appointment, ctx: ServiceContext, item: queue_view.QueueI
         admin_note=a.admin_note,
         doctor_id=a.doctor_id,
         doctor_name=a.doctor.full_name if a.doctor else None,
+        room_id=a.room_id,
+        room_name=a.room.name if a.room else None,
         version=a.version,
         allowed_actions=allowed_actions(a.status, ctx.user.permissions),
         position=item.position if item else None,
@@ -116,8 +119,13 @@ def get_queue(
 
 
 @router.post("/sites/{site_id}/queue/call-next", response_model=AppointmentOut, summary="LLAMAR SIGUIENTE")
-def call_next(site_id: int, ctx: Annotated[ServiceContext, Depends(require("appointment:operate"))]) -> AppointmentOut:
-    return appointment_out(AppointmentService(ctx).call_next(site_id), ctx)
+def call_next(
+    site_id: int,
+    ctx: Annotated[ServiceContext, Depends(require("appointment:operate"))],
+    body: CallNextIn | None = None,
+) -> AppointmentOut:
+    room_id = body.room_id if body else None
+    return appointment_out(AppointmentService(ctx).call_next(site_id, room_id), ctx)
 
 
 # ------------------------------------------------------------- atenciones

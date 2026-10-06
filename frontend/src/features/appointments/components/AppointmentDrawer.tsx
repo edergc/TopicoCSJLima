@@ -86,6 +86,7 @@ export function AppointmentDrawer({ appointmentId, onClose }: { appointmentId: s
                 ["Canal", CHANNEL_LABEL[appointment.channel] ?? appointment.channel],
                 ["Registrado", fmt.dateTime(appointment.registered_at)],
                 ["Llamados", appointment.call_count],
+                ...(appointment.room_name ? ([["Consultorio", appointment.room_name]] as [string, string][]) : []),
                 ...(appointment.doctor_name ? ([["Médico", appointment.doctor_name]] as [string, string][]) : []),
                 ...(appointment.close_reason
                   ? ([["Motivo de cierre", appointment.close_reason.label]] as [string, string][])

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, CalendarClock, CalendarOff, Gauge, History, MapPin, Plus, Settings2, Stethoscope, Trash2 } from "lucide-react";
+import { Building2, CalendarClock, CalendarOff, DoorOpen, Gauge, History, MapPin, Plus, Settings2, Stethoscope, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { api } from "@/shared/api/client";
@@ -32,7 +32,9 @@ import {
   type Column,
 } from "@/shared/ui";
 
+import { AllSitesCard } from "./AllSitesCard";
 import { DoctorsTab } from "./DoctorsTab";
+import { RoomsTab } from "./RoomsTab";
 
 const WEEKDAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
@@ -488,9 +490,16 @@ export default function SitesPage() {
             : "Parámetros operativos por sede."
         }
       />
+      {can("site:manage") && <AllSitesCard />}
       {!site ? (
         <Skeleton className="h-96" />
       ) : (
+        <>
+          {can("site:manage") && (
+            <h2 className="mb-3 text-lg font-semibold tracking-tight">
+              Configuración de <span className="text-brand-700">{site.name}</span>
+            </h2>
+          )}
         <Tabs defaultValue="settings" key={site.id}>
           <TabsList>
             <TabsTrigger value="settings">
@@ -498,6 +507,9 @@ export default function SitesPage() {
             </TabsTrigger>
             <TabsTrigger value="schedule">
               <CalendarClock className="size-4" /> Horario
+            </TabsTrigger>
+            <TabsTrigger value="rooms">
+              <DoorOpen className="size-4" /> Consultorios
             </TabsTrigger>
             <TabsTrigger value="doctors">
               <Stethoscope className="size-4" /> Médicos
@@ -520,6 +532,9 @@ export default function SitesPage() {
           <TabsContent value="schedule">
             <ScheduleTab siteId={site.id} />
           </TabsContent>
+          <TabsContent value="rooms">
+            <RoomsTab siteId={site.id} />
+          </TabsContent>
           <TabsContent value="doctors">
             <DoctorsTab siteId={site.id} />
           </TabsContent>
@@ -533,6 +548,7 @@ export default function SitesPage() {
             <SiteDataTab key={JSON.stringify(site)} site={site} />
           </TabsContent>
         </Tabs>
+        </>
       )}
     </div>
   );

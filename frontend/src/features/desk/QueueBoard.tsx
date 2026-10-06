@@ -77,7 +77,8 @@ function CalledCard({ appointment, onAction, onOpen, busy }: { appointment: Appo
         </p>
         <p className="truncate text-sm font-medium text-ink">{appointment.worker.display_name}</p>
         <p className={cn("tabular text-[13px]", remaining ? "text-ink-muted" : "font-medium text-status-noshow")}>
-          Llamado a las {fmt.time(appointment.called_at)} ·{" "}
+          Llamado a las {fmt.time(appointment.called_at)}
+          {appointment.room_name && <> · {appointment.room_name}</>} ·{" "}
           {remaining ? `tolerancia ${remaining}` : "tolerancia vencida"}
         </p>
       </button>

@@ -2,23 +2,27 @@
 
 from datetime import date, timedelta
 
-from sqlalchemy import select, text
+from sqlalchemy import insert, select, text
 
 from app.core.errors import BusinessRuleError, NotFoundError
 from app.modules.appointments.models import ServiceDay
 from app.modules.audit.service import diff, snapshot
 from app.modules.auth.dependencies import ServiceContext
 from app.modules.sites import service as sites
-from app.modules.sites.models import Doctor, Site, SiteClosure, SiteSchedule, SiteSettingVersion
+from app.modules.sites.models import ConsultingRoom, Doctor, Site, SiteClosure, SiteSchedule, SiteSettingVersion
 from app.modules.sites.schemas import (
     CapacityAdjustIn,
     ClosureIn,
     DoctorIn,
     DoctorUpdateIn,
+    RoomIn,
+    RoomUpdateIn,
     ScheduleIn,
     SettingVersionIn,
+    SiteCreateIn,
     SiteUpdateIn,
 )
+from app.modules.users.models import AppUser, Role, user_role, user_site
 
 _SETTING_FIELDS = (
     "valid_from",
@@ -33,6 +37,7 @@ _SETTING_FIELDS = (
     "notifications_enabled",
 )
 _SITE_FIELDS = ("name", "short_name", "address", "location_note", "is_active")
+_ROOM_FIELDS = ("name", "location_note", "sort_order", "is_active")
 _DOCTOR_FIELDS = ("full_name", "document_number", "cmp", "specialty", "phone", "email", "is_active")
 
 
@@ -42,7 +47,9 @@ class SiteConfigService:
         self.db = ctx.db
 
     def update_site(self, site_id: int, data: SiteUpdateIn) -> Site:
-        self.ctx.require_site(site_id, action="SITE_UPDATE")
+        # Quien administra sedes puede editar (y reactivar) cualquiera, incluso una inactiva.
+        if not self.ctx.user.has("site:manage"):
+            self.ctx.require_site(site_id, action="SITE_UPDATE")
         site = sites.get_site(self.db, site_id)
         before = snapshot(site, _SITE_FIELDS)
         for field, value in data.model_dump(exclude_unset=True).items():
@@ -227,3 +234,113 @@ class SiteConfigService:
         )
         self.db.commit()
         return doctor
+
+    # ================================================================ sedes nuevas
+    def create_site(self, data: SiteCreateIn) -> Site:
+        """Alta de sede con configuración y horario iniciales. Los administradores obtienen acceso a ella."""
+        today = self.ctx.clock.today()
+        valid_from = data.valid_from or today
+        if valid_from < today:
+            raise BusinessRuleError("DATE_NOT_ALLOWED", "La fecha de inicio no puede ser pasada.")
+        keys = [(b.weekday, b.block) for b in data.blocks]
+        if len(keys) != len(set(keys)):
+            raise BusinessRuleError("SCHEDULE_OVERLAP", "Hay bloques repetidos para el mismo día.")
+
+        user_id = self.ctx.user.id
+        site = Site(
+            code=data.code,
+            name=data.name,
+            short_name=data.short_name,
+            ticket_prefix=data.ticket_prefix,
+            address=data.address,
+            location_note=data.location_note,
+            is_active=True,
+            created_by=user_id,
+            updated_by=user_id,
+        )
+        self.db.add(site)
+        self.db.flush()
+        self.db.add(
+            SiteSettingVersion(
+                site_id=site.id,
+                valid_from=valid_from,
+                daily_capacity=data.daily_capacity,
+                slot_minutes=data.slot_minutes,
+                tolerance_minutes=data.tolerance_minutes,
+                change_reason="Configuración inicial de la sede",
+                created_by=user_id,
+                updated_by=user_id,
+            )
+        )
+        self.db.add_all(
+            SiteSchedule(site_id=site.id, valid_from=valid_from, created_by=user_id, **b.model_dump())
+            for b in data.blocks
+        )
+        admins = set(
+            self.db.scalars(
+                select(AppUser.id)
+                .join(user_role, user_role.c.user_id == AppUser.id)
+                .join(Role, Role.id == user_role.c.role_id)
+                .where(Role.code == "ADMIN", AppUser.is_active)
+            )
+        )
+        self.db.execute(
+            insert(user_site),
+            [{"user_id": uid, "site_id": site.id, "created_by": user_id} for uid in sorted(admins | {user_id})],
+        )
+        self.db.flush()
+        self.ctx.audit(
+            action="SITE_CREATE",
+            resource_type="site",
+            resource_id=site.id,
+            site_id=site.id,
+            after={
+                **snapshot(site, ("code", "name", "short_name", "ticket_prefix", "address", "location_note")),
+                "valid_from": valid_from,
+                "daily_capacity": data.daily_capacity,
+                "blocks": [b.model_dump() for b in data.blocks],
+            },
+        )
+        self.db.commit()
+        return site
+
+    # ================================================================ consultorios
+    def create_room(self, site_id: int, data: RoomIn) -> ConsultingRoom:
+        self.ctx.require_site(site_id, action="ROOM_CREATE")
+        sites.get_site(self.db, site_id)
+        room = ConsultingRoom(
+            site_id=site_id, **data.model_dump(), created_by=self.ctx.user.id, updated_by=self.ctx.user.id
+        )
+        self.db.add(room)
+        self.db.flush()
+        self.ctx.audit(
+            action="ROOM_CREATE",
+            resource_type="consulting_room",
+            resource_id=room.id,
+            site_id=site_id,
+            after=snapshot(room, _ROOM_FIELDS),
+        )
+        self.db.commit()
+        return room
+
+    def update_room(self, site_id: int, room_id: int, data: RoomUpdateIn) -> ConsultingRoom:
+        self.ctx.require_site(site_id, action="ROOM_UPDATE")
+        room = self.db.get(ConsultingRoom, room_id)
+        if room is None or room.site_id != site_id:
+            raise NotFoundError("ROOM_NOT_FOUND")
+        before = snapshot(room, _ROOM_FIELDS)
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(room, field, value)
+        room.updated_by = self.ctx.user.id
+        self.db.flush()
+        b, a = diff(before, snapshot(room, _ROOM_FIELDS))
+        self.ctx.audit(
+            action="ROOM_UPDATE",
+            resource_type="consulting_room",
+            resource_id=room.id,
+            site_id=site_id,
+            before=b,
+            after=a,
+        )
+        self.db.commit()
+        return room

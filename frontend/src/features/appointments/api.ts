@@ -13,6 +13,7 @@ import type {
   Page,
   Queue,
   Reason,
+  Room,
   TransitionIn,
 } from "@/shared/api/types";
 import { notify } from "@/shared/lib/notify";
@@ -28,6 +29,7 @@ export const keys = {
   notifications: (id: string) => ["appointment", id, "notifications"] as const,
   search: (params: object) => ["appointments", params] as const,
   doctors: (siteId: number) => ["doctors", siteId] as const,
+  rooms: (siteId: number) => ["rooms", siteId] as const,
 };
 
 const QUEUE_REFRESH_MS = 5_000;
@@ -134,7 +136,8 @@ export function useTransition() {
 export function useCallNext(siteId: number | undefined) {
   const invalidate = useInvalidateOperation();
   return useMutation({
-    mutationFn: () => api.post<Appointment>(`/sites/${siteId}/queue/call-next`),
+    mutationFn: (roomId?: number | null) =>
+      api.post<Appointment>(`/sites/${siteId}/queue/call-next`, roomId ? { room_id: roomId } : undefined),
     onSettled: () => invalidate(siteId),
   });
 }
@@ -198,6 +201,16 @@ export function useDoctors(siteId: number | undefined) {
   return useQuery({
     queryKey: keys.doctors(siteId ?? 0),
     queryFn: () => api.get<Doctor[]>(`/sites/${siteId}/doctors`),
+    enabled: siteId !== undefined,
+    staleTime: 60_000,
+  });
+}
+
+/** Consultorios de la sede (todos; la mesa filtra los activos). */
+export function useRooms(siteId: number | undefined) {
+  return useQuery({
+    queryKey: keys.rooms(siteId ?? 0),
+    queryFn: () => api.get<Room[]>(`/sites/${siteId}/rooms`),
     enabled: siteId !== undefined,
     staleTime: 60_000,
   });

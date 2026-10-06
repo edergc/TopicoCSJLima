@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 
 import { AppointmentDrawer } from "@/features/appointments/components/AppointmentDrawer";
 import { ACTIONS_WITH_REASON, ReasonActionDialog } from "@/features/appointments/components/ReasonActionDialog";
-import { useAvailability, useCallNext, useDoctors, useQueue, useTransition } from "@/features/appointments/api";
+import { useAvailability, useCallNext, useDoctors, useQueue, useRooms, useTransition } from "@/features/appointments/api";
 import type { Appointment, AppointmentAction } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/AuthProvider";
 import { useSite } from "@/shared/auth/SiteProvider";
@@ -11,9 +11,10 @@ import { cn } from "@/shared/lib/cn";
 import { fmt } from "@/shared/lib/format";
 import { useDocumentTitle, useHotkey } from "@/shared/lib/hooks";
 import { errorMessage, notify } from "@/shared/lib/notify";
-import { Button, Callout, Skeleton } from "@/shared/ui";
+import { Button, Callout, Select, Skeleton } from "@/shared/ui";
 
 import { DoctorPickerDialog } from "./DoctorPickerDialog";
+import { useWorkingRoom } from "./useWorkingRoom";
 import { KpiStrip } from "./KpiStrip";
 import { QueueBoard } from "./QueueBoard";
 import { RegisterPanel, type RegisterPanelHandle } from "./RegisterPanel";
@@ -41,6 +42,13 @@ export default function DeskPage() {
   const [starting, setStarting] = useState<Appointment | null>(null);
   const doctors = useDoctors(siteId);
   const activeDoctors = doctors.data?.filter((d) => d.is_active) ?? [];
+  const rooms = useRooms(siteId);
+  const activeRooms = rooms.data?.filter((r) => r.is_active) ?? [];
+  const [roomId, setRoomId] = useWorkingRoom(siteId, activeRooms);
+  // Con varios consultorios, la encargada indica a cuál llama (se recuerda en este equipo).
+  const needsRoom = activeRooms.length > 1 && roomId === null;
+  const roomName = activeRooms.find((r) => r.id === roomId)?.name;
+  const warnRoom = () => notify.warning("Seleccione su consultorio", "Indique arriba a qué consultorio se llama a las personas.");
 
   const canOperate = can("appointment:operate");
 
@@ -54,8 +62,12 @@ export default function DeskPage() {
       setStarting(appointment);
       return;
     }
+    if (action === "CALL" && needsRoom) {
+      warnRoom();
+      return;
+    }
     transition.mutate(
-      { appointment, action },
+      { appointment, action, body: action === "CALL" && roomId ? { room_id: roomId } : undefined },
       {
         onSuccess: (updated) => {
           if (action === "CALL") notify.info(`Turno ${updated.ticket_code} llamado`, updated.worker.display_name);
@@ -67,8 +79,16 @@ export default function DeskPage() {
 
   const handleCallNext = () => {
     if (!canOperate || callNext.isPending) return;
-    callNext.mutate(undefined, {
-      onSuccess: (a) => notify.info(`Turno ${a.ticket_code} llamado`, `${a.worker.display_name} — indíquele que se acerque al tópico.`),
+    if (needsRoom) {
+      warnRoom();
+      return;
+    }
+    callNext.mutate(roomId, {
+      onSuccess: (a) =>
+        notify.info(
+          `Turno ${a.ticket_code} llamado`,
+          `${a.worker.display_name} — indíquele que se acerque ${a.room_name ? `al ${a.room_name}` : "al tópico"}.`,
+        ),
       onError: (error) => notify.error(error),
     });
   };
@@ -94,6 +114,25 @@ export default function DeskPage() {
               {b.block === "AM" ? "Mañana" : "Tarde"} {b.start.slice(0, 5)}–{b.end.slice(0, 5)}
             </span>
           ))}
+          {activeRooms.length > 1 && (
+            <label className={cn("inline-flex items-center gap-2", needsRoom && "font-semibold text-warning")}>
+              Consultorio
+              <Select
+                aria-label="Consultorio al que llama"
+                value={roomId ?? ""}
+                onChange={(e) => setRoomId(e.target.value ? Number(e.target.value) : null)}
+                className={cn("h-8 w-auto py-0 text-[13px]", needsRoom && "ring-2 ring-warning")}
+              >
+                <option value="">Seleccione…</option>
+                {activeRooms.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          )}
+          {activeRooms.length === 1 && roomName && <span className="hidden md:inline">{roomName}</span>}
           <a
             href={`/pantalla/${site.code.toLowerCase()}`}
             target="_blank"

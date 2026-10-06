@@ -28,7 +28,7 @@ from app.modules.audit import service as audit
 from app.modules.auth.dependencies import ServiceContext
 from app.modules.notifications import service as notifications
 from app.modules.sites import service as sites
-from app.modules.sites.models import Doctor, Site, SiteSettingVersion
+from app.modules.sites.models import ConsultingRoom, Doctor, Site, SiteSettingVersion
 from app.modules.workers import service as workers
 
 # Acciones que solo se ejecutan sobre la cola del día en curso.
@@ -148,7 +148,7 @@ class AppointmentService:
             raise ConflictError("APPOINTMENT_CHANGED", details={"current_version": appointment.version})
         return self._apply(appointment, action, data)
 
-    def call_next(self, site_id: int) -> Appointment:
+    def call_next(self, site_id: int, room_id: int | None = None) -> Appointment:
         """LLAMAR SIGUIENTE: el menor turno EN_ESPERA del día (RN-11). SKIP LOCKED evita doble llamado."""
         self.ctx.require_site(site_id, action="APPOINTMENT_CALL_NEXT")
         service_day = sites.get_service_day(self.db, site_id, self.clock.today())
@@ -167,7 +167,7 @@ class AppointmentService:
             select(Appointment).where(Appointment.id == next_id).with_for_update(of=Appointment, key_share=True)
         )
         assert appointment is not None
-        return self._apply(appointment, Action.CALL, TransitionIn())
+        return self._apply(appointment, Action.CALL, TransitionIn(room_id=room_id))
 
     def _apply(self, appointment: Appointment, action: Action, data: TransitionIn) -> Appointment:
         ctx, db = self.ctx, self.db
@@ -188,6 +188,8 @@ class AppointmentService:
 
         match action:
             case Action.CALL:
+                room_id = self._resolve_room(appointment.site_id, data.room_id)
+                appointment.room = self.db.get(ConsultingRoom, room_id) if room_id else None
                 appointment.called_at, appointment.called_by = now, ctx.user.id
                 appointment.call_count += 1
             case Action.REQUEUE:
@@ -233,11 +235,27 @@ class AppointmentService:
                 "ticket_code": appointment.ticket_code,
                 "note": data.note,
                 **({"doctor_id": appointment.doctor_id} if action == Action.START else {}),
+                **({"room_id": appointment.room_id} if action == Action.CALL else {}),
             },
         )
         self._notify_after(appointment, action, reason, now)
         db.commit()
         return appointment
+
+    def _resolve_room(self, site_id: int, room_id: int | None) -> int | None:
+        """Consultorio del llamado: el indicado, o el único activo de la sede. Sin consultorios → None."""
+        active = list(
+            self.db.scalars(
+                select(ConsultingRoom.id).where(ConsultingRoom.site_id == site_id, ConsultingRoom.is_active)
+            )
+        )
+        if room_id is not None:
+            if room_id not in active:
+                raise BusinessRuleError("ROOM_INVALID")
+            return room_id
+        if len(active) > 1:
+            raise BusinessRuleError("ROOM_REQUIRED")
+        return active[0] if active else None
 
     def _resolve_doctor(self, site_id: int, doctor_id: int | None) -> int | None:
         """Médico que atiende: el indicado, o el único activo de la sede. Sin médicos registrados → None."""

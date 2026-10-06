@@ -57,6 +57,8 @@ export type DisplayBoard = S["DisplayBoardOut"];
 export type DisplaySite = S["DisplaySiteOut"];
 export type DisplayTicket = S["DisplayTicketOut"];
 export type Doctor = S["DoctorOut"];
+export type Room = S["RoomOut"];
+export type SiteCreateIn = S["SiteCreateIn"];
 export type ReportDoctor = S["ReportDoctorOut"];
 
 export interface Page<T> {

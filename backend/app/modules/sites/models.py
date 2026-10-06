@@ -111,3 +111,18 @@ class Doctor(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
     updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+
+
+class ConsultingRoom(TimestampMixin, Base):
+    """Consultorio del tópico de una sede."""
+
+    __tablename__ = "consulting_room"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(Integer, ForeignKey("site.id"))
+    name: Mapped[str] = mapped_column(String(60))
+    location_note: Mapped[str | None] = mapped_column(String(150))
+    sort_order: Mapped[int] = mapped_column(SmallInteger, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+    updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))

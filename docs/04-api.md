@@ -75,6 +75,9 @@ Todas las transiciones aceptan `{version}` para el control de concurrencia optim
 | GET / POST | `/sites/{id}/settings` | configuración versionada (aplica desde mañana) |
 | GET / PUT | `/sites/{id}/schedules` | horario semanal por bloques |
 | GET / POST / DELETE | `/sites/{id}/closures` | días sin atención |
+| GET | `/sites/all` | todas las sedes, incluidas las inactivas (`site:manage`) |
+| POST | `/sites` | crear sede con configuración y horario iniciales; los administradores reciben acceso (`site:manage`) |
+| GET / POST / PATCH | `/sites/{id}/rooms[/{room_id}]` | consultorios (lectura: `site:read`; cambios: `site:configure`). Al llamar, `POST /sites/{id}/queue/call-next` y `POST /appointments/{id}/call` aceptan `room_id` (obligatorio si hay más de un consultorio activo; con uno solo se asigna automáticamente) |
 | GET / POST / PATCH | `/sites/{id}/doctors[/{doctor_id}]` | médicos de la sede (lectura: `site:read`; alta y cambios: `site:configure`). Al iniciar una atención, `POST /appointments/{id}/start` acepta `doctor_id` (obligatorio si hay más de un médico activo; con uno solo se asigna automáticamente) |
 | PATCH | `/sites/{id}/service-days/{date}/capacity` | `service_day:adjust` (ajuste auditado del día) |
 
