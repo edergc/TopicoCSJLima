@@ -116,7 +116,7 @@ export function DoctorScheduleModal({ siteId, doctor, onClose }: { siteId: numbe
           description="Si está desactivado, se considera disponible durante todo el horario de atención de la sede."
         />
         {multiBlock && (
-          <p className="text-[13px] text-warning">Este médico tenía varios bloques en un mismo día; al guardar se conserva uno por día.</p>
+          <p className="text-[0.8125rem] text-warning">Este médico tenía varios bloques en un mismo día; al guardar se conserva uno por día.</p>
         )}
         {restricted && (
           <ul className="divide-y divide-line rounded-xl border border-line">
@@ -177,7 +177,7 @@ export function DoctorAbsencesModal({ siteId, doctor, onClose }: { siteId: numbe
           Registrar ausencia
         </Button>
         <div>
-          <p className="mb-2 text-[13px] font-medium text-ink">Próximas ausencias</p>
+          <p className="mb-2 text-[0.8125rem] font-medium text-ink">Próximas ausencias</p>
           {doctor.upcoming_absences.length === 0 ? (
             <p className="text-sm text-ink-soft">Sin ausencias registradas.</p>
           ) : (

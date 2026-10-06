@@ -9,8 +9,8 @@ from openpyxl import Workbook
 from sqlalchemy import select
 
 from app.core.clock import INSTITUTION_TZ
-from app.modules.admin.parameters import get_str
 from app.modules.auth.dependencies import ServiceContext, require
+from app.modules.branding import service as branding
 from app.modules.reports import documents
 from app.modules.reports import service as reports
 from app.modules.reports.documents import ReportMeta
@@ -86,13 +86,17 @@ def _file(content: bytes, fmt: str, filename: str) -> StreamingResponse:
 
 def _meta(ctx: ServiceContext, f: reports.ReportFilter) -> ReportMeta:
     names = list(ctx.db.scalars(select(Site.name).where(Site.id.in_(f.site_ids)).order_by(Site.id)))
+    brand = branding.get_branding(ctx.db)
     return ReportMeta(
-        institution=get_str(ctx.db, "institution.name", "Corte Superior de Justicia de Lima"),
+        institution=brand.institution_name,
         date_from=f.date_from,
         date_to=f.date_to,
         site_names=names,
         generated_at=ctx.clock.now(),
         generated_by=ctx.user.full_name,
+        brand_color=brand.primary_color,
+        org_name=brand.org_name,
+        logo=branding.logo_bytes(ctx.db),
     )
 
 

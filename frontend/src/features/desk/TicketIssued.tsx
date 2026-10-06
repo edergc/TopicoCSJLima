@@ -26,7 +26,7 @@ export function TicketIssued({ appointment, onDismiss }: { appointment: Appointm
         <CheckCircle2 className="size-4" aria-hidden /> Turno registrado
       </p>
       <p className="tabular mt-1 text-6xl leading-none font-bold tracking-tight">{appointment.ticket_code}</p>
-      <p className="mt-3 truncate text-[15px] font-medium">{appointment.worker.display_name}</p>
+      <p className="mt-3 truncate text-[0.9375rem] font-medium">{appointment.worker.display_name}</p>
       <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-white/15 pt-4 text-sm">
         <div>
           <dt className="text-xs text-white/60">Posición</dt>

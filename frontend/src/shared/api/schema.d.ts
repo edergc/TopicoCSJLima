@@ -506,6 +506,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/appointments/{public_id}/priority": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Asignar o retirar la prioridad (regla explícita y auditada) */
+        post: operations["set_priority_api_v1_appointments__public_id__priority_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sites/{site_id}/queue/call-next": {
         parameters: {
             query?: never;
@@ -1399,6 +1416,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Nombres, color institucional y versión del logo */
+        get: operations["get_branding_api_v1_public_branding_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/branding/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Logo institucional (PNG/JPEG) */
+        get: operations["get_logo_api_v1_public_branding_logo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/branding/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Cargar o reemplazar el logo (PNG/JPEG, máx. 512 KB) */
+        put: operations["upload_logo_api_v1_admin_branding_logo_put"];
+        post?: never;
+        /** Quitar el logo (vuelve a la marca por defecto) */
+        delete: operations["delete_logo_api_v1_admin_branding_logo_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1468,6 +1537,11 @@ export interface components {
              * @description Atención original si es reprogramación
              */
             origin_appointment_id?: string | null;
+            /**
+             * Priority Reason Id
+             * @description Categoría de atención prioritaria (solo si priority.enabled).
+             */
+            priority_reason_id?: number | null;
         };
         /** AppointmentEventOut */
         AppointmentEventOut: {
@@ -1544,6 +1618,10 @@ export interface components {
             room_id?: number | null;
             /** Room Name */
             room_name?: string | null;
+            /** Priority Code */
+            priority_code?: string | null;
+            /** Priority Label */
+            priority_label?: string | null;
             /** Version */
             version: number;
             /** Allowed Actions */
@@ -1653,6 +1731,27 @@ export interface components {
              * @enum {string}
              */
             kind: "WORKERS_EPS" | "HISTORICAL_APPOINTMENTS";
+        };
+        /** Body_upload_logo_api_v1_admin_branding_logo_put */
+        Body_upload_logo_api_v1_admin_branding_logo_put: {
+            /**
+             * File
+             * @description Logo PNG o JPEG
+             */
+            file: string;
+        };
+        /** BrandingOut */
+        BrandingOut: {
+            /** Org Name */
+            org_name: string;
+            /** Institution Name */
+            institution_name: string;
+            /** System Name */
+            system_name: string;
+            /** Primary Color */
+            primary_color: string;
+            /** Logo Updated At */
+            logo_updated_at: string | null;
         };
         /** CallNextIn */
         CallNextIn: {
@@ -2428,6 +2527,14 @@ export interface components {
             /** Description */
             description: string;
         };
+        /** PriorityIn */
+        PriorityIn: {
+            /**
+             * Reason Id
+             * @description Categoría de prioridad; null = quitar la prioridad.
+             */
+            reason_id: number | null;
+        };
         /** PublicTicketStatusOut */
         PublicTicketStatusOut: {
             /** Ticket Code */
@@ -2529,6 +2636,11 @@ export interface components {
             /** Incidents */
             incidents: components["schemas"]["IncidentOut"][];
             pause?: components["schemas"]["PauseInfoOut"] | null;
+            /**
+             * Priority Enabled
+             * @default false
+             */
+            priority_enabled: boolean;
         };
         /** RatingBucketOut */
         RatingBucketOut: {
@@ -2625,7 +2737,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "CANCEL" | "VOID" | "NO_SHOW" | "REQUEUE";
+            type: "CANCEL" | "VOID" | "NO_SHOW" | "REQUEUE" | "PRIORITY";
             /** Code */
             code: string;
             /** Label */
@@ -4662,6 +4774,41 @@ export interface operations {
             };
         };
     };
+    set_priority_api_v1_appointments__public_id__priority_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriorityIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     call_next_api_v1_sites__site_id__queue_call_next_post: {
         parameters: {
             query?: never;
@@ -6455,6 +6602,97 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    get_branding_api_v1_public_branding_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandingOut"];
+                };
+            };
+        };
+    };
+    get_logo_api_v1_public_branding_logo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    upload_logo_api_v1_admin_branding_logo_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_logo_api_v1_admin_branding_logo_put"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_logo_api_v1_admin_branding_logo_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

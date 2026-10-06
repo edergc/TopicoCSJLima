@@ -17,6 +17,7 @@ from app.core.config import Settings
 from app.core.logging import get_logger
 from app.modules.admin.parameters import get_int, get_str
 from app.modules.appointments.models import Appointment
+from app.modules.branding import service as branding
 from app.modules.notifications.models import Notification, NotificationTemplate
 from app.modules.notifications.templating import render
 
@@ -94,6 +95,8 @@ def enqueue(
         subject = render(template.subject, context)[:200]
         body_text = render(template.body_text, context)
         body_html = render(template.body_html, context) if template.body_html else None
+        if body_html is None and body_text:
+            body_html = branding.email_html(body_text, branding.get_branding(db))
     except Exception as exc:  # una plantilla defectuosa no debe impedir la operación
         log.error("notification_render_failed", template=template_code, error=str(exc))
         subject, body_text, body_html = template.subject, None, None
@@ -141,6 +144,8 @@ def enqueue_direct(
         subject = render(template.subject, context)[:200]
         body_text = render(template.body_text, context)
         body_html = render(template.body_html, context) if template.body_html else None
+        if body_html is None and body_text:
+            body_html = branding.email_html(body_text, branding.get_branding(db))
     except Exception as exc:
         log.error("notification_render_failed", template=template_code, error=str(exc))
         return False

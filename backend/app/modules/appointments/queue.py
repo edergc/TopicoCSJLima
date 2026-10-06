@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.clock import Clock
+from app.modules.appointments import priority
 from app.modules.appointments.models import Appointment, ServiceDay
 from app.modules.appointments.scheduling import estimate_start_times
 from app.modules.appointments.state_machine import Status
@@ -90,6 +91,14 @@ def build_snapshot(db: Session, site: Site, day: date, clock: Clock) -> QueueSna
             case _:
                 snap.closed.append(item)
     snap.called.sort(key=lambda i: i.appointment.called_at or i.appointment.registered_at)
+    if service_day is not None and priority.enabled(db):
+        limit = priority.max_consecutive(db)
+        snap.waiting = priority.call_order(
+            snap.waiting,
+            lambda i: i.appointment.priority_reason_id is not None,
+            priority.current_streak(db, service_day.id, limit),
+            limit,
+        )
 
     now = clock.now()
     if day == clock.today():

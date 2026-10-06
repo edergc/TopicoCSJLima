@@ -97,10 +97,10 @@ export function DoctorsTab({ siteId }: { siteId: number }) {
                   {d.full_name} {!d.is_active && <Badge>Inactivo</Badge>}
                   <DoctorTodayBadge doctor={d} />
                 </p>
-                <p className="text-[13px] text-ink-soft">
+                <p className="text-[0.8125rem] text-ink-soft">
                   {[d.specialty, d.cmp && `CMP ${d.cmp}`, d.document_number && `DNI ${d.document_number}`, d.phone].filter(Boolean).join(" · ") || "—"}
                 </p>
-                <p className="text-[13px] text-ink-muted">
+                <p className="text-[0.8125rem] text-ink-muted">
                   <CalendarClock className="mr-1 inline size-3.5" aria-hidden />
                   {scheduleSummary(d.schedule)}
                   {d.upcoming_absences.length > 0 && ` · ${d.upcoming_absences.length} ausencia(s) programada(s)`}

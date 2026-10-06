@@ -300,7 +300,7 @@ export default function WorkersPage() {
               { value: "all", label: "Todos" },
             ]}
           />
-          {data && <p className="tabular ml-auto text-[13px] text-ink-soft">{data.total.toLocaleString("es-PE")} trabajadores</p>}
+          {data && <p className="tabular ml-auto text-[0.8125rem] text-ink-soft">{data.total.toLocaleString("es-PE")} trabajadores</p>}
         </div>
         <DataTable
           columns={columns}

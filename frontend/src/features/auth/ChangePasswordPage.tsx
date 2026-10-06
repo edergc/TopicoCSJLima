@@ -86,7 +86,7 @@ export default function ChangePasswordPage() {
           <Field label="Nueva contraseña" error={errors.new_password?.message}>
             <Input type="password" autoComplete="new-password" {...register("new_password")} />
           </Field>
-          <ul className="grid gap-1.5 text-[13px]" aria-label="Requisitos de la contraseña">
+          <ul className="grid gap-1.5 text-[0.8125rem]" aria-label="Requisitos de la contraseña">
             {rules.map((rule) => (
               <li key={rule.text} className={cn("flex items-center gap-2", rule.ok ? "text-success" : "text-ink-soft")}>
                 {rule.ok ? <Check className="size-3.5" aria-hidden /> : <X className="size-3.5" aria-hidden />}

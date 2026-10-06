@@ -3,6 +3,7 @@ import { BellRing, CheckCircle2, Clock3, Coffee, Info, MapPin, Maximize, Minimiz
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import { useBranding } from "@/shared/branding/branding";
 import { BrandMark } from "@/app/layout/BrandMark";
 import { ApiError, api } from "@/shared/api/client";
 import type { DisplayBoard, DisplayTicket } from "@/shared/api/types";
@@ -173,6 +174,7 @@ function useWakeLock(enabled: boolean) {
 }
 
 export default function DisplayPage() {
+  const branding = useBranding();
   const { siteCode = "" } = useParams();
   const { data, error, isError, dataUpdatedAt } = useBoard(siteCode);
   const [started, setStarted] = useState(false);
@@ -234,7 +236,7 @@ export default function DisplayPage() {
         <BrandMark className="size-[clamp(2.5rem,4.2vw,4.5rem)] rounded-2xl [&_svg]:size-1/2" />
         <div className="min-w-0 flex-1 leading-tight">
           <p className="text-[clamp(0.7rem,0.95vw,1.05rem)] font-semibold tracking-[0.22em] text-brand-200 uppercase">
-            Tópico de Salud · Corte Superior de Justicia de Lima
+            Tópico de Salud · {branding.institution_name}
           </p>
           <p className="truncate text-[clamp(1.1rem,2vw,2.3rem)] font-semibold">{data?.site.name ?? "Cargando…"}</p>
         </div>
@@ -407,7 +409,7 @@ function Shell({ children, className }: { children: React.ReactNode; className?:
   return (
     <div
       className={cn(
-        "flex h-dvh flex-col overflow-hidden bg-[radial-gradient(ellipse_at_top_left,#7a1e2c_0%,#45111a_42%,#1c080c_100%)] text-white antialiased select-none",
+        "flex h-dvh flex-col overflow-hidden bg-[radial-gradient(ellipse_at_top_left,var(--color-brand-700)_0%,var(--color-brand-900)_42%,color-mix(in_oklab,var(--color-brand-900)_45%,black)_100%)] text-white antialiased select-none",
         className,
       )}
     >

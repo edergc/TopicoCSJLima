@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 
+import { AccessibilityMenu } from "@/shared/a11y/AccessibilityMenu";
+import { useBranding } from "@/shared/branding/branding";
 import { FullScreenLoader } from "@/app/guards";
 import { BrandMark } from "@/app/layout/BrandMark";
 import { homeFor } from "@/app/navigation";
@@ -26,6 +28,7 @@ const HIGHLIGHTS = [
 ];
 
 export default function LoginPage() {
+  const branding = useBranding();
   useDocumentTitle("Iniciar sesión");
   const { status, user, login, can } = useAuth();
   const navigate = useNavigate();
@@ -57,7 +60,7 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
       <section className="relative hidden overflow-hidden bg-brand-900 p-12 text-white lg:flex lg:flex-col">
-        <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_10%_10%,#93263a_0%,transparent_60%),radial-gradient(60%_50%_at_90%_100%,#611824_0%,transparent_70%)]" aria-hidden />
+        <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_10%_10%,var(--color-brand-600)_0%,transparent_60%),radial-gradient(60%_50%_at_90%_100%,var(--color-brand-800)_0%,transparent_70%)]" aria-hidden />
         <div
           className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:44px_44px]"
           aria-hidden
@@ -65,8 +68,8 @@ export default function LoginPage() {
         <div className="relative flex items-center gap-3">
           <BrandMark />
           <div className="leading-tight">
-            <p className="text-xs font-medium tracking-[0.12em] text-white/60 uppercase">Poder Judicial del Perú</p>
-            <p className="font-semibold">Corte Superior de Justicia de Lima</p>
+            <p className="text-xs font-medium tracking-[0.12em] text-white/60 uppercase">{branding.org_name}</p>
+            <p className="font-semibold">{branding.institution_name}</p>
           </div>
         </div>
         <div className="relative mt-auto max-w-lg">
@@ -97,10 +100,13 @@ export default function LoginPage() {
             <BrandMark tone="dark" />
             <div className="leading-tight">
               <p className="font-semibold">Tópico de Salud</p>
-              <p className="text-xs text-ink-soft">Corte Superior de Justicia de Lima</p>
+              <p className="text-xs text-ink-soft">{branding.institution_name}</p>
             </div>
           </div>
-          <h2 className="text-2xl font-semibold tracking-tight">Iniciar sesión</h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-2xl font-semibold tracking-tight">Iniciar sesión</h2>
+            <AccessibilityMenu />
+          </div>
           <p className="mt-1 text-sm text-ink-muted">Ingrese con el usuario asignado por la administración.</p>
 
           <form onSubmit={onSubmit} noValidate className="mt-8 space-y-5">

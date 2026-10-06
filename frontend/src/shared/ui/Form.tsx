@@ -89,7 +89,7 @@ export function Field({ label, error, hint, required, className, children }: Fie
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label htmlFor={id} className="text-[13px] font-medium text-ink">
+      <label htmlFor={id} className="text-[0.8125rem] font-medium text-ink">
         {label}
         {required && (
           <span className="ml-0.5 text-brand-700" aria-hidden>
@@ -99,12 +99,12 @@ export function Field({ label, error, hint, required, className, children }: Fie
       </label>
       {cloneElement(children, { id, "aria-invalid": Boolean(error) || undefined, "aria-describedby": describedBy })}
       {error ? (
-        <p id={`${id}-error`} className="flex items-center gap-1 text-[13px] text-danger" role="alert">
+        <p id={`${id}-error`} className="flex items-center gap-1 text-[0.8125rem] text-danger" role="alert">
           <AlertCircle className="size-3.5 shrink-0" aria-hidden />
           {error}
         </p>
       ) : hint ? (
-        <p id={`${id}-hint`} className="text-[13px] text-ink-soft">
+        <p id={`${id}-hint`} className="text-[0.8125rem] text-ink-soft">
           {hint}
         </p>
       ) : null}
@@ -165,7 +165,7 @@ export function Toggle({ checked, onChange, label, description, disabled }: Togg
         <label htmlFor={id} className="text-sm font-medium text-ink">
           {label}
         </label>
-        {description && <p className="text-[13px] text-ink-soft">{description}</p>}
+        {description && <p className="text-[0.8125rem] text-ink-soft">{description}</p>}
       </div>
       <button
         id={id}

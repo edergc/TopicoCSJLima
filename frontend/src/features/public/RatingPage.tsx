@@ -2,6 +2,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ShieldCheck, Star } from "lucide-react";
 import { useState } from "react";
 
+import { AccessibilityMenu } from "@/shared/a11y/AccessibilityMenu";
+import { useBranding } from "@/shared/branding/branding";
 import { BrandMark } from "@/app/layout/BrandMark";
 import { ApiError, api } from "@/shared/api/client";
 import type { RatingLookup } from "@/shared/api/types";
@@ -20,6 +22,7 @@ function readToken(): string {
 
 /** Calificación anónima de la atención (enlace recibido por correo). Solo trato y espera: nada de salud. */
 export default function RatingPage() {
+  const branding = useBranding();
   useDocumentTitle("Califique su atención");
   const [token] = useState(readToken);
   const [score, setScore] = useState(0);
@@ -47,8 +50,9 @@ export default function RatingPage() {
           <BrandMark />
           <div className="leading-tight">
             <p className="font-semibold">Tópico de Salud</p>
-            <p className="text-xs text-white/65">Corte Superior de Justicia de Lima</p>
+            <p className="text-xs text-white/65">{branding.institution_name}</p>
           </div>
+          <AccessibilityMenu tone="dark" className="ml-auto" />
         </div>
       </header>
       <main className="mx-auto -mt-10 max-w-md space-y-4 px-4 pb-10">
@@ -107,7 +111,7 @@ export default function RatingPage() {
 function Stars({ label, value, onChange, optional }: { label: string; value: number; onChange: (v: number) => void; optional?: boolean }) {
   return (
     <fieldset>
-      <legend className="mb-2 text-[13px] font-medium text-ink">
+      <legend className="mb-2 text-[0.8125rem] font-medium text-ink">
         {label}
         {optional && <span className="font-normal text-ink-soft"> (opcional)</span>}
       </legend>

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, MonitorPlay } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { useBranding } from "@/shared/branding/branding";
 import { BrandMark } from "@/app/layout/BrandMark";
 import { ApiError, api } from "@/shared/api/client";
 import type { DisplaySite } from "@/shared/api/types";
@@ -10,6 +11,7 @@ import { Callout, Skeleton } from "@/shared/ui";
 
 /** Elección de la sede cuya pantalla de turnos se mostrará en la TV de la sala de espera. */
 export default function DisplaySelectPage() {
+  const branding = useBranding();
   useDocumentTitle("Pantalla de turnos");
   const { data, error, isLoading } = useQuery({
     queryKey: ["display-sites"],
@@ -24,7 +26,7 @@ export default function DisplaySelectPage() {
           <BrandMark />
           <div className="leading-tight">
             <p className="font-semibold">Pantalla de turnos</p>
-            <p className="text-xs text-white/65">Tópico de Salud · Corte Superior de Justicia de Lima</p>
+            <p className="text-xs text-white/65">Tópico de Salud · {branding.institution_name}</p>
           </div>
         </div>
       </header>

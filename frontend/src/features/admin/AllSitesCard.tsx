@@ -136,7 +136,7 @@ export function AllSitesCard() {
                 <p className="font-semibold text-ink">
                   {s.name} {!s.is_active && <Badge className="ml-1">Inactiva</Badge>}
                 </p>
-                <p className="text-[13px] text-ink-soft">
+                <p className="text-[0.8125rem] text-ink-soft">
                   Código {s.code}
                   {s.address ? ` · ${s.address}` : ""}
                 </p>
@@ -146,7 +146,7 @@ export function AllSitesCard() {
                   href={`/pantalla/${s.code.toLowerCase()}`}
                   target="_blank"
                   rel="noopener"
-                  className="inline-flex items-center gap-1.5 text-[13px] font-medium text-brand-700 hover:underline"
+                  className="inline-flex items-center gap-1.5 text-[0.8125rem] font-medium text-brand-700 hover:underline"
                 >
                   <MonitorPlay className="size-4" aria-hidden /> Pantalla
                 </a>
@@ -216,7 +216,7 @@ export function AllSitesCard() {
             </section>
 
             <section className="space-y-4 border-t border-line pt-5">
-              <p className="text-[13px] font-medium text-ink">Días de atención</p>
+              <p className="text-[0.8125rem] font-medium text-ink">Días de atención</p>
               <div className="flex flex-wrap gap-2" role="group" aria-label="Días de atención">
                 {DAYS.map((d, i) => (
                   <button

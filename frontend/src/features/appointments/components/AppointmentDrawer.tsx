@@ -21,6 +21,7 @@ const EVENT_LABEL: Record<string, string> = {
   VOID: "Anulado",
   MIGRATE: "Migrado del histórico",
   CLOSE_DAY: "No atendido al cierre de la jornada",
+  PRIORITY: "Cambio de prioridad",
 };
 
 const NOTIFICATION_LABEL: Record<string, string> = {
@@ -96,6 +97,7 @@ export function AppointmentDrawer({ appointmentId, onClose }: { appointmentId: s
                 ["Canal", CHANNEL_LABEL[appointment.channel] ?? appointment.channel],
                 ["Registrado", fmt.dateTime(appointment.registered_at)],
                 ["Llamados", appointment.call_count],
+                ...(appointment.priority_label ? ([["Atención prioritaria", appointment.priority_label]] as [string, string][]) : []),
                 ...(appointment.room_name ? ([["Consultorio", appointment.room_name]] as [string, string][]) : []),
                 ...(appointment.doctor_name ? ([["Médico", appointment.doctor_name]] as [string, string][]) : []),
                 ...(appointment.close_reason
@@ -119,11 +121,11 @@ export function AppointmentDrawer({ appointmentId, onClose }: { appointmentId: s
                     <li key={index} className="relative">
                       <span className={cn("absolute top-1.5 -left-[25px] size-2.5 rounded-full ring-4 ring-panel", style.dot)} aria-hidden />
                       <p className="text-sm font-medium text-ink">{EVENT_LABEL[event.action] ?? event.action}</p>
-                      <p className="text-[13px] text-ink-soft">
+                      <p className="text-[0.8125rem] text-ink-soft">
                         <span className="tabular">{fmt.dateTime(event.occurred_at)}</span> · {event.user_name}
                       </p>
                       {(event.reason_label || event.note) && (
-                        <p className="mt-1 text-[13px] text-ink-muted">
+                        <p className="mt-1 text-[0.8125rem] text-ink-muted">
                           {event.reason_label}
                           {event.reason_label && event.note && " — "}
                           {event.note}

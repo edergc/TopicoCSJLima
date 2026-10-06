@@ -17,7 +17,7 @@ export function BarList({
   return (
     <ul className="space-y-2.5" aria-label={ariaLabel}>
       {items.map((item) => (
-        <li key={item.label} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 text-[13px]">
+        <li key={item.label} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 text-[0.8125rem]">
           <span className="truncate text-ink-muted" title={item.label}>
             {item.label}
           </span>

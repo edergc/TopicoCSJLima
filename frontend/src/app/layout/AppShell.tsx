@@ -13,6 +13,9 @@ import { useNow } from "@/shared/lib/hooks";
 import { syncServerTime } from "@/shared/lib/serverTime";
 import { IconButton, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, Segmented, Select } from "@/shared/ui";
 
+import { AccessibilityMenu } from "@/shared/a11y/AccessibilityMenu";
+import { useBranding } from "@/shared/branding/branding";
+
 import { BrandMark } from "./BrandMark";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -24,13 +27,14 @@ const ROLE_LABEL: Record<string, string> = {
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { can } = useAuth();
+  const branding = useBranding();
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 px-5 pt-5 pb-6">
         <BrandMark />
         <div className="min-w-0 leading-tight">
-          <p className="text-[15px] font-semibold tracking-tight text-white">Tópico de Salud</p>
-          <p className="text-xs text-white/60">Corte Superior de Justicia de Lima</p>
+          <p className="text-[0.9375rem] font-semibold tracking-tight text-white">Tópico de Salud</p>
+          <p className="text-xs text-white/60">{branding.institution_name}</p>
         </div>
       </div>
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-6" aria-label="Navegación principal">
@@ -39,7 +43,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           if (items.length === 0) return null;
           return (
             <div key={group.label}>
-              <p className="px-3 pb-2 text-[11px] font-semibold tracking-[0.1em] text-white/40 uppercase">{group.label}</p>
+              <p className="px-3 pb-2 text-[0.6875rem] font-semibold tracking-[0.1em] text-white/40 uppercase">{group.label}</p>
               <ul className="space-y-0.5">
                 {items.map((item) => (
                   <li key={item.to}>
@@ -63,7 +67,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           );
         })}
       </nav>
-      <p className="px-5 pb-4 text-[11px] text-white/35">Poder Judicial del Perú · v0.1</p>
+      <p className="px-5 pb-4 text-[0.6875rem] text-white/35">{branding.org_name} · v0.1</p>
     </div>
   );
 }
@@ -73,7 +77,7 @@ function SiteSwitcher() {
   if (!site) return <span className="text-sm text-danger">Sin sede asignada</span>;
   if (sites.length === 1) {
     return (
-      <span className="inline-flex h-8 items-center rounded-lg bg-sunken px-3 text-[13px] font-medium text-ink">
+      <span className="inline-flex h-8 items-center rounded-lg bg-sunken px-3 text-[0.8125rem] font-medium text-ink">
         {site.name}
       </span>
     );
@@ -132,7 +136,7 @@ function UserMenu() {
       <MenuTrigger className="flex items-center gap-2.5 rounded-xl py-1 pr-2 pl-1 hover:bg-sunken" aria-label="Menú de usuario">
         <span className="grid size-8 place-items-center rounded-lg bg-brand-700 text-xs font-semibold text-white">{initials}</span>
         <span className="hidden text-left leading-tight md:block">
-          <span className="block max-w-40 truncate text-[13px] font-semibold text-ink">{user.full_name}</span>
+          <span className="block max-w-40 truncate text-[0.8125rem] font-semibold text-ink">{user.full_name}</span>
           <span className="block text-xs text-ink-soft">{ROLE_LABEL[user.roles[0] ?? ""] ?? user.roles[0]}</span>
         </span>
         <ChevronDown className="size-4 text-ink-soft" aria-hidden />
@@ -158,7 +162,7 @@ export function AppShell() {
       <a href="#contenido" className="sr-only z-50 rounded bg-panel px-3 py-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2">
         Saltar al contenido
       </a>
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 bg-brand-900 bg-[radial-gradient(120%_60%_at_0%_0%,#7a1e2c_0%,transparent_60%)] lg:block">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 bg-brand-900 bg-[radial-gradient(120%_60%_at_0%_0%,var(--color-brand-700)_0%,transparent_60%)] lg:block">
         <Sidebar />
       </aside>
 
@@ -182,6 +186,7 @@ export function AppShell() {
           <div className="ml-auto flex items-center gap-4">
             <Clock />
             <div className="hidden h-8 w-px bg-line sm:block" />
+            <AccessibilityMenu />
             <UserMenu />
           </div>
         </header>

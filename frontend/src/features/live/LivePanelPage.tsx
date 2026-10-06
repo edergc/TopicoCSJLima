@@ -75,7 +75,7 @@ function SiteCard({ site }: { site: LiveSite }) {
       <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-lg font-semibold tracking-tight">{site.site_name}</h2>
-          <p className="text-[13px] text-ink-soft">
+          <p className="text-[0.8125rem] text-ink-soft">
             {closed ? "Jornada cerrada" : site.day_status ? "Jornada abierta" : "Sin turnos registrados hoy"}
             {site.next_ticket_code && ` · siguiente: ${site.next_ticket_code}`}
           </p>
@@ -92,7 +92,7 @@ function SiteCard({ site }: { site: LiveSite }) {
             Cerrado
           </Badge>
         )}
-        <button type="button" onClick={openDesk} className="text-[13px] font-medium text-brand-700 hover:underline">
+        <button type="button" onClick={openDesk} className="text-[0.8125rem] font-medium text-brand-700 hover:underline">
           Ir a la mesa
         </button>
       </div>
@@ -122,7 +122,7 @@ function SiteCard({ site }: { site: LiveSite }) {
           </p>
         </div>
         <div>
-          <p className="mb-1.5 text-[13px] font-medium text-ink-muted">En atención</p>
+          <p className="mb-1.5 text-[0.8125rem] font-medium text-ink-muted">En atención</p>
           {site.in_service.length === 0 ? (
             <p className="text-sm text-ink-soft">Nadie en atención.</p>
           ) : (
@@ -143,7 +143,7 @@ function SiteCard({ site }: { site: LiveSite }) {
       {site.incidents.length > 0 && (
         <ul className="space-y-1 border-t border-line bg-status-waiting-bg/50 px-5 py-3">
           {site.incidents.map((i) => (
-            <li key={`${i.code}-${i.message}`} className="flex items-start gap-2 text-[13px] text-status-waiting">
+            <li key={`${i.code}-${i.message}`} className="flex items-start gap-2 text-[0.8125rem] text-status-waiting">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden /> {i.message}
             </li>
           ))}

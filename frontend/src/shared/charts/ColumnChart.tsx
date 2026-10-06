@@ -77,7 +77,7 @@ export function ColumnChart({ data, series, height = 240, referenceLabel, ariaLa
   return (
     <div ref={containerRef} className="relative">
       {series.length > 1 && (
-        <ul className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-ink-muted" aria-label="Leyenda">
+        <ul className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[0.8125rem] text-ink-muted" aria-label="Leyenda">
           {series.map((s) => (
             <li key={s.key} className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-sm" style={{ background: s.color }} aria-hidden />
@@ -96,7 +96,7 @@ export function ColumnChart({ data, series, height = 240, referenceLabel, ariaLa
         {ticks.map((t) => (
           <g key={t}>
             <line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} stroke="var(--color-line)" strokeWidth={1} />
-            <text x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-ink-soft text-[11px] tabular">
+            <text x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-ink-soft text-[0.6875rem] tabular">
               {t.toLocaleString("es-PE")}
             </text>
           </g>
@@ -126,7 +126,7 @@ export function ColumnChart({ data, series, height = 240, referenceLabel, ariaLa
                 <line x1={x - 4} x2={x + barW + 4} y1={y(d.reference)} y2={y(d.reference)} stroke="var(--color-ink)" strokeWidth={2} strokeLinecap="round" />
               )}
               {i % labelEvery === 0 && (
-                <text x={cx} y={height - 8} textAnchor="middle" className="fill-ink-soft text-[11px] tabular">
+                <text x={cx} y={height - 8} textAnchor="middle" className="fill-ink-soft text-[0.6875rem] tabular">
                   {d.label}
                 </text>
               )}
@@ -150,7 +150,7 @@ export function ColumnChart({ data, series, height = 240, referenceLabel, ariaLa
       {hovered && hover !== null && (
         <div
           role="tooltip"
-          className="pointer-events-none absolute z-10 min-w-40 rounded-lg border border-line bg-panel px-3 py-2 text-[13px] shadow-[var(--shadow-raised)]"
+          className="pointer-events-none absolute z-10 min-w-40 rounded-lg border border-line bg-panel px-3 py-2 text-[0.8125rem] shadow-[var(--shadow-raised)]"
           style={{
             left: Math.min(Math.max(PAD.left + band * hover + band / 2 - 80, 0), width - 170),
             top: 0,

@@ -103,7 +103,7 @@ export function Pagination({
   const from = total === 0 ? 0 : (page - 1) * size + 1;
   const to = Math.min(page * size, total);
   return (
-    <nav className="flex items-center justify-between gap-3 border-t border-line px-4 py-3 text-[13px] text-ink-soft" aria-label="Paginación">
+    <nav className="flex items-center justify-between gap-3 border-t border-line px-4 py-3 text-[0.8125rem] text-ink-soft" aria-label="Paginación">
       <p className="tabular">
         {from}–{to} de {total.toLocaleString("es-PE")}
       </p>

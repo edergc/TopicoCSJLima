@@ -64,7 +64,7 @@ export function DayControls({ siteId, queue }: { siteId: number; queue: Queue })
             Cerrar día
           </Button>
         )}
-        {queue.day_status === "CLOSED" && <span className="text-[13px] font-medium text-ink-soft">Jornada cerrada</span>}
+        {queue.day_status === "CLOSED" && <span className="text-[0.8125rem] font-medium text-ink-soft">Jornada cerrada</span>}
       </div>
       {pausing && <PauseDialog siteId={siteId} onClose={() => setPausing(false)} onDone={refresh} />}
       {closing && <CloseDayDialog siteId={siteId} queue={queue} onClose={() => setClosing(false)} onDone={refresh} />}

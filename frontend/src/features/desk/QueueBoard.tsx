@@ -9,8 +9,7 @@ import {
   Undo2,
   UserX,
   Users,
-  XCircle,
-} from "lucide-react";
+  XCircle, HeartHandshake } from "lucide-react";
 import { useState } from "react";
 
 import type { Appointment, AppointmentAction, Queue } from "@/shared/api/types";
@@ -19,6 +18,7 @@ import { countdown, fmt, formatDuration, minutesSince } from "@/shared/lib/forma
 import { useNow } from "@/shared/lib/hooks";
 import { ACTION_LABEL } from "@/shared/lib/status";
 import { Badge, Button, Card, EmptyState, IconButton, Kbd, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, StatusBadge } from "@/shared/ui";
+import { PriorityBadge } from "./PriorityDialog";
 
 type Act = (appointment: Appointment, action: AppointmentAction) => void;
 
@@ -30,6 +30,8 @@ interface Props {
   callingNext: boolean;
   canOperate: boolean;
   pendingId: string | null;
+  /** Abre el diálogo de prioridad (solo si la prioridad está habilitada). */
+  onPriority?: (appointment: Appointment) => void;
 }
 
 function InServiceCard({ appointment, onAction, onOpen, busy }: { appointment: Appointment; onAction: Act; onOpen: Props["onOpen"]; busy: boolean }) {
@@ -46,7 +48,7 @@ function InServiceCard({ appointment, onAction, onOpen, busy }: { appointment: A
           <StatusBadge status="EN_ATENCION" size="sm" />
         </p>
         <p className="truncate text-sm font-medium text-ink">{appointment.worker.display_name}</p>
-        <p className="text-[13px] text-ink-muted">
+        <p className="text-[0.8125rem] text-ink-muted">
           Desde las {fmt.time(appointment.started_at)} · {formatDuration(elapsed)}
           {appointment.doctor_name && <> · {appointment.doctor_name}</>}
         </p>
@@ -76,7 +78,7 @@ function CalledCard({ appointment, onAction, onOpen, busy }: { appointment: Appo
           {appointment.call_count > 1 && <Badge tone="info">{appointment.call_count}° llamado</Badge>}
         </p>
         <p className="truncate text-sm font-medium text-ink">{appointment.worker.display_name}</p>
-        <p className={cn("tabular text-[13px]", remaining ? "text-ink-muted" : "font-medium text-status-noshow")}>
+        <p className={cn("tabular text-[0.8125rem]", remaining ? "text-ink-muted" : "font-medium text-status-noshow")}>
           Llamado a las {fmt.time(appointment.called_at)}
           {appointment.room_name && <> · {appointment.room_name}</>} ·{" "}
           {remaining ? `tolerancia ${remaining}` : "tolerancia vencida"}
@@ -123,7 +125,19 @@ function CalledCard({ appointment, onAction, onOpen, busy }: { appointment: Appo
   );
 }
 
-function WaitingRow({ appointment, index, onAction, onOpen }: { appointment: Appointment; index: number; onAction: Act; onOpen: Props["onOpen"] }) {
+function WaitingRow({
+  appointment,
+  index,
+  onAction,
+  onOpen,
+  onPriority,
+}: {
+  appointment: Appointment;
+  index: number;
+  onAction: Act;
+  onOpen: Props["onOpen"];
+  onPriority?: Props["onPriority"];
+}) {
   const can = (a: AppointmentAction) => appointment.allowed_actions.includes(a);
   return (
     <li
@@ -140,12 +154,13 @@ function WaitingRow({ appointment, index, onAction, onOpen }: { appointment: App
           {!appointment.worker.has_email && " · sin correo"}
         </p>
       </button>
-      <div className="hidden w-24 shrink-0 text-right sm:block">
+      <div className="hidden min-w-24 shrink-0 text-right whitespace-nowrap sm:block">
         <p className="tabular text-xs text-ink-soft">Registro {fmt.time(appointment.registered_at)}</p>
         <p className="tabular text-sm font-medium text-ink">
           {appointment.estimated_at ? `~ ${fmt.time(appointment.estimated_at)}` : "Fuera de horario"}
         </p>
       </div>
+      <PriorityBadge appointment={appointment} />
       {index === 0 ? <Badge tone="warning">Siguiente</Badge> : <StatusBadge status={appointment.status} size="sm" className="hidden md:inline-flex" />}
       <Menu>
         <MenuTrigger asChild>
@@ -160,6 +175,11 @@ function WaitingRow({ appointment, index, onAction, onOpen }: { appointment: App
           <MenuItem onSelect={() => onOpen(appointment)}>
             <Clock3 className="size-4" /> Ver detalle
           </MenuItem>
+          {onPriority && (
+            <MenuItem onSelect={() => onPriority(appointment)}>
+              <HeartHandshake className="size-4" /> {appointment.priority_label ? "Cambiar o quitar prioridad" : "Marcar como prioritaria"}
+            </MenuItem>
+          )}
           {(can("CANCEL") || can("VOID")) && <MenuSeparator />}
           {can("CANCEL") && (
             <MenuItem danger onSelect={() => onAction(appointment, "CANCEL")}>
@@ -177,7 +197,7 @@ function WaitingRow({ appointment, index, onAction, onOpen }: { appointment: App
   );
 }
 
-export function QueueBoard({ queue, onAction, onOpen, onCallNext, callingNext, canOperate, pendingId }: Props) {
+export function QueueBoard({ queue, onAction, onOpen, onCallNext, callingNext, canOperate, pendingId, onPriority }: Props) {
   const [showClosed, setShowClosed] = useState(false);
   const finished = [...queue.finished, ...queue.closed].sort((a, b) => b.ticket_number - a.ticket_number);
   const next = queue.waiting[0];
@@ -216,7 +236,7 @@ export function QueueBoard({ queue, onAction, onOpen, onCallNext, callingNext, c
 
       <Card>
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
+          <h2 className="flex items-center gap-2 text-[0.9375rem] font-semibold tracking-tight">
             <Users className="size-[18px] text-status-waiting" aria-hidden />
             En espera
             <span className="tabular rounded-full bg-status-waiting-bg px-2 py-0.5 text-xs font-semibold text-status-waiting">
@@ -230,7 +250,7 @@ export function QueueBoard({ queue, onAction, onOpen, onCallNext, callingNext, c
         ) : (
           <ol aria-label="Cola de espera">
             {queue.waiting.map((a, i) => (
-              <WaitingRow key={a.public_id} appointment={a} index={i} onAction={onAction} onOpen={onOpen} />
+              <WaitingRow onPriority={queue.priority_enabled ? onPriority : undefined} key={a.public_id} appointment={a} index={i} onAction={onAction} onOpen={onOpen} />
             ))}
           </ol>
         )}

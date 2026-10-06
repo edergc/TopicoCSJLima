@@ -33,6 +33,8 @@ def _routers() -> list[APIRouter]:
     from app.modules.appointments.router import router as appointments_router
     from app.modules.audit.router import router as audit_router
     from app.modules.auth.router import router as auth_router
+    from app.modules.branding.router import admin_router as branding_admin
+    from app.modules.branding.router import public_router as branding_public
     from app.modules.imports.router import router as imports_router
     from app.modules.notifications.router import router as notifications_router
     from app.modules.operations.router import router as operations_router
@@ -58,6 +60,8 @@ def _routers() -> list[APIRouter]:
         users_router,
         admin_router,
         public_router,
+        branding_public,
+        branding_admin,
     ]
 
 

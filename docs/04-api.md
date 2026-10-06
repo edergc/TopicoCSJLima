@@ -82,6 +82,8 @@ Todas las transiciones aceptan `{version}` para el control de concurrencia optim
 | POST / DELETE | `/sites/{id}/doctors/{doctor_id}/absences[/{absence_id}]` | ausencias del médico (`site:configure`) |
 | POST | `/sites/{id}/pause` · `/sites/{id}/resume` | pausar / reanudar la atención (`appointment:operate`); llamar a alguien reanuda automáticamente |
 | POST | `/sites/{id}/service-days/{fecha}/close` | cerrar el día: pendientes → no presentado, día cerrado, resumen PDF por correo a supervisión (`service_day:close`) |
+| POST | `/appointments/{id}/priority` | asignar o retirar la prioridad `{reason_id}` (`appointment:create`; solo con `priority.enabled`). El registro acepta `priority_reason_id` |
+| PUT / DELETE | `/admin/branding/logo` | cargar (PNG/JPEG, máx. 512 KB, validado por contenido) o quitar el logo (`parameter:manage`) |
 | GET | `/dashboard/live` | panel en vivo de todas las sedes del usuario (`queue:read`) |
 | GET / POST / PATCH | `/display-messages[/{id}]` | mensajes de la pantalla de sala (lectura `site:read`; cambios `site:configure`; para todas las sedes `site:manage`) |
 | GET / POST / PATCH | `/sites/{id}/doctors[/{doctor_id}]` | médicos de la sede (lectura: `site:read`; alta y cambios: `site:configure`). Al iniciar una atención, `POST /appointments/{id}/start` acepta `doctor_id` (obligatorio si hay más de un médico activo; con uno solo se asigna automáticamente) |
@@ -122,5 +124,6 @@ Todas las transiciones aceptan `{version}` para el control de concurrencia optim
 |---|---|---|
 | GET | `/public/ticket-status?document_number=&ticket_code=` | Requiere ambos datos. Devuelve estado, posición, personas delante y hora estimada. El nombre va enmascarado y no se exponen datos de terceros. Rate limit: 20/min |
 | POST | `/public/rating/lookup` · `/public/rating` | calificación anónima con el token del correo (en el cuerpo, nunca en la URL del servidor). Rate limit 30/10 por min |
+| GET | `/public/branding` · `/public/branding/logo` | identidad visual (nombres, color, versión del logo) y el logo |
 | GET | `/public/display/sites` | Sedes activas con pantalla de turnos. Rate limit: 60/min |
 | GET | `/public/display/{site_code}` | Pantalla de la sala de espera: turnos llamados (el más reciente primero, con `call_count` para detectar re-llamados), en atención y siguientes (máx. 8) con hora estimada. Solo código de turno y nombre abreviado ("Ana R."; `null` si `display.show_names` = false). 404 `DISPLAY_DISABLED` si `display.enabled` = false. Rate limit: 120/min |

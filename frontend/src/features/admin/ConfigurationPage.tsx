@@ -1,4 +1,4 @@
-import { Eye, ListChecks, Mail, Plus, Save, SlidersHorizontal } from "lucide-react";
+import { Eye, ListChecks, Mail, Plus, Save, SlidersHorizontal, Palette } from "lucide-react";
 import { useState } from "react";
 
 import type { Parameter, ReasonAdmin, Template } from "@/shared/api/types";
@@ -29,6 +29,7 @@ import {
   type Column,
 } from "@/shared/ui";
 
+import { BrandingTab } from "./BrandingTab";
 import { useAdminReasons, useParameters, useSaveReason, useSaveTemplate, useTemplatePreview, useTemplates, useUpdateParameter } from "./api";
 
 const REASON_TYPE: Record<string, string> = {
@@ -36,6 +37,7 @@ const REASON_TYPE: Record<string, string> = {
   VOID: "Anulación",
   NO_SHOW: "No presentado",
   REQUEUE: "Devolución a la cola",
+  PRIORITY: "Prioridad (categoría)",
 };
 
 const TEMPLATE_VARIABLES = [
@@ -221,13 +223,13 @@ function TemplateEditor({ template: selected, save }: { template: Template; save
               <Input value={draft.subject} maxLength={200} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} />
             </Field>
             <Field label="Mensaje" hint="Use {{ variable }} para insertar datos. La sintaxis se valida al guardar.">
-              <Textarea value={draft.body_text} rows={16} className="font-mono text-[13px]" onChange={(e) => setDraft({ ...draft, body_text: e.target.value })} />
+              <Textarea value={draft.body_text} rows={16} className="font-mono text-[0.8125rem]" onChange={(e) => setDraft({ ...draft, body_text: e.target.value })} />
             </Field>
             <Toggle checked={draft.is_active} onChange={(v) => setDraft({ ...draft, is_active: v })} label="Plantilla activa" description="Si se desactiva, este correo deja de enviarse." />
           </div>
           <div>
             <p className="mb-2 text-xs font-semibold tracking-wide text-ink-soft uppercase">Variables</p>
-            <ul className="space-y-1.5 text-[13px]">
+            <ul className="space-y-1.5 text-[0.8125rem]">
               {TEMPLATE_VARIABLES.map(([name, label]) => (
                 <li key={name}>
                   <code className="rounded bg-sunken px-1.5 py-0.5 font-mono text-xs text-brand-800">{`{{ ${name} }}`}</code>
@@ -270,7 +272,7 @@ function ParameterRow({ param }: { param: Parameter }) {
     <div className="grid gap-3 border-b border-line px-5 py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_260px_auto] md:items-center">
       <div>
         <p className="text-sm font-medium text-ink">{param.description}</p>
-        <p className="font-mono text-[11px] text-ink-faint">{param.key}</p>
+        <p className="font-mono text-[0.6875rem] text-ink-faint">{param.key}</p>
       </div>
       {param.value_type === "bool" ? (
         <Select value={value} disabled={!param.is_editable} onChange={(e) => setValue(e.target.value)} aria-label={param.description}>
@@ -342,6 +344,11 @@ export default function ConfigurationPage() {
               <SlidersHorizontal className="size-4" /> Parámetros
             </TabsTrigger>
           )}
+          {can("parameter:manage") && (
+            <TabsTrigger value="branding">
+              <Palette className="size-4" /> Identidad visual
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="reasons">
           <ReasonsTab />
@@ -351,6 +358,9 @@ export default function ConfigurationPage() {
         </TabsContent>
         <TabsContent value="parameters">
           <ParametersTab />
+        </TabsContent>
+        <TabsContent value="branding">
+          <BrandingTab />
         </TabsContent>
       </Tabs>
     </div>

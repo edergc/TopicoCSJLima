@@ -461,7 +461,7 @@ function SiteDataTab({ site }: { site: Site }) {
           <Input value={form.location_note} onChange={(e) => setForm({ ...form, location_note: e.target.value })} />
         </Field>
         <div className="flex items-center justify-between md:col-span-2">
-          <p className="text-[13px] text-ink-soft">
+          <p className="text-[0.8125rem] text-ink-soft">
             Prefijo de turnos: <Badge tone="brand">{site.ticket_prefix}-001</Badge>
           </p>
           <Button onClick={() => save.mutate()} loading={save.isPending}>

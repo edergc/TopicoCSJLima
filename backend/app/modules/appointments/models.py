@@ -103,12 +103,16 @@ class Appointment(TimestampMixin, Base):
     close_note: Mapped[str | None] = mapped_column(String(300))
     doctor_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("doctor.id"))
     room_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("consulting_room.id"))
+    priority_reason_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("reason.id"))
+    priority_set_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    priority_set_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
     version: Mapped[int] = mapped_column(Integer)
 
     worker: Mapped[Worker] = relationship(lazy="joined", innerjoin=True)
     site: Mapped[Site] = relationship(lazy="joined", innerjoin=True)
     service_day: Mapped[ServiceDay] = relationship(lazy="joined", innerjoin=True)
-    close_reason: Mapped[Reason | None] = relationship(lazy="joined")
+    close_reason: Mapped[Reason | None] = relationship(lazy="joined", foreign_keys=[close_reason_id])
+    priority_reason: Mapped[Reason | None] = relationship(lazy="joined", foreign_keys=[priority_reason_id])
     doctor: Mapped[Doctor | None] = relationship(lazy="joined")
     room: Mapped[ConsultingRoom | None] = relationship(lazy="joined")
 

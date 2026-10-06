@@ -5,6 +5,7 @@ solo se genera con el permiso report:read_nominal (lo valida el router).
 """
 
 import io
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
@@ -20,6 +21,7 @@ from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     KeepTogether,
     Paragraph,
@@ -50,6 +52,31 @@ STATUS_LABEL = {
 }
 
 
+# Color institucional del documento en curso (configurable: branding.primary_color).
+_brand: ContextVar[colors.Color] = ContextVar("brand", default=BRAND)
+
+
+def _use_brand(meta: "ReportMeta") -> None:
+    try:
+        _brand.set(colors.HexColor(meta.brand_color))
+    except ValueError:  # pragma: no cover - el color se valida al leer el parámetro
+        _brand.set(BRAND)
+
+
+def _h2() -> ParagraphStyle:
+    return ParagraphStyle(
+        "h2", fontName="Helvetica-Bold", fontSize=11, leading=14, textColor=_brand.get(), spaceBefore=10, spaceAfter=5
+    )
+
+
+def _darker(color: colors.Color, factor: float = 0.55) -> colors.Color:
+    return colors.Color(color.red * factor, color.green * factor, color.blue * factor)
+
+
+def _xl_header_fill() -> PatternFill:
+    return PatternFill("solid", fgColor=_brand.get().hexval()[2:].upper())
+
+
 @dataclass(frozen=True)
 class ReportMeta:
     institution: str
@@ -58,6 +85,9 @@ class ReportMeta:
     site_names: list[str]
     generated_at: datetime
     generated_by: str
+    brand_color: str = "#7a1e2c"
+    org_name: str = ""
+    logo: bytes | None = None
 
     @property
     def period(self) -> str:
@@ -114,7 +144,6 @@ DAY_HEADERS = ["Fecha", "Sede", "Capacidad", "Solicitudes", "Atendidos", "No pre
 
 
 # =============================================================================== Excel
-_XL_HEADER_FILL = PatternFill("solid", fgColor="7A1E2C")
 _XL_HEADER_FONT = Font(bold=True, color="FFFFFF")
 _XL_THIN = Side(style="thin", color="E7E5E4")
 
@@ -124,7 +153,7 @@ def _xl_table(
 ) -> int:
     for col, title in enumerate(headers, 1):
         cell = ws.cell(row=row, column=col, value=title)
-        cell.fill, cell.font = _XL_HEADER_FILL, _XL_HEADER_FONT
+        cell.fill, cell.font = _xl_header_fill(), _XL_HEADER_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     for r, values in enumerate(rows, row + 1):
         for c, value in enumerate(values, 1):
@@ -153,6 +182,7 @@ def _xl_title(ws: Worksheet, title: str, meta: ReportMeta) -> int:
 
 
 def summary_xlsx(summary: dict[str, Any], meta: ReportMeta) -> bytes:
+    _use_brand(meta)
     wb = Workbook()
     ws = wb.active
     assert ws is not None
@@ -214,9 +244,6 @@ def summary_xlsx(summary: dict[str, Any], meta: ReportMeta) -> bytes:
 _STYLES = {
     "title": ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=16, leading=20, textColor=INK),
     "meta": ParagraphStyle("meta", fontName="Helvetica", fontSize=9, leading=12, textColor=MUTED),
-    "h2": ParagraphStyle(
-        "h2", fontName="Helvetica-Bold", fontSize=11, leading=14, textColor=BRAND, spaceBefore=10, spaceAfter=5
-    ),
     "cell": ParagraphStyle("cell", fontName="Helvetica", fontSize=8, leading=10, textColor=INK, alignment=TA_LEFT),
     "note": ParagraphStyle("note", fontName="Helvetica-Oblique", fontSize=8, leading=10, textColor=MUTED),
 }
@@ -226,13 +253,27 @@ def _page_decorator(meta: ReportMeta, title: str) -> Any:
     def draw(canvas: Any, doc: Any) -> None:
         width, height = doc.pagesize
         canvas.saveState()
-        canvas.setFillColor(BRAND_DARK)
+        canvas.setFillColor(_darker(_brand.get()))
         canvas.rect(0, height - 16 * mm, width, 16 * mm, stroke=0, fill=1)
+        text_x = 15 * mm
+        if meta.logo:
+            try:
+                logo = ImageReader(io.BytesIO(meta.logo))
+                iw, ih = logo.getSize()
+                h = 11 * mm
+                w = min(h * iw / ih, 40 * mm)
+                canvas.drawImage(logo, 15 * mm, height - 13.5 * mm, width=w, height=h, mask="auto")
+                text_x = 15 * mm + w + 4 * mm
+            except Exception:
+                text_x = 15 * mm
         canvas.setFillColor(colors.white)
+        if meta.org_name:
+            canvas.setFont("Helvetica", 7)
+            canvas.drawString(text_x, height - 5.5 * mm, meta.org_name.upper())
         canvas.setFont("Helvetica-Bold", 10)
-        canvas.drawString(15 * mm, height - 9 * mm, meta.institution.upper())
+        canvas.drawString(text_x, height - 9.5 * mm, meta.institution.upper())
         canvas.setFont("Helvetica", 8.5)
-        canvas.drawString(15 * mm, height - 13 * mm, f"Tópico de Salud · {title}")
+        canvas.drawString(text_x, height - 13.5 * mm, f"Tópico de Salud · {title}")
         canvas.setFillColor(MUTED)
         canvas.setFont("Helvetica", 7.5)
         canvas.drawString(15 * mm, 9 * mm, f"Generado el {meta.generated}")
@@ -266,7 +307,7 @@ def _pdf_table(
         ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 8),
         ("FONT", (0, 1), (-1, -1), "Helvetica", 8),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("BACKGROUND", (0, 0), (-1, 0), BRAND),
+        ("BACKGROUND", (0, 0), (-1, 0), _brand.get()),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BRAND_SOFT]),
         ("LINEBELOW", (0, 0), (-1, -1), 0.25, LINE),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -316,7 +357,7 @@ def _daily_chart(summary: dict[str, Any], width: float) -> Drawing | None:
     chart = VerticalBarChart()
     chart.x, chart.y, chart.width, chart.height = 28, 22, width - 40, 88
     chart.data = [[per_day[d] for d in days]]
-    chart.bars[0].fillColor = colors.HexColor("#93263A")
+    chart.bars[0].fillColor = _brand.get()
     chart.bars[0].strokeColor = None
     chart.valueAxis.valueMin = 0
     chart.valueAxis.labels.fontName = "Helvetica"
@@ -335,6 +376,7 @@ def _daily_chart(summary: dict[str, Any], width: float) -> Drawing | None:
 
 
 def summary_pdf(summary: dict[str, Any], meta: ReportMeta) -> bytes:
+    _use_brand(meta)
     out = io.BytesIO()
     title = "Reporte de atenciones"
     doc = SimpleDocTemplate(
@@ -359,10 +401,10 @@ def summary_pdf(summary: dict[str, Any], meta: ReportMeta) -> bytes:
     ]
     chart = _daily_chart(summary, width)
     if chart is not None:
-        story += [Paragraph("Atendidos por día", _STYLES["h2"]), chart]
+        story += [Paragraph("Atendidos por día", _h2()), chart]
 
     def section(name: str, table: Table) -> None:
-        story.append(KeepTogether([Paragraph(name, _STYLES["h2"]), table]))
+        story.append(KeepTogether([Paragraph(name, _h2()), table]))
 
     rating = summary.get("rating")
     if rating and rating["count"]:
@@ -385,7 +427,7 @@ def summary_pdf(summary: dict[str, Any], meta: ReportMeta) -> bytes:
         [
             [
                 [
-                    Paragraph("Por canal de registro", _STYLES["h2"]),
+                    Paragraph("Por canal de registro", _h2()),
                     _pdf_table(
                         ["Canal", "Solicitudes"],
                         [[CHANNEL_LABEL.get(d["channel"], d["channel"]), d["count"]] for d in summary["by_channel"]]
@@ -395,7 +437,7 @@ def summary_pdf(summary: dict[str, Any], meta: ReportMeta) -> bytes:
                     ),
                 ],
                 [
-                    Paragraph("Por hora de registro", _STYLES["h2"]),
+                    Paragraph("Por hora de registro", _h2()),
                     _pdf_table(
                         ["Hora", "Solicitudes"],
                         [[f"{d['hour']:02d}:00 – {d['hour']:02d}:59", d["count"]] for d in summary["by_hour"]]
@@ -420,7 +462,7 @@ def summary_pdf(summary: dict[str, Any], meta: ReportMeta) -> bytes:
                 numeric_from=1,
             ),
         )
-    story.append(Paragraph("Detalle por día y sede", _STYLES["h2"]))
+    story.append(Paragraph("Detalle por día y sede", _h2()))
     story.append(
         _pdf_table(
             DAY_HEADERS,
@@ -435,6 +477,7 @@ def summary_pdf(summary: dict[str, Any], meta: ReportMeta) -> bytes:
 
 
 def nominal_pdf(rows: list[dict[str, Any]], meta: ReportMeta) -> bytes:
+    _use_brand(meta)
     out = io.BytesIO()
     title = "Listado nominal de atenciones"
     doc = SimpleDocTemplate(

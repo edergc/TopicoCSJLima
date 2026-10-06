@@ -209,6 +209,16 @@ powershell -ExecutionPolicy Bypass -File deploy\windows\install.ps1
 
 El instalador es idempotente: actualiza las dependencias, aplica las migraciones nuevas, recompila el frontend y reinicia los servicios. Conserva `backend\.env` (incluida la configuración SMTP) y los certificados.
 
+**Actualización rápida** (sin tocar puertos, certificados ni tareas programadas):
+
+```powershell
+cd E:\PROGRAMACION\TopicoCSJLima
+git pull
+powershell -ExecutionPolicy Bypass -File deploy\windows\update.ps1
+```
+
+Hace backup, instala dependencias, aplica migraciones, compila y publica el frontend, y **reinicia por completo** la API: detiene también los procesos de uvicorn que pudieran quedar vivos de un despliegue anterior (un `Restart-Service` simple puede dejarlos atendiendo con el código viejo). Solo detiene procesos cuyo ejecutable es el entorno virtual de este proyecto. Al final verifica `/api/v1/health`.
+
 ## 5. Operación diaria
 
 | Tarea | Comando |

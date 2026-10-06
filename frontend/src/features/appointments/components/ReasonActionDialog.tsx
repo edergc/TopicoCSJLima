@@ -87,7 +87,7 @@ export function ReasonActionDialog({ appointment, action, onClose }: Props) {
           <p className="text-ink-soft">DNI {appointment.worker.document_number}</p>
         </div>
         <fieldset>
-          <legend className="mb-2 text-[13px] font-medium">
+          <legend className="mb-2 text-[0.8125rem] font-medium">
             Motivo{config.reasonRequired && <span className="text-brand-700"> *</span>}
           </legend>
           {isLoading ? (

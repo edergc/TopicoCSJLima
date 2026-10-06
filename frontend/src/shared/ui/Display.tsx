@@ -26,8 +26,8 @@ export function CardHeader({
       <div className="flex min-w-0 items-start gap-3">
         {icon && <div className="mt-0.5 text-ink-soft">{icon}</div>}
         <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold tracking-tight text-ink">{title}</h2>
-          {description && <p className="mt-0.5 text-[13px] text-ink-soft">{description}</p>}
+          <h2 className="text-[0.9375rem] font-semibold tracking-tight text-ink">{title}</h2>
+          {description && <p className="mt-0.5 text-[0.8125rem] text-ink-soft">{description}</p>}
         </div>
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
@@ -47,7 +47,7 @@ export function StatusBadge({ status, size = "md", className }: { status: string
         s.text,
         s.ring,
         size === "sm" && "px-2 py-0.5 text-xs",
-        size === "md" && "px-2.5 py-1 text-[13px]",
+        size === "md" && "px-2.5 py-1 text-[0.8125rem]",
         size === "lg" && "px-3 py-1.5 text-sm",
         status === "ANULADO" && "line-through decoration-1",
         className,
@@ -125,7 +125,7 @@ export function Callout({
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-line-strong border-b-2 bg-panel px-1 font-sans text-[11px] font-semibold text-ink-muted">
+    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-line-strong border-b-2 bg-panel px-1 font-sans text-[0.6875rem] font-semibold text-ink-muted">
       {children}
     </kbd>
   );
@@ -160,7 +160,7 @@ export function EmptyState({
         <Icon className="size-6" aria-hidden />
       </div>
       <p className="mt-3 text-sm font-semibold text-ink">{title}</p>
-      {description && <p className="mt-1 max-w-sm text-[13px] text-ink-soft">{description}</p>}
+      {description && <p className="mt-1 max-w-sm text-[0.8125rem] text-ink-soft">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
@@ -197,7 +197,7 @@ export function KpiCard({
         <Icon className="size-5" aria-hidden />
       </div>
       <div className="min-w-0">
-        <p className="line-clamp-2 text-xs leading-tight font-medium tracking-wide text-ink-soft uppercase">{label}</p>
+        <p className="line-clamp-2 text-xs leading-tight font-medium tracking-wide break-words text-ink-soft uppercase [hyphens:auto]" lang="es">{label}</p>
         <p className="tabular text-2xl leading-tight font-semibold tracking-tight text-ink">{value}</p>
         {hint && <p className="line-clamp-2 text-xs text-ink-soft">{hint}</p>}
       </div>

@@ -10,6 +10,8 @@
 @import "@fontsource-variable/inter";
 
 @theme {
+  /* Espaciado en px: al agrandar la letra (accesibilidad) el diseño no se encoge, solo crece el texto. */
+  --spacing: 4px;
   --font-sans: "Inter Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", "Consolas", monospace;
 
@@ -108,6 +110,38 @@
   ::selection {
     @apply bg-brand-100 text-brand-900;
   }
+}
+
+/*
+ * Alto contraste (preferencia de accesibilidad del equipo): textos y bordes más oscuros,
+ * enlaces subrayados y foco más visible. Relaciones de contraste ≥ 7:1 en el texto principal.
+ */
+:root[data-contrast="high"] {
+  --color-ink: #000000;
+  --color-ink-muted: #1c1917;
+  --color-ink-soft: #292524;
+  --color-ink-faint: #44403c;
+  --color-surface: #ffffff;
+  --color-sunken: #f0efed;
+  --color-line: #57534e;
+  --color-line-strong: #1c1917;
+  --color-status-registered: #1e293b;
+  --color-status-waiting: #5c3a05;
+  --color-status-called: #1e3a8a;
+  --color-status-inservice: #4c1d95;
+  --color-status-done: #064e3b;
+  --color-status-noshow: #7f1d1d;
+  --color-success: #064e3b;
+  --color-warning: #7c2d12;
+  --color-danger: #7f1d1d;
+  --color-info: #1e3a8a;
+}
+:root[data-contrast="high"] a {
+  text-decoration: underline;
+}
+:root[data-contrast="high"] :focus-visible {
+  outline-width: 3px;
+  outline-color: #000;
 }
 
 @utility tabular {

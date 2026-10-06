@@ -59,6 +59,7 @@ export type DisplayTicket = S["DisplayTicketOut"];
 /** El backend siempre completa horario, ausencias y disponibilidad del día. */
 export type Doctor = Required<S["DoctorOut"]>;
 export type Room = S["RoomOut"];
+export type Branding = S["BrandingOut"];
 export type DoctorBlock = S["DoctorBlock"];
 export type Absence = S["AbsenceOut"];
 export type LiveBoard = S["LiveBoardOut"];

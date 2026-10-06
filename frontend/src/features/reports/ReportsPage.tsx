@@ -170,7 +170,7 @@ export default function ReportsPage() {
           </Select>
         </Field>
         <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium">Periodo</span>
+          <span className="text-[0.8125rem] font-medium">Periodo</span>
           <Segmented
             label="Periodo"
             value={preset}
@@ -193,7 +193,7 @@ export default function ReportsPage() {
             </Field>
           </>
         )}
-        <p className="tabular ml-auto pb-2 text-[13px] text-ink-soft">
+        <p className="tabular ml-auto pb-2 text-[0.8125rem] text-ink-soft">
           {fmt.date(range.from)} – {fmt.date(range.to)}
         </p>
       </div>
@@ -278,7 +278,7 @@ export default function ReportsPage() {
                   />
                 )}
                 {data && data.by_channel.length > 0 && (
-                  <p className="mt-5 border-t border-line pt-4 text-[13px] text-ink-muted">
+                  <p className="mt-5 border-t border-line pt-4 text-[0.8125rem] text-ink-muted">
                     Canal:{" "}
                     {data.by_channel.map((c, i) => (
                       <span key={c.channel}>
@@ -342,7 +342,7 @@ export default function ReportsPage() {
                   items={[...data.rating.distribution].reverse().map((b) => ({ label: `${b.score} estrella${b.score > 1 ? "s" : ""}`, value: b.count }))}
                 />
                 <div>
-                  <p className="mb-2 flex items-center gap-1.5 text-[13px] font-medium text-ink-muted">
+                  <p className="mb-2 flex items-center gap-1.5 text-[0.8125rem] font-medium text-ink-muted">
                     <MessageSquareQuote className="size-4" aria-hidden /> Comentarios recientes
                   </p>
                   {data.rating.comments.length === 0 ? (

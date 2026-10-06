@@ -15,6 +15,7 @@ import { Button, Callout, Select, Skeleton } from "@/shared/ui";
 
 import { DayControls } from "./DayControls";
 import { DoctorPickerDialog } from "./DoctorPickerDialog";
+import { PriorityDialog } from "./PriorityDialog";
 import { useWorkingRoom } from "./useWorkingRoom";
 import { KpiStrip } from "./KpiStrip";
 import { QueueBoard } from "./QueueBoard";
@@ -41,6 +42,7 @@ export default function DeskPage() {
   const [dialog, setDialog] = useState<{ appointment: Appointment; action: AppointmentAction } | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [starting, setStarting] = useState<Appointment | null>(null);
+  const [priorityFor, setPriorityFor] = useState<Appointment | null>(null);
   const doctors = useDoctors(siteId);
   // Presentes hoy (activos y sin ausencia); los de turno ahora van primero.
   const presentDoctors = doctors.data?.filter((d) => d.is_active && d.present_today) ?? [];
@@ -113,7 +115,7 @@ export default function DeskPage() {
           <p className="text-xs font-semibold tracking-[0.08em] text-brand-700 uppercase">Mesa de atención</p>
           <h1 className="text-2xl font-semibold tracking-tight">{site.name}</h1>
         </div>
-        <div className="flex items-center gap-3 text-[13px] text-ink-soft">
+        <div className="flex items-center gap-3 text-[0.8125rem] text-ink-soft">
           {availability.data?.blocks.map((b) => (
             <span key={b.block} className="tabular hidden rounded-lg bg-panel px-2.5 py-1 ring-1 ring-line md:inline">
               {b.block === "AM" ? "Mañana" : "Tarde"} {b.start.slice(0, 5)}–{b.end.slice(0, 5)}
@@ -126,7 +128,7 @@ export default function DeskPage() {
                 aria-label="Consultorio al que llama"
                 value={roomId ?? ""}
                 onChange={(e) => setRoomId(e.target.value ? Number(e.target.value) : null)}
-                className={cn("h-8 w-auto py-0 text-[13px]", needsRoom && "ring-2 ring-warning")}
+                className={cn("h-8 w-auto py-0 text-[0.8125rem]", needsRoom && "ring-2 ring-warning")}
               >
                 <option value="">Seleccione…</option>
                 {activeRooms.map((r) => (
@@ -177,7 +179,7 @@ export default function DeskPage() {
           {data.incidents.map((incident, i) => (
             <span
               key={i}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-status-waiting-bg px-3 py-1.5 text-[13px] font-medium text-amber-900 ring-1 ring-status-waiting/25"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-status-waiting-bg px-3 py-1.5 text-[0.8125rem] font-medium text-amber-900 ring-1 ring-status-waiting/25"
             >
               <AlertTriangle className="size-3.5" aria-hidden /> {incident.message}
             </span>
@@ -197,6 +199,7 @@ export default function DeskPage() {
           {can("worker:lookup") && (
             <RegisterPanel
               ref={registerRef}
+              priorityEnabled={data?.priority_enabled ?? false}
               siteId={site.id}
               availability={availability.data}
               onRegistered={(appointment) => {
@@ -216,6 +219,7 @@ export default function DeskPage() {
               callingNext={callNext.isPending}
               canOperate={canOperate}
               pendingId={transition.isPending ? (transition.variables?.appointment.public_id ?? null) : null}
+              onPriority={can("appointment:create") ? setPriorityFor : undefined}
             />
           ) : queue.isLoading ? (
             <div className="space-y-4">
@@ -230,6 +234,7 @@ export default function DeskPage() {
         </div>
       </div>
 
+      {priorityFor && <PriorityDialog appointment={priorityFor} onClose={() => setPriorityFor(null)} />}
       {starting && (
         <DoctorPickerDialog
           appointment={starting}

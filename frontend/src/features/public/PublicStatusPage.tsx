@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { MapPin, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
+import { AccessibilityMenu } from "@/shared/a11y/AccessibilityMenu";
+import { useBranding } from "@/shared/branding/branding";
 import { BrandMark } from "@/app/layout/BrandMark";
 import { ApiError, api } from "@/shared/api/client";
 import type { PublicTicketStatus } from "@/shared/api/types";
@@ -37,6 +39,7 @@ function readTicketFromHash(): { dni: string; code: string } | null {
  * Exige DNI + código de turno; no muestra datos de otras personas.
  */
 export default function PublicStatusPage() {
+  const branding = useBranding();
   useDocumentTitle("Consulta de turno");
   // Desde el QR del ticket: /consulta#dni=…&turno=… (el fragmento no viaja al servidor).
   const [fromQr] = useState(readTicketFromHash);
@@ -71,8 +74,9 @@ export default function PublicStatusPage() {
           <BrandMark />
           <div className="leading-tight">
             <p className="font-semibold">Tópico de Salud</p>
-            <p className="text-xs text-white/65">Corte Superior de Justicia de Lima</p>
+            <p className="text-xs text-white/65">{branding.institution_name}</p>
           </div>
+          <AccessibilityMenu tone="dark" className="ml-auto" />
         </div>
       </header>
       <main className="mx-auto -mt-10 max-w-md space-y-4 px-4 pb-10">

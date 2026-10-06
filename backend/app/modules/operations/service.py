@@ -8,11 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.core.context import get_request_context
 from app.core.errors import BusinessRuleError, NotFoundError
-from app.modules.admin.parameters import get_bool, get_str
+from app.modules.admin.parameters import get_bool
 from app.modules.appointments import queue as queue_view
 from app.modules.appointments.models import Appointment, AppointmentEvent, Reason
 from app.modules.appointments.state_machine import Status
 from app.modules.auth.dependencies import ServiceContext
+from app.modules.branding import service as branding
 from app.modules.notifications import service as notifications
 from app.modules.reports import documents
 from app.modules.reports import service as reports
@@ -149,13 +150,17 @@ def close_day(ctx: ServiceContext, site_id: int, day: date) -> dict[str, Any]:
     recipients = _summary_recipients(db, site_id, ctx.user.id) if get_bool(db, "day_close.send_summary", True) else []
     if recipients:
         flt = reports.ReportFilter(day, day, [site_id])
+        brand = branding.get_branding(db)
         meta = documents.ReportMeta(
-            institution=get_str(db, "institution.name", "Corte Superior de Justicia de Lima"),
+            institution=brand.institution_name,
             date_from=day,
             date_to=day,
             site_names=[site.name],
             generated_at=now,
             generated_by=ctx.user.full_name,
+            brand_color=brand.primary_color,
+            org_name=brand.org_name,
+            logo=branding.logo_bytes(db),
         )
         pdf = documents.summary_pdf(reports.summary(db, flt), meta)
         context = {

@@ -80,7 +80,7 @@ function TemporaryPassword({ result, onClose }: { result: UserWithPassword; onCl
             {copied ? "Copiada" : "Copiar"}
           </Button>
         </div>
-        <p className="text-[13px] text-ink-muted">
+        <p className="text-[0.8125rem] text-ink-muted">
           Usuario: <span className="font-semibold text-ink">{result.username}</span>. Al ingresar por primera vez se le pedirá
           definir una contraseña personal.
         </p>
@@ -102,7 +102,7 @@ function CheckboxGroup<T extends string | number>({
 }) {
   return (
     <fieldset>
-      <legend className="mb-2 text-[13px] font-medium">{legend}</legend>
+      <legend className="mb-2 text-[0.8125rem] font-medium">{legend}</legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map((option) => {
           const checked = value.includes(option.value);
@@ -411,7 +411,7 @@ function RolesTab() {
                   <tr key={p.code} className="border-b border-line">
                     <td className="px-4 py-2.5">
                       <p className="text-ink">{p.description}</p>
-                      <p className="font-mono text-[11px] text-ink-faint">{p.code}</p>
+                      <p className="font-mono text-[0.6875rem] text-ink-faint">{p.code}</p>
                     </td>
                     {roles.data.map((role) => (
                       <td key={role.id} className="px-3 py-2.5 text-center">

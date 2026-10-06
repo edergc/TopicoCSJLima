@@ -75,7 +75,7 @@ export function RoomsTab({ siteId }: { siteId: number }) {
                 <p className="font-semibold text-ink">
                   {r.name} {!r.is_active && <Badge className="ml-1">Inactivo</Badge>}
                 </p>
-                <p className="text-[13px] text-ink-soft">{r.location_note || "—"}</p>
+                <p className="text-[0.8125rem] text-ink-soft">{r.location_note || "—"}</p>
               </div>
               {canEdit && (
                 <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing({ room: r, form: { name: r.name, location_note: r.location_note ?? "", sort_order: r.sort_order, is_active: r.is_active } })}>

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.context import get_request_context
 from app.core.errors import BusinessRuleError, ConflictError, NotFoundError
+from app.modules.appointments import priority
 from app.modules.appointments import queue as queue_view
 from app.modules.appointments.models import Appointment, AppointmentEvent, Reason, ServiceDay
 from app.modules.appointments.schemas import AppointmentCreateIn, TransitionIn
@@ -74,6 +75,7 @@ class AppointmentService:
         self._check_previous_appointments(worker.id, day, setting)
 
         origin_id = self._resolve_origin(data.origin_appointment_id, worker.id)
+        priority_reason = self._priority_reason(data.priority_reason_id)
 
         # 6. Bloqueo del día operativo: serializa los registros concurrentes de la sede/fecha
         service_day = self._lock_service_day(site.id, day)
@@ -97,6 +99,9 @@ class AppointmentService:
             registered_by=ctx.user.id,
             queued_at=now if status == Status.EN_ESPERA else None,
             call_count=0,
+            priority_reason_id=priority_reason.id if priority_reason else None,
+            priority_set_at=now if priority_reason else None,
+            priority_set_by=ctx.user.id if priority_reason else None,
         )
         db.add(appointment)
         db.flush()
@@ -115,6 +120,7 @@ class AppointmentService:
                 "service_date": day,
                 "worker": str(worker.public_id),
                 "origin_appointment_id": origin_id,
+                "priority": priority_reason.code if priority_reason else None,
             },
         )
 
@@ -156,13 +162,7 @@ class AppointmentService:
         service_day = sites.get_service_day(self.db, site_id, self.clock.today())
         if service_day is None:
             raise BusinessRuleError("QUEUE_EMPTY")
-        next_id = self.db.scalar(
-            select(Appointment.id)
-            .where(Appointment.service_day_id == service_day.id, Appointment.status == Status.EN_ESPERA)
-            .order_by(Appointment.ticket_number)
-            .limit(1)
-            .with_for_update(skip_locked=True, key_share=True)
-        )
+        next_id = self._next_in_line(service_day.id)
         if next_id is None:
             raise BusinessRuleError("QUEUE_EMPTY")
         appointment = self.db.scalar(
@@ -254,6 +254,77 @@ class AppointmentService:
         )
         self._notify_after(appointment, action, reason, now)
         db.commit()
+        return appointment
+
+    def _next_in_line(self, service_day_id: int) -> int | None:
+        """Siguiente EN_ESPERA: orden de registro o, con prioridad habilitada, la regla de prioridad.
+
+        SKIP LOCKED evita que dos encargadas llamen a la misma persona.
+        """
+        if not priority.enabled(self.db):
+            return self.db.scalar(
+                select(Appointment.id)
+                .where(Appointment.service_day_id == service_day_id, Appointment.status == Status.EN_ESPERA)
+                .order_by(Appointment.ticket_number)
+                .limit(1)
+                .with_for_update(skip_locked=True, key_share=True)
+            )
+        waiting = self.db.execute(
+            select(Appointment.id, Appointment.priority_reason_id)
+            .where(Appointment.service_day_id == service_day_id, Appointment.status == Status.EN_ESPERA)
+            .order_by(Appointment.ticket_number)
+        ).all()
+        limit = priority.max_consecutive(self.db)
+        ordered = priority.call_order(
+            waiting,
+            lambda row: row.priority_reason_id is not None,
+            priority.current_streak(self.db, service_day_id, limit),
+            limit,
+        )
+        for row in ordered:
+            locked = self.db.scalar(
+                select(Appointment.id)
+                .where(Appointment.id == row.id, Appointment.status == Status.EN_ESPERA)
+                .with_for_update(skip_locked=True, key_share=True)
+            )
+            if locked is not None:
+                return locked
+        return None
+
+    def _priority_reason(self, reason_id: int | None) -> Reason | None:
+        if reason_id is None:
+            return None
+        if not priority.enabled(self.db):
+            raise BusinessRuleError("PRIORITY_DISABLED")
+        reason = self.db.get(Reason, reason_id)
+        if reason is None or reason.type != "PRIORITY" or not reason.is_active:
+            raise BusinessRuleError("PRIORITY_INVALID")
+        return reason
+
+    def set_priority(self, public_id: uuid.UUID, reason_id: int | None) -> Appointment:
+        """Asigna o retira la prioridad de quien aún espera (auditado y en la línea de tiempo)."""
+        appointment = self._load_for_update(public_id)
+        self.ctx.require_site(appointment.site_id, action="APPOINTMENT_PRIORITY")
+        if appointment.status not in (Status.REGISTRADO, Status.EN_ESPERA):
+            raise ConflictError("INVALID_TRANSITION", details={"status": appointment.status, "action": "PRIORITY"})
+        reason = self._priority_reason(reason_id) if reason_id is not None else None
+        before = appointment.priority_reason.code if appointment.priority_reason else None
+        now = self.clock.now()
+        appointment.priority_reason = reason
+        appointment.priority_set_at = now if reason else None
+        appointment.priority_set_by = self.ctx.user.id if reason else None
+        self.db.flush()
+        note = f"Prioridad: {reason.label}" if reason else "Se retiró la prioridad"
+        self._add_event(appointment, "PRIORITY", appointment.status, appointment.status, reason, note, now)
+        self.ctx.audit(
+            action="APPOINTMENT_PRIORITY",
+            resource_type="appointment",
+            resource_id=appointment.public_id,
+            site_id=appointment.site_id,
+            before={"priority": before},
+            after={"priority": reason.code if reason else None, "ticket_code": appointment.ticket_code},
+        )
+        self.db.commit()
         return appointment
 
     def _resolve_room(self, site_id: int, room_id: int | None) -> int | None:

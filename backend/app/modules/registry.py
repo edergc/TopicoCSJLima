@@ -2,6 +2,7 @@
 
 from app.modules.appointments import models as appointments_models  # noqa: F401
 from app.modules.audit import models as audit_models  # noqa: F401
+from app.modules.branding import models as branding_models  # noqa: F401
 from app.modules.imports import models as imports_models  # noqa: F401
 from app.modules.notifications import models as notifications_models  # noqa: F401
 from app.modules.ratings import models as ratings_models  # noqa: F401

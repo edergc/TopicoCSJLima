@@ -80,7 +80,7 @@ def update_parameter(
 
 # ------------------------------------------------------------------- motivos
 
-ReasonType = Literal["CANCEL", "VOID", "NO_SHOW", "REQUEUE"]
+ReasonType = Literal["CANCEL", "VOID", "NO_SHOW", "REQUEUE", "PRIORITY"]
 _REASON_FIELDS = ("type", "code", "label", "requires_note", "is_active", "sort_order")
 
 

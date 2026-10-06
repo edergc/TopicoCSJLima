@@ -85,3 +85,16 @@ def test_name_formatting_and_masking() -> None:
     assert display_name("JUAN CARLOS", "PEREZ", "QUISPE") == "PEREZ QUISPE, Juan Carlos"
     assert short_name("JUAN CARLOS", "PEREZ", "QUISPE") == "Juan P. Q."
     assert mask_name("JUAN CARLOS", "PEREZ") == "J*** P***"
+
+
+def test_priority_call_order_respects_fairness_cap() -> None:
+    from app.modules.appointments.priority import call_order
+
+    # (turno, prioritario) en orden de registro
+    waiting = [(1, False), (2, False), (3, True), (4, True), (5, True), (6, False)]
+    order = call_order(waiting, lambda w: w[1], streak=0, limit=2)
+    assert [t for t, _ in order] == [3, 4, 1, 5, 2, 6]
+    # Si ya hubo 2 prioritarios seguidos, el siguiente es en orden normal
+    assert [t for t, _ in call_order(waiting, lambda w: w[1], streak=2, limit=2)][:2] == [1, 3]
+    # Sin personas en orden normal, se sigue con los prioritarios
+    assert [t for t, _ in call_order([(7, True), (8, True), (9, True)], lambda w: w[1], streak=5, limit=2)] == [7, 8, 9]

@@ -123,13 +123,13 @@ Portal donde el trabajador **pide su turno** desde la PC o el celular.
 | Idea | Valor | Esfuerzo |
 |---|---|---|
 | **Importar las atenciones históricas** del Excel actual (el requerimiento pide trazabilidad de la migración) | Reportes con el histórico completo | 🟡 (depende del formato del Excel) |
-| **Prioridad explícita** (gestantes, adultos mayores, personas con discapacidad), como regla auditable y desactivada por defecto (§ «prioridad especial» del requerimiento) | Equidad y cumplimiento normativo | 🟡 |
+| ✅ **Prioridad explícita** (gestantes, adultos mayores, personas con discapacidad), como regla auditable y desactivada por defecto — *implementada el 06/10/2026* | Equidad y cumplimiento normativo | 🟡 |
 | **Autoregistro en un tótem**: tablet en la entrada donde el trabajador digita su DNI y recibe su turno | Menos carga para la encargada | 🟡 (reutiliza la Fase 2) |
 | **Aplicación instalable (PWA)** para la consulta del trabajador, con aviso en el celular al ser llamado | Mejor experiencia móvil (requiere HTTPS) | 🟡 |
 | **Modo sin conexión de la pantalla de sala**: muestra el último estado si se corta la red | Robustez | 🟢 |
 | **Reporte de gestión mensual automático** en PDF para la Gerencia | Ahorro de tiempo | 🟢 |
-| **Accesibilidad**: alto contraste y tamaño de letra ajustable | Inclusión | 🟢 |
-| **Identidad visual oficial** del Poder Judicial (logo, colores) en la interfaz, los correos y los PDF | Imagen institucional | 🟢 (requiere el manual de identidad) |
+| ✅ **Accesibilidad**: alto contraste y tamaño de letra ajustable — *implementada el 06/10/2026* | Inclusión | 🟢 |
+| ✅ **Identidad visual** configurable (logo, colores) en la interfaz, los correos y los PDF — *implementada el 06/10/2026; falta cargar el logo oficial* | Imagen institucional | 🟢 |
 | **Respaldo fuera del servidor**: copia automática de los backups a otra unidad o servidor | Continuidad ante una falla del disco | 🟢 |
 | **Monitoreo**: aviso a TI si el servicio cae o el disco se llena | Disponibilidad | 🟢 |
 

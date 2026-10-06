@@ -81,7 +81,7 @@ export function DisplayMessagesTab({ siteId }: { siteId: number }) {
               <li key={m.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-5 py-3 last:border-b-0">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-ink">{m.text}</p>
-                  <p className="flex flex-wrap items-center gap-2 text-[13px] text-ink-soft">
+                  <p className="flex flex-wrap items-center gap-2 text-[0.8125rem] text-ink-soft">
                     <Badge tone={st.tone}>{st.label}</Badge>
                     {m.site_id === null && (
                       <span className="inline-flex items-center gap-1">

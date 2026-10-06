@@ -31,6 +31,7 @@ EXPECTED_TABLES = {
     "site_pause",
     "service_rating",
     "display_message",
+    "brand_asset",
     "reason",
     "appointment_status",
     "appointment_status_transition",

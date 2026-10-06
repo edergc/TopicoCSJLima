@@ -27,6 +27,15 @@ Contenido:
 
 ---
 
+### 1.1 Accesibilidad: tamaño de letra y alto contraste
+El botón **T** (arriba a la derecha, y también en el inicio de sesión y en la consulta del trabajador) permite:
+- **agrandar o reducir la letra** (100 %, 112 %, 125 % o 150 %). El diseño se reacomoda sin cortar contenido;
+- activar el **alto contraste**: textos y bordes más oscuros, enlaces subrayados y foco más visible.
+
+La preferencia se recuerda **en ese equipo** (cada computadora o celular puede tener la suya). **Restablecer** vuelve a lo normal.
+
+---
+
 ## 2. Encargada del tópico: la Mesa de atención
 
 La Mesa de atención reúne todo lo necesario para la operación del día.
@@ -127,6 +136,16 @@ En **Atenciones** puede buscar por fecha, estado, sede o DNI. Al hacer clic en u
 | **F2** | Ir al campo DNI |
 | **F4** | Llamar siguiente |
 | **Esc** | Cerrar ventana o diálogo |
+
+### 2.7.1 Atención prioritaria (si está habilitada)
+La institución puede habilitar la **atención prioritaria** (parámetro `priority.enabled`, **desactivado por defecto**). Mientras está desactivada, la cola respeta estrictamente el orden de registro.
+
+Cuando está habilitada:
+- al registrar, se elige si la persona es **Gestante**, **Adulto mayor (60 años o más)** o **Persona con discapacidad**. Solo se registra la categoría, nunca diagnósticos ni detalles de salud;
+- también se puede marcar o quitar después, desde el menú **⋯** del turno en espera (**Marcar como prioritaria**);
+- **regla de llamado:** las atenciones prioritarias se llaman antes, en su orden de registro. Para que nadie espere indefinidamente, tras **3 llamados prioritarios seguidos** (parámetro `priority.max_consecutive`) se llama a la siguiente persona en orden normal;
+- la Mesa muestra el distintivo **Prioritaria**; la **pantalla de sala no muestra la categoría**, solo el orden;
+- cada asignación o retiro queda en la línea de tiempo de la atención y en la auditoría. Las categorías se administran en *Catálogos → Motivos* (tipo «Prioridad»).
 
 ### 2.8 Ticket impreso
 Tras registrar un turno, el botón **Imprimir turno** imprime un ticket (impresora térmica de 80 mm o una hoja A6) con el turno, la sede, las personas delante, la hora estimada y un **código QR**. Al escanearlo con el celular se abre la consulta del turno con el DNI y el código ya cargados. También se puede reimprimir desde el detalle de la atención.
@@ -271,6 +290,18 @@ Debajo, las pestañas configuran la **sede elegida en el selector superior**:
 - **Parámetros:** valores generales, como los intentos de ingreso, el tiempo de bloqueo y los días de anticipación.
 
 ![Plantillas](manual/img/14-plantillas.png)
+
+---
+
+### 5.4 Identidad visual
+En *Catálogos y parámetros →* **Identidad visual** (administrador):
+- **Logo:** cargue el logo oficial (PNG o JPEG de hasta 512 KB; de preferencia PNG con fondo transparente). Aparece en la interfaz, el inicio de sesión, la pantalla de sala, la consulta del trabajador y el encabezado de los **PDF**. **Quitar logo** vuelve a la marca por defecto.
+- **Color institucional:** la interfaz, la pantalla de sala, los correos y los PDF adoptan el color (los tonos claros y oscuros se generan solos). **Predeterminado** vuelve al granate inicial.
+- **Organización e institución:** nombres que se muestran en los encabezados.
+
+Los **correos** se envían también en formato HTML, con un encabezado del color institucional y los nombres configurados.
+
+> Use el logo y los colores del **manual de identidad visual oficial** del Poder Judicial.
 
 ---
 

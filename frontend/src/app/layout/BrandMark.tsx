@@ -1,10 +1,20 @@
+import { logoUrl, useBranding } from "@/shared/branding/branding";
 import { cn } from "@/shared/lib/cn";
 
 /**
- * Marca del sistema (cruz de servicio de salud sobre granate).
- * Reemplazable por el logotipo oficial cuando se disponga del manual de identidad.
+ * Marca del sistema: el logo institucional cargado en «Identidad visual» o, mientras no exista,
+ * la cruz de servicio de salud sobre el color institucional.
  */
 export function BrandMark({ className, tone = "light" }: { className?: string; tone?: "light" | "dark" }) {
+  const branding = useBranding();
+  const logo = logoUrl(branding);
+  if (logo) {
+    return (
+      <span className={cn("grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-white p-1 ring-1 ring-black/5", className)}>
+        <img src={logo} alt={branding.institution_name} className="max-h-full max-w-full object-contain" />
+      </span>
+    );
+  }
   return (
     <span
       className={cn(

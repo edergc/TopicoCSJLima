@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 
+from app.modules.appointments import priority
 from app.modules.appointments import queue as queue_view
 from app.modules.appointments.models import Appointment, AppointmentStatus, Reason
 from app.modules.appointments.schemas import (
@@ -15,6 +16,7 @@ from app.modules.appointments.schemas import (
     IncidentOut,
     NotificationOut,
     PauseInfoOut,
+    PriorityIn,
     QueueCountsOut,
     QueueOut,
     ReasonOut,
@@ -76,6 +78,8 @@ def appointment_out(a: Appointment, ctx: ServiceContext, item: queue_view.QueueI
         doctor_name=a.doctor.full_name if a.doctor else None,
         room_id=a.room_id,
         room_name=a.room.name if a.room else None,
+        priority_code=a.priority_reason.code if a.priority_reason else None,
+        priority_label=a.priority_reason.label if a.priority_reason else None,
         version=a.version,
         allowed_actions=allowed_actions(a.status, ctx.user.permissions),
         position=item.position if item else None,
@@ -117,7 +121,21 @@ def get_queue(
         closed=items(snap.closed),
         incidents=[IncidentOut(code=i.code, message=i.message, ticket_code=i.ticket_code) for i in snap.incidents],
         pause=PauseInfoOut.model_validate(snap.pause) if snap.pause else None,
+        priority_enabled=priority.enabled(ctx.db),
     )
+
+
+@router.post(
+    "/appointments/{public_id}/priority",
+    response_model=AppointmentOut,
+    summary="Asignar o retirar la prioridad (regla explícita y auditada)",
+)
+def set_priority(
+    public_id: uuid.UUID, body: PriorityIn, ctx: Annotated[ServiceContext, Depends(require("appointment:create"))]
+) -> AppointmentOut:
+    appointment = AppointmentService(ctx).set_priority(public_id, body.reason_id)
+    snap = queue_view.build_snapshot(ctx.db, appointment.site, appointment.service_date, ctx.clock)
+    return appointment_out(appointment, ctx, snap.item_for(appointment.id))
 
 
 @router.post("/sites/{site_id}/queue/call-next", response_model=AppointmentOut, summary="LLAMAR SIGUIENTE")

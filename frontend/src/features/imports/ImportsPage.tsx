@@ -94,7 +94,7 @@ function Dropzone({ onFile, loading }: { onFile: (file: File) => void; loading: 
       <div className="grid size-14 place-items-center rounded-2xl bg-panel shadow-[var(--shadow-card)] ring-1 ring-line">
         <FileSpreadsheet className="size-7 text-status-done" aria-hidden />
       </div>
-      <p className="mt-4 text-[15px] font-semibold">Arrastre aquí el Excel de trabajadores con EPS Rímac</p>
+      <p className="mt-4 text-[0.9375rem] font-semibold">Arrastre aquí el Excel de trabajadores con EPS Rímac</p>
       <p className="mt-1 max-w-md text-sm text-ink-soft">
         Formato .xlsx. Se reconocen columnas como DNI, APELLIDO PATERNO, APELLIDO MATERNO, NOMBRES, CORREO, SEXO,
         DEPENDENCIA y FECHA DE NACIMIENTO. Nada se incorpora hasta que usted confirme.
@@ -369,7 +369,7 @@ export default function ImportsPage() {
       header: "Resumen",
       hideOnMobile: true,
       cell: (b) => (
-        <span className="tabular text-[13px] text-ink-muted">
+        <span className="tabular text-[0.8125rem] text-ink-muted">
           {b.total_rows} filas · {b.new_count} nuevos · {b.update_count} act. · {b.error_count} errores
         </span>
       ),

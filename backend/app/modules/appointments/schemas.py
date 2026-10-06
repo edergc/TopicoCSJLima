@@ -16,6 +16,13 @@ class AppointmentCreateIn(ApiModel):
     )
     service_date: date | None = Field(default=None, description="Por defecto, hoy (America/Lima).")
     origin_appointment_id: uuid.UUID | None = Field(default=None, description="Atención original si es reprogramación")
+    priority_reason_id: int | None = Field(
+        default=None, description="Categoría de atención prioritaria (solo si priority.enabled)."
+    )
+
+
+class PriorityIn(ApiModel):
+    reason_id: int | None = Field(description="Categoría de prioridad; null = quitar la prioridad.")
 
 
 class CallNextIn(ApiModel):
@@ -75,6 +82,8 @@ class AppointmentOut(ApiOut):
     doctor_name: str | None = None
     room_id: int | None = None
     room_name: str | None = None
+    priority_code: str | None = None
+    priority_label: str | None = None
     version: int
     allowed_actions: list[str]
     position: int | None = None
@@ -126,6 +135,7 @@ class QueueOut(ApiOut):
     closed: list[AppointmentOut]
     incidents: list[IncidentOut]
     pause: PauseInfoOut | None = None
+    priority_enabled: bool = False
 
 
 class AppointmentEventOut(ApiOut):
