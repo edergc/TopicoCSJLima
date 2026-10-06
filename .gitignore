@@ -25,6 +25,7 @@ test-results/
 # Logs y artefactos de ejecución
 logs/
 *.log
+*.log.*
 backups/
 uploads/
 
