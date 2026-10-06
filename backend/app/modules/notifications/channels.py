@@ -22,6 +22,7 @@ class OutgoingMessage:
     subject: str
     body_text: str
     body_html: str | None = None
+    attachment: tuple[str, str, bytes] | None = None  # (nombre, tipo MIME, contenido)
 
 
 class DeliveryError(Exception):
@@ -47,6 +48,10 @@ def _build_email(message: OutgoingMessage, sender: str) -> EmailMessage:
     email.set_content(message.body_text)
     if message.body_html:
         email.add_alternative(message.body_html, subtype="html")
+    if message.attachment:
+        name, mime, data = message.attachment
+        maintype, _, subtype = mime.partition("/")
+        email.add_attachment(data, maintype=maintype, subtype=subtype or "octet-stream", filename=name)
     return email
 
 

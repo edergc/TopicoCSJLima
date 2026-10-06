@@ -116,3 +116,54 @@ def enqueue(
     }
     # ON CONFLICT DO NOTHING: una notificación deduplicada nunca rompe la transacción del caso de uso.
     db.execute(insert(Notification).values(**values).on_conflict_do_nothing(index_elements=["dedup_key"]))
+
+
+def enqueue_direct(
+    db: Session,
+    *,
+    template_code: str,
+    recipient: str,
+    context: dict[str, Any],
+    now: datetime,
+    created_by: int | None,
+    dedup_key: str | None = None,
+    attachment: tuple[str, str, bytes] | None = None,
+) -> bool:
+    """Correo a un destinatario interno (no ligado a una atención), p. ej. el resumen del día. False si no se encola."""
+    template = db.scalar(
+        select(NotificationTemplate).where(
+            NotificationTemplate.code == template_code, NotificationTemplate.channel == "EMAIL"
+        )
+    )
+    if template is None or not template.is_active:
+        return False
+    try:
+        subject = render(template.subject, context)[:200]
+        body_text = render(template.body_text, context)
+        body_html = render(template.body_html, context) if template.body_html else None
+    except Exception as exc:
+        log.error("notification_render_failed", template=template_code, error=str(exc))
+        return False
+    name, mime, data = attachment if attachment else (None, None, None)
+    db.execute(
+        insert(Notification)
+        .values(
+            appointment_id=None,
+            template_code=template_code,
+            channel="EMAIL",
+            recipient=recipient,
+            subject=subject,
+            body_text=body_text,
+            body_html=body_html,
+            status="PENDING",
+            max_attempts=get_int(db, "notification.max_attempts", 5),
+            next_attempt_at=now,
+            dedup_key=dedup_key,
+            created_by=created_by,
+            attachment_name=name,
+            attachment_type=mime,
+            attachment_data=data,
+        )
+        .on_conflict_do_nothing(index_elements=["dedup_key"])
+    )
+    return True

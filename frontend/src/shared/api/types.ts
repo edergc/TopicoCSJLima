@@ -56,8 +56,17 @@ export type PublicTicketStatus = S["PublicTicketStatusOut"];
 export type DisplayBoard = S["DisplayBoardOut"];
 export type DisplaySite = S["DisplaySiteOut"];
 export type DisplayTicket = S["DisplayTicketOut"];
-export type Doctor = S["DoctorOut"];
+/** El backend siempre completa horario, ausencias y disponibilidad del día. */
+export type Doctor = Required<S["DoctorOut"]>;
 export type Room = S["RoomOut"];
+export type DoctorBlock = S["DoctorBlock"];
+export type Absence = S["AbsenceOut"];
+export type LiveBoard = S["LiveBoardOut"];
+export type LiveSite = S["LiveSiteOut"];
+export type DisplayMessage = S["DisplayMessageOut"];
+export type DayClose = S["DayCloseOut"];
+export type RatingSummary = S["RatingSummaryOut"];
+export type RatingLookup = S["RatingLookupOut"];
 export type SiteCreateIn = S["SiteCreateIn"];
 export type ReportDoctor = S["ReportDoctorOut"];
 

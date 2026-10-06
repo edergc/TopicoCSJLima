@@ -50,6 +50,7 @@ function NotFound() {
 export const router = createBrowserRouter([
   { path: "/login", lazy: page(() => import("@/features/auth/LoginPage")) },
   { path: "/consulta", lazy: page(() => import("@/features/public/PublicStatusPage")) },
+  { path: "/calificar", lazy: page(() => import("@/features/public/RatingPage")) },
   { path: "/pantalla", lazy: page(() => import("@/features/display/DisplaySelectPage")) },
   { path: "/pantalla/:siteCode", lazy: page(() => import("@/features/display/DisplayPage")) },
   {
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <HomeRedirect /> },
           { path: "mesa", lazy: page(() => import("@/features/desk/DeskPage"), ["queue:read"]) },
+          { path: "panel", lazy: page(() => import("@/features/live/LivePanelPage"), ["queue:read"]) },
           { path: "atenciones", lazy: page(() => import("@/features/appointments/AppointmentsPage"), ["appointment:read"]) },
           { path: "trabajadores", lazy: page(() => import("@/features/workers/WorkersPage"), ["worker:read"]) },
           { path: "importaciones", lazy: page(() => import("@/features/imports/ImportsPage"), ["import:manage"]) },

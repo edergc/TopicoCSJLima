@@ -104,6 +104,12 @@ class IncidentOut(ApiOut):
     ticket_code: str | None
 
 
+class PauseInfoOut(ApiOut):
+    reason: str
+    started_at: datetime
+    resume_at: datetime
+
+
 class QueueOut(ApiOut):
     site_id: int
     site_name: str
@@ -119,6 +125,7 @@ class QueueOut(ApiOut):
     finished: list[AppointmentOut]
     closed: list[AppointmentOut]
     incidents: list[IncidentOut]
+    pause: PauseInfoOut | None = None
 
 
 class AppointmentEventOut(ApiOut):

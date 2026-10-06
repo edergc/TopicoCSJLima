@@ -1,8 +1,10 @@
-import { CheckCircle2, X } from "lucide-react";
+import { CheckCircle2, Printer, X } from "lucide-react";
 
 import type { Appointment } from "@/shared/api/types";
 import { fmt } from "@/shared/lib/format";
-import { IconButton } from "@/shared/ui";
+import { Button, IconButton } from "@/shared/ui";
+
+import { printTicket } from "@/shared/lib/printTicket";
 
 /** Confirmación prominente del turno generado: la encargada lo dicta por teléfono. */
 export function TicketIssued({ appointment, onDismiss }: { appointment: Appointment; onDismiss: () => void }) {
@@ -39,7 +41,18 @@ export function TicketIssued({ appointment, onDismiss }: { appointment: Appointm
           <dd className="tabular text-lg font-semibold">{appointment.estimated_at ? fmt.time(appointment.estimated_at) : "—"}</dd>
         </div>
       </dl>
-      <p className="mt-3 text-xs text-white/60">La hora estimada es referencial y se recalcula conforme avanza la cola.</p>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-white/60">La hora estimada es referencial y se recalcula conforme avanza la cola.</p>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => printTicket(appointment)}
+          icon={<Printer className="size-4" />}
+          className="bg-white text-brand-800 hover:bg-white/90"
+        >
+          Imprimir turno
+        </Button>
+      </div>
     </div>
   );
 }

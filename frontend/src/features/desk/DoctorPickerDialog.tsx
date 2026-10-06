@@ -56,7 +56,10 @@ export function DoctorPickerDialog({
               <Stethoscope className="size-4" aria-hidden />
             </span>
             <span className="min-w-0">
-              <span className="block font-semibold text-ink">{d.full_name}</span>
+              <span className="flex items-center gap-2 font-semibold text-ink">
+                {d.full_name}
+                {d.on_duty_now && <span className="rounded-full bg-status-done-bg px-2 py-0.5 text-[11px] font-semibold text-status-done">De turno</span>}
+              </span>
               <span className="block text-[13px] text-ink-soft">{[d.specialty, d.cmp && `CMP ${d.cmp}`].filter(Boolean).join(" · ") || "—"}</span>
             </span>
           </button>

@@ -2,6 +2,7 @@ import {
   Building2,
   FileSpreadsheet,
   LayoutGrid,
+  MonitorDot,
   ListChecks,
   type LucideIcon,
   BarChart3,
@@ -29,6 +30,7 @@ export const NAVIGATION: NavGroup[] = [
     label: "Operación",
     items: [
       { to: "/mesa", label: "Mesa de atención", icon: LayoutGrid, permissions: ["queue:read"] },
+      { to: "/panel", label: "Panel en vivo", icon: MonitorDot, permissions: ["queue:read"] },
       { to: "/atenciones", label: "Atenciones", icon: ListChecks, permissions: ["appointment:read"] },
     ],
   },

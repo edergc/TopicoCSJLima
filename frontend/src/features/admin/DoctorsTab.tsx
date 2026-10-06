@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Stethoscope } from "lucide-react";
+import { CalendarClock, CalendarX2, Pencil, Plus, Stethoscope } from "lucide-react";
 import { useState } from "react";
 
 import { keys, useDoctors } from "@/features/appointments/api";
@@ -8,6 +8,8 @@ import type { Doctor } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/AuthProvider";
 import { notify } from "@/shared/lib/notify";
 import { Badge, Button, Card, CardHeader, EmptyState, Field, Input, Modal, Skeleton, Toggle } from "@/shared/ui";
+
+import { DoctorAbsencesModal, DoctorScheduleModal, DoctorTodayBadge, scheduleSummary } from "./DoctorAvailability";
 
 type Form = { full_name: string; document_number: string; cmp: string; specialty: string; phone: string; email: string; is_active: boolean };
 
@@ -31,6 +33,8 @@ export function DoctorsTab({ siteId }: { siteId: number }) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useDoctors(siteId);
   const [editing, setEditing] = useState<{ doctor: Doctor | null; form: Form } | null>(null);
+  const [scheduleFor, setScheduleFor] = useState<Doctor | null>(null);
+  const [absencesFor, setAbsencesFor] = useState<Doctor | null>(null);
   const canEdit = can("site:configure");
 
   const save = useMutation({
@@ -67,7 +71,7 @@ export function DoctorsTab({ siteId }: { siteId: number }) {
     <Card>
       <CardHeader
         title="Médicos del tópico"
-        description="Al iniciar cada atención se registra qué médico atendió. Si la sede tiene un solo médico activo, se asigna automáticamente."
+        description="Al iniciar cada atención se registra qué médico atendió; se ofrece primero a los médicos de turno. Con horarios definidos, la capacidad del día se calcula con los médicos presentes."
         icon={<Stethoscope className="size-[18px]" />}
         actions={
           canEdit && (
@@ -89,23 +93,45 @@ export function DoctorsTab({ siteId }: { siteId: number }) {
                 <Stethoscope className="size-4" aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-ink">
-                  {d.full_name} {!d.is_active && <Badge className="ml-1">Inactivo</Badge>}
+                <p className="flex flex-wrap items-center gap-2 font-semibold text-ink">
+                  {d.full_name} {!d.is_active && <Badge>Inactivo</Badge>}
+                  <DoctorTodayBadge doctor={d} />
                 </p>
                 <p className="text-[13px] text-ink-soft">
                   {[d.specialty, d.cmp && `CMP ${d.cmp}`, d.document_number && `DNI ${d.document_number}`, d.phone].filter(Boolean).join(" · ") || "—"}
                 </p>
+                <p className="text-[13px] text-ink-muted">
+                  <CalendarClock className="mr-1 inline size-3.5" aria-hidden />
+                  {scheduleSummary(d.schedule)}
+                  {d.upcoming_absences.length > 0 && ` · ${d.upcoming_absences.length} ausencia(s) programada(s)`}
+                </p>
               </div>
               {canEdit && (
-                <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing({ doctor: d, form: toForm(d) })}>
-                  Editar
-                </Button>
+                <div className="flex flex-wrap gap-1">
+                  <Button size="sm" variant="ghost" icon={<CalendarClock className="size-4" />} onClick={() => setScheduleFor(d)}>
+                    Horario
+                  </Button>
+                  <Button size="sm" variant="ghost" icon={<CalendarX2 className="size-4" />} onClick={() => setAbsencesFor(d)}>
+                    Ausencias
+                  </Button>
+                  <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing({ doctor: d, form: toForm(d) })}>
+                    Editar
+                  </Button>
+                </div>
               )}
             </li>
           ))}
         </ul>
       )}
 
+      {scheduleFor && <DoctorScheduleModal siteId={siteId} doctor={scheduleFor} onClose={() => setScheduleFor(null)} />}
+      {absencesFor && (
+        <DoctorAbsencesModal
+          siteId={siteId}
+          doctor={data?.find((d) => d.id === absencesFor.id) ?? absencesFor}
+          onClose={() => setAbsencesFor(null)}
+        />
+      )}
       <Modal
         open={editing !== null}
         onOpenChange={(open) => !open && setEditing(null)}

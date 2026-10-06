@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, SmallInteger, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, LargeBinary, SmallInteger, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, TimestampMixin
@@ -41,3 +41,6 @@ class Notification(TimestampMixin, Base):
     dedup_key: Mapped[str | None] = mapped_column(String(120))
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+    attachment_name: Mapped[str | None] = mapped_column(String(150))
+    attachment_type: Mapped[str | None] = mapped_column(String(80))
+    attachment_data: Mapped[bytes | None] = mapped_column(LargeBinary)

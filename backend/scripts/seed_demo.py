@@ -53,6 +53,19 @@ DEMO_ROOMS = {
     "ALZ": [("Consultorio 1", "Primer piso"), ("Consultorio 2", "Primer piso, al fondo")],
     "BAR": [("Consultorio 1", None)],
 }
+DEMO_MESSAGES = [
+    "Por favor, permanezca atento al llamado. Tenga a la mano su DNI.",
+    "Lávese las manos antes de ingresar al consultorio.",
+    "Campaña de despistaje de presión arterial: consulte en el tópico.",
+]
+DEMO_COMMENTS = [
+    "Muy amable la atención.",
+    "Rápido y ordenado.",
+    "La espera fue un poco larga.",
+    "Excelente trato del personal.",
+    None,
+    None,
+]
 DEMO_DOCTORS = {
     "ALZ": [("Dra. Patricia Medina Cárdenas", "045871"), ("Dr. Ricardo Alva Torres", "052336")],
     "BAR": [("Dra. Gloria Huerta Salinas", "038412")],
@@ -270,6 +283,27 @@ def main() -> int:
     def room_for(site: str) -> dict[str, object]:
         return {"room_id": rng.choice(rooms[site])} if rooms.get(site) else {}
 
+    # Horarios de los médicos de demostración (solo si aún no tienen) y mensajes de la pantalla de sala
+    for sid in sites.values():
+        listed = client.get(f"{API_PREFIX}/sites/{sid}/doctors", headers=login(SUPERVISOR_DEMO)).json()
+        for i, d in enumerate(x for x in listed if x["is_active"]):
+            if d["schedule"]:
+                continue
+            start, end = ("08:00", "12:00") if i % 2 == 0 else ("14:00", "17:00")
+            blocks = [{"weekday": w, "start_time": start, "end_time": end} for w in range(1, 6)]
+            client.put(
+                f"{API_PREFIX}/sites/{sid}/doctors/{d['id']}/schedule",
+                json={"blocks": blocks},
+                headers=login(SUPERVISOR_DEMO),
+            ).raise_for_status()
+    if not client.get(f"{API_PREFIX}/display-messages", headers=login(ADMIN_DEMO)).json():
+        for order, text in enumerate(DEMO_MESSAGES, 1):
+            client.post(
+                f"{API_PREFIX}/display-messages",
+                json={"text": text, "valid_from": "2026-01-01", "sort_order": order},
+                headers=login(ADMIN_DEMO),
+            ).raise_for_status()
+
     def doctor_for(site: str) -> dict[str, object]:
         return {"doctor_id": rng.choice(doctors[site])} if doctors.get(site) else {}
 
@@ -381,6 +415,9 @@ def main() -> int:
         for dni in today_pool[20:26]:
             register("BAR", dni, "PHONE")
 
+    rated = _seed_ratings(app.state.session_factory, rng)
+    if rated:
+        print(f"Calificaciones de demostración: {rated}")
     if args.test_email:
         _set_test_email(app.state.session_factory, covered[30], args.test_email)
 
@@ -405,6 +442,42 @@ def main() -> int:
     if not args.now:
         print(f"Para ver la jornada en curso: DEV_CLOCK_START={day.isoformat()}T{clock.local_now():%H:%M}:00-05:00")
     return 0
+
+
+def _seed_ratings(session_factory: object, rng: random.Random) -> int:
+    """Calificaciones anónimas de ejemplo para atenciones finalizadas sin calificación (idempotente)."""
+    import hashlib
+    import secrets
+
+    from app.modules.ratings.models import ServiceRating
+
+    count = 0
+    with session_factory() as s:  # type: ignore[operator]
+        rated = select(ServiceRating.appointment_id)
+        rows = s.scalars(
+            select(Appointment).where(Appointment.status == "ATENDIDO", Appointment.id.not_in(rated))
+        ).unique()
+        for appt in rows:
+            if rng.random() > 0.45 or appt.finished_at is None:
+                continue
+            score = rng.choices([5, 4, 3, 2], weights=[55, 30, 10, 5])[0]
+            s.add(
+                ServiceRating(
+                    appointment_id=appt.id,
+                    site_id=appt.site_id,
+                    service_date=appt.service_date,
+                    doctor_id=appt.doctor_id,
+                    token_hash=hashlib.sha256(secrets.token_bytes(16)).hexdigest(),
+                    expires_at=appt.finished_at + dt.timedelta(days=7),
+                    score=score,
+                    wait_score=max(1, score - rng.choice([0, 0, 1, 2])),
+                    comment=rng.choice(DEMO_COMMENTS),
+                    submitted_at=appt.finished_at + dt.timedelta(hours=rng.randint(1, 30)),
+                )
+            )
+            count += 1
+        s.commit()
+    return count
 
 
 def _has_real_appointments(session_factory: object) -> bool:

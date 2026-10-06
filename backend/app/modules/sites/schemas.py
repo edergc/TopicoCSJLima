@@ -152,6 +152,45 @@ class DoctorUpdateIn(ApiModel):
     is_active: bool | None = None
 
 
+class DoctorBlock(ApiModel):
+    weekday: int = Field(ge=1, le=7, description="1 = lunes … 7 = domingo")
+    start_time: time
+    end_time: time
+
+    @model_validator(mode="after")
+    def _check_times(self) -> "DoctorBlock":
+        if self.end_time <= self.start_time:
+            raise ValueError("La hora de fin debe ser posterior a la de inicio.")
+        return self
+
+
+class DoctorScheduleIn(ApiModel):
+    blocks: list[DoctorBlock] = Field(
+        max_length=28, description="Lista vacía = disponible en todo el horario de la sede."
+    )
+
+
+class AbsenceIn(ApiModel):
+    date_from: date
+    date_to: date
+    reason: Annotated[str, StringConstraints(min_length=3, max_length=150)]
+
+    @model_validator(mode="after")
+    def _check_range(self) -> "AbsenceIn":
+        if self.date_to < self.date_from:
+            raise ValueError("La fecha final no puede ser anterior a la inicial.")
+        return self
+
+
+class AbsenceOut(ApiOut):
+    id: int
+    doctor_id: int
+    date_from: date
+    date_to: date
+    reason: str
+    created_at: datetime
+
+
 class DoctorOut(ApiOut):
     id: int
     site_id: int
@@ -163,6 +202,11 @@ class DoctorOut(ApiOut):
     email: str | None
     is_active: bool
     updated_at: datetime
+    schedule: list[DoctorBlock] = Field(default_factory=list)
+    present_today: bool = True
+    on_duty_now: bool = True
+    absence_reason: str | None = None
+    upcoming_absences: list[AbsenceOut] = Field(default_factory=list)
 
 
 def _upper(value: object) -> object:

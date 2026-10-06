@@ -18,20 +18,23 @@ import re
 from datetime import date, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query, Request, Response
+from pydantic import Field, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFoundError
 from app.core.ratelimit import limiter
-from app.modules.admin.parameters import get_bool, get_str
+from app.modules.admin.parameters import get_bool, get_int, get_str
 from app.modules.appointments import queue as queue_view
 from app.modules.appointments.models import Appointment, AppointmentStatus
 from app.modules.appointments.queue import QueueItem
 from app.modules.auth.dependencies import ClockDep, DbDep
+from app.modules.operations import service as ops
+from app.modules.ratings import service as ratings
 from app.modules.sites.models import Site
 from app.modules.workers.models import Worker
-from app.shared.schemas import ApiOut
+from app.shared.schemas import ApiModel, ApiOut
 from app.shared.text import is_valid_dni, mask_name, normalize_document, short_name
 
 router = APIRouter(prefix="/public", tags=["Consulta pública"])
@@ -137,6 +140,10 @@ class DisplayBoardOut(ApiOut):
     show_names: bool
     voice_enabled: bool
     message: str
+    messages: list[str]
+    message_seconds: int
+    pause_reason: str | None
+    pause_resume_at: datetime | None
     calling: list[DisplayTicketOut]
     in_service: list[DisplayTicketOut]
     waiting: list[DisplayTicketOut]
@@ -192,6 +199,10 @@ def display_board(request: Request, db: DbDep, clock: ClockDep, site_code: str) 
         show_names=show_names,
         voice_enabled=get_bool(db, "display.voice_enabled", True),
         message=get_str(db, "display.message", ""),
+        messages=ops.display_messages_for(db, site.id, clock.today()) or [get_str(db, "display.message", "")],
+        message_seconds=max(get_int(db, "display.message_seconds", 10), 3),
+        pause_reason=snap.pause.reason if snap.pause else None,
+        pause_resume_at=snap.pause.resume_at if snap.pause else None,
         calling=[_display_ticket(i, show_names) for i in calling],
         in_service=[_display_ticket(i, show_names) for i in snap.in_service],
         waiting=[_display_ticket(i, show_names) for i in pending[:_DISPLAY_WAITING_LIMIT]],
@@ -199,3 +210,36 @@ def display_board(request: Request, db: DbDep, clock: ClockDep, site_code: str) 
         attended_count=snap.counts["attended"],
         generated_at=clock.now(),
     )
+
+
+# ---------------------------------------------------------------------------
+# Calificación anónima del servicio
+# ---------------------------------------------------------------------------
+class RatingTokenIn(ApiModel):
+    token: Annotated[str, StringConstraints(min_length=16, max_length=64)]
+
+
+class RatingLookupOut(ApiOut):
+    site_name: str
+    service_date: date
+    submitted: bool
+    expired: bool
+
+
+class RatingSubmitIn(RatingTokenIn):
+    score: int = Field(ge=1, le=5, description="Trato recibido (1 a 5)")
+    wait_score: int | None = Field(default=None, ge=1, le=5, description="Tiempo de espera (1 a 5)")
+    comment: Annotated[str, StringConstraints(max_length=500)] | None = None
+
+
+@router.post("/rating/lookup", response_model=RatingLookupOut, summary="Datos de la invitación a calificar")
+@limiter.limit("30/minute")
+def rating_lookup(request: Request, body: RatingTokenIn, db: DbDep, clock: ClockDep) -> dict[str, object]:
+    return ratings.lookup(db, body.token, clock.now())
+
+
+@router.post("/rating", status_code=204, summary="Enviar la calificación (anónima)")
+@limiter.limit("10/minute")
+def rating_submit(request: Request, body: RatingSubmitIn, db: DbDep, clock: ClockDep) -> Response:
+    ratings.submit(db, body.token, score=body.score, wait_score=body.wait_score, comment=body.comment, now=clock.now())
+    return Response(status_code=204)

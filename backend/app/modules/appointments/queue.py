@@ -12,7 +12,7 @@ from app.modules.appointments.scheduling import estimate_start_times
 from app.modules.appointments.state_machine import Status
 from app.modules.notifications.models import Notification
 from app.modules.sites import service as sites
-from app.modules.sites.models import Site
+from app.modules.sites.models import Site, SitePause
 
 LOW_CAPACITY_THRESHOLD = 2
 
@@ -47,6 +47,7 @@ class QueueSnapshot:
     closed: list[QueueItem] = field(default_factory=list)
     counts: dict[str, int] = field(default_factory=dict)
     incidents: list[Incident] = field(default_factory=list)
+    pause: SitePause | None = None
 
     def item_for(self, appointment_id: int) -> QueueItem | None:
         for group in (self.in_service, self.called, self.waiting, self.registered, self.finished, self.closed):
@@ -91,11 +92,14 @@ def build_snapshot(db: Session, site: Site, day: date, clock: Clock) -> QueueSna
     snap.called.sort(key=lambda i: i.appointment.called_at or i.appointment.registered_at)
 
     now = clock.now()
+    if day == clock.today():
+        snap.pause = db.scalar(select(SitePause).where(SitePause.site_id == site.id, SitePause.ended_at.is_(None)))
     if service_day is not None:
         # Primero se atiende a los llamados, luego a quienes esperan (orden de turno).
         pending = snap.called + snap.waiting + snap.registered
         estimates = estimate_start_times(
-            now=now,
+            # En pausa, la atención se reanuda a la hora prevista: las estimaciones parten de ahí.
+            now=max(now, snap.pause.resume_at) if snap.pause else now,
             blocks=sites.block_windows(clock, day, sites.blocks_for(db, site.id, day)),
             slot_minutes=service_day.slot_minutes,
             lanes=service_day.max_concurrent_in_service,

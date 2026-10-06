@@ -92,6 +92,17 @@ def _kpis(totals: dict[str, Any]) -> list[tuple[str, str]]:
     ]
 
 
+def _rating_rows(rating: dict[str, Any]) -> list[list[Any]]:
+    """Satisfacción (anónima): agregados y distribución de puntajes."""
+    rows: list[list[Any]] = [
+        ["Calificaciones recibidas", f"{rating['count']} de {rating['invited']} invitaciones"],
+        ["Trato (promedio de 1 a 5)", _num(rating["avg_score"])],
+        ["Tiempo de espera (promedio de 1 a 5)", _num(rating["avg_wait_score"])],
+    ]
+    rows += [[f"Calificaciones con {b['score']} estrella(s)", b["count"]] for b in rating["distribution"]]
+    return rows
+
+
 def _day_rows(summary: dict[str, Any]) -> list[list[Any]]:
     return [
         [d["service_date"], d["site_name"], d["capacity"], d["requested"], d["attended"], d["no_show"], d["cancelled"]]
@@ -179,6 +190,16 @@ def summary_xlsx(summary: dict[str, Any], meta: ReportMeta) -> bytes:
             [20, 12],
         ),
     ]
+    rating = summary.get("rating")
+    if rating and rating["count"]:
+        sheets.append(
+            (
+                "Satisfacción",
+                ["Indicador", "Valor"],
+                _rating_rows(rating),
+                [40, 30],
+            )
+        )
     for name, headers, rows, widths in sheets:
         sheet = wb.create_sheet(name)
         start = _xl_title(sheet, f"{name} — Tópico de Salud", meta)
@@ -343,6 +364,12 @@ def summary_pdf(summary: dict[str, Any], meta: ReportMeta) -> bytes:
     def section(name: str, table: Table) -> None:
         story.append(KeepTogether([Paragraph(name, _STYLES["h2"]), table]))
 
+    rating = summary.get("rating")
+    if rating and rating["count"]:
+        section(
+            "Satisfacción del servicio (calificación anónima)",
+            _pdf_table(["Indicador", "Valor"], _rating_rows(rating), [width * 0.6, width * 0.4], numeric_from=1),
+        )
     if summary["by_doctor"]:
         section(
             "Atenciones por médico",

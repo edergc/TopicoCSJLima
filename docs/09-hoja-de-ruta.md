@@ -43,6 +43,8 @@ Son pasos para empezar a usar el sistema con datos reales.
 
 ## 2. Mejoras recomendadas de corto plazo (alto valor y bajo esfuerzo)
 
+> ✅ **Implementadas el 06/10/2026** (2.1 a 2.7). Ver el manual de usuario, secciones 2.8–2.10, 4.0, 4.1 y 4.2.
+
 ### 2.1 Horario por médico 🟡
 Hoy el horario es por sede. Con esta mejora, cada médico tendría sus días y horas, por ejemplo: «Dra. Medina: lun–mié, 8–12».
 - Al iniciar una atención, el sistema solo ofrece a los médicos que están de turno.

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import BusinessRuleError
 from app.modules.appointments.models import Appointment, ServiceDay
 from app.modules.auth.dependencies import ServiceContext
+from app.modules.ratings import service as ratings
 from app.modules.sites.models import Doctor, Site
 from app.modules.workers.models import Department, Worker
 
@@ -177,6 +178,7 @@ def summary(db: Session, f: ReportFilter) -> dict[str, Any]:
         "by_hour": [{"hour": int(h), "count": c} for h, c in by_hour],
         "by_department": [{"department": name, "count": c} for name, c in by_department],
         "by_channel": [{"channel": ch, "count": c} for ch, c in by_channel],
+        "rating": ratings.summary(db, f.site_ids, f.date_from, f.date_to),
         "by_doctor": [{"doctor": name, "attended": c, "avg_service_minutes": rnd(avg)} for name, c, avg in by_doctor],
     }
 

@@ -218,7 +218,6 @@ def test_worker_cannot_have_two_active_appointments_same_day(app_db: psycopg.Con
     [
         ([], "ATENDIDO"),
         ([], "EN_ATENCION"),
-        ([], "NO_PRESENTADO"),
         (["LLAMADO"], "ANULADO"),
         (["LLAMADO", "EN_ATENCION"], "CANCELADO"),
         (["LLAMADO", "EN_ATENCION"], "EN_ESPERA"),

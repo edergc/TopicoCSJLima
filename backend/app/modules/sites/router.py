@@ -6,17 +6,22 @@ from sqlalchemy import select
 
 from app.core.errors import MESSAGES
 from app.modules.auth.dependencies import ServiceContext, require
+from app.modules.sites import doctors as doctor_rules
 from app.modules.sites import service as sites
 from app.modules.sites.config_service import SiteConfigService
-from app.modules.sites.models import ConsultingRoom, Doctor, Site, SiteClosure
+from app.modules.sites.models import ConsultingRoom, DoctorAbsence, DoctorSchedule, Site, SiteClosure
 from app.modules.sites.schemas import (
+    AbsenceIn,
+    AbsenceOut,
     AvailabilityOut,
     BlockOut,
     CapacityAdjustIn,
     ClosureIn,
     ClosureOut,
+    DoctorBlock,
     DoctorIn,
     DoctorOut,
+    DoctorScheduleIn,
     DoctorUpdateIn,
     RoomIn,
     RoomOut,
@@ -163,23 +168,88 @@ def adjust_capacity(
     return availability(site_id, ctx, service_date)
 
 
-@router.get("/{site_id}/doctors", response_model=list[DoctorOut], summary="Médicos del tópico de la sede")
-def list_doctors(site_id: int, ctx: ReadCtx, active_only: bool = False) -> list[Doctor]:
+def _doctors_out(ctx: ServiceContext, site_id: int, only: list[int] | None = None) -> list[DoctorOut]:
+    today = ctx.clock.today()
+    local_now = ctx.clock.local_now()
+    days = {d.doctor.id: d for d in doctor_rules.doctors_for_day(ctx.db, site_id, today)}
+    ids = [i for i in days if only is None or i in only]
+    schedule: dict[int, list[DoctorBlock]] = {i: [] for i in ids}
+    for row in ctx.db.scalars(
+        select(DoctorSchedule)
+        .where(DoctorSchedule.doctor_id.in_(ids))
+        .order_by(DoctorSchedule.weekday, DoctorSchedule.start_time)
+    ):
+        schedule[row.doctor_id].append(
+            DoctorBlock(weekday=row.weekday, start_time=row.start_time, end_time=row.end_time)
+        )
+    absences: dict[int, list[AbsenceOut]] = {i: [] for i in ids}
+    for a in ctx.db.scalars(
+        select(DoctorAbsence)
+        .where(DoctorAbsence.doctor_id.in_(ids), DoctorAbsence.date_to >= today)
+        .order_by(DoctorAbsence.date_from)
+    ):
+        absences[a.doctor_id].append(AbsenceOut.model_validate(a))
+    out = []
+    for i in ids:
+        day = days[i]
+        out.append(
+            DoctorOut.model_validate(day.doctor).model_copy(
+                update={
+                    "schedule": schedule[i],
+                    "present_today": day.present,
+                    "on_duty_now": day.on_duty_at(local_now.time()),
+                    "absence_reason": day.absence_reason,
+                    "upcoming_absences": absences[i],
+                }
+            )
+        )
+    out.sort(key=lambda d: (not d.is_active, d.full_name))
+    return out
+
+
+@router.get(
+    "/{site_id}/doctors", response_model=list[DoctorOut], summary="Médicos de la sede, con horario y disponibilidad"
+)
+def list_doctors(site_id: int, ctx: ReadCtx, active_only: bool = False) -> list[DoctorOut]:
     ctx.require_site(site_id, action="DOCTOR_READ")
-    stmt = select(Doctor).where(Doctor.site_id == site_id)
-    if active_only:
-        stmt = stmt.where(Doctor.is_active)
-    return list(ctx.db.scalars(stmt.order_by(Doctor.is_active.desc(), Doctor.full_name)))
+    doctors = _doctors_out(ctx, site_id)
+    return [d for d in doctors if d.is_active] if active_only else doctors
 
 
 @router.post("/{site_id}/doctors", response_model=DoctorOut, status_code=201, summary="Registrar médico")
-def create_doctor(site_id: int, body: DoctorIn, ctx: ConfigureCtx) -> Doctor:
-    return SiteConfigService(ctx).create_doctor(site_id, body)
+def create_doctor(site_id: int, body: DoctorIn, ctx: ConfigureCtx) -> DoctorOut:
+    doctor = SiteConfigService(ctx).create_doctor(site_id, body)
+    return _doctors_out(ctx, site_id, [doctor.id])[0]
 
 
 @router.patch("/{site_id}/doctors/{doctor_id}", response_model=DoctorOut, summary="Modificar o desactivar médico")
-def update_doctor(site_id: int, doctor_id: int, body: DoctorUpdateIn, ctx: ConfigureCtx) -> Doctor:
-    return SiteConfigService(ctx).update_doctor(site_id, doctor_id, body)
+def update_doctor(site_id: int, doctor_id: int, body: DoctorUpdateIn, ctx: ConfigureCtx) -> DoctorOut:
+    SiteConfigService(ctx).update_doctor(site_id, doctor_id, body)
+    return _doctors_out(ctx, site_id, [doctor_id])[0]
+
+
+@router.put(
+    "/{site_id}/doctors/{doctor_id}/schedule", response_model=DoctorOut, summary="Reemplazar el horario del médico"
+)
+def replace_doctor_schedule(site_id: int, doctor_id: int, body: DoctorScheduleIn, ctx: ConfigureCtx) -> DoctorOut:
+    SiteConfigService(ctx).replace_doctor_schedule(site_id, doctor_id, body)
+    return _doctors_out(ctx, site_id, [doctor_id])[0]
+
+
+@router.post(
+    "/{site_id}/doctors/{doctor_id}/absences", response_model=DoctorOut, status_code=201, summary="Registrar ausencia"
+)
+def add_absence(site_id: int, doctor_id: int, body: AbsenceIn, ctx: ConfigureCtx) -> DoctorOut:
+    SiteConfigService(ctx).add_absence(site_id, doctor_id, body)
+    return _doctors_out(ctx, site_id, [doctor_id])[0]
+
+
+@router.delete(
+    "/{site_id}/doctors/{doctor_id}/absences/{absence_id}", response_model=DoctorOut, summary="Eliminar ausencia"
+)
+def remove_absence(site_id: int, doctor_id: int, absence_id: int, ctx: ConfigureCtx) -> DoctorOut:
+    SiteConfigService(ctx).remove_absence(site_id, doctor_id, absence_id)
+    return _doctors_out(ctx, site_id, [doctor_id])[0]
 
 
 @router.get("/{site_id}/rooms", response_model=list[RoomOut], summary="Consultorios del tópico de la sede")

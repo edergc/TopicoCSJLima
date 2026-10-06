@@ -22,15 +22,27 @@ const MESSAGES: Record<string, string> = {
   ANULADO: "El registro fue anulado. Comuníquese con el tópico.",
 };
 
+function readTicketFromHash(): { dni: string; code: string } | null {
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const dni = params.get("dni") ?? "";
+  const code = (params.get("turno") ?? "").toUpperCase();
+  if (!/^\d{8}$/.test(dni) || !/^[A-Z]{1,3}-\d{3}$/.test(code)) return null;
+  // No dejar el DNI visible en la barra de direcciones.
+  window.history.replaceState(null, "", window.location.pathname);
+  return { dni, code };
+}
+
 /**
  * Consulta pública (sin sesión), pensada para el celular del trabajador.
  * Exige DNI + código de turno; no muestra datos de otras personas.
  */
 export default function PublicStatusPage() {
   useDocumentTitle("Consulta de turno");
-  const [dni, setDni] = useState("");
-  const [code, setCode] = useState("");
-  const [submitted, setSubmitted] = useState<{ dni: string; code: string } | null>(null);
+  // Desde el QR del ticket: /consulta#dni=…&turno=… (el fragmento no viaja al servidor).
+  const [fromQr] = useState(readTicketFromHash);
+  const [dni, setDni] = useState(fromQr?.dni ?? "");
+  const [code, setCode] = useState(fromQr?.code ?? "");
+  const [submitted, setSubmitted] = useState<{ dni: string; code: string } | null>(fromQr);
 
   const { data, error, isFetching, refetch } = useQuery({
     queryKey: ["public-status", submitted],

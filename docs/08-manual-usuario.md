@@ -128,6 +128,26 @@ En **Atenciones** puede buscar por fecha, estado, sede o DNI. Al hacer clic en u
 | **F4** | Llamar siguiente |
 | **Esc** | Cerrar ventana o diálogo |
 
+### 2.8 Ticket impreso
+Tras registrar un turno, el botón **Imprimir turno** imprime un ticket (impresora térmica de 80 mm o una hoja A6) con el turno, la sede, las personas delante, la hora estimada y un **código QR**. Al escanearlo con el celular se abre la consulta del turno con el DNI y el código ya cargados. También se puede reimprimir desde el detalle de la atención.
+
+### 2.9 Pausar la atención
+**Pausar atención** (refrigerio, emergencia, reunión…) pide un motivo y una duración aproximada:
+- la pantalla de sala muestra «Atención en pausa — retomamos a las 13:00»;
+- las horas estimadas se recalculan desde la hora de reanudación;
+- se reanuda con **Reanudar** o automáticamente al **llamar al siguiente**.
+
+Todo queda en la auditoría.
+
+### 2.10 Cerrar el día
+Al terminar la jornada, la supervisora (permiso «Cerrar el día operativo») pulsa **Cerrar día**:
+- si hay una atención en curso, primero debe finalizarse;
+- quienes quedaron registrados, en espera o llamados pasan a **no presentado** con el motivo «No fue atendido al cierre de la jornada»;
+- ya no se pueden registrar ni llamar turnos en esa fecha;
+- se **envía por correo el resumen del día en PDF** a las supervisoras de la sede (y a quien cerró), y se puede descargar al momento.
+
+> Si la encargada también debe cerrar el día, el administrador puede dar ese permiso a su rol en *Usuarios y roles → Roles y permisos*.
+
 ---
 
 ## 3. Consulta del turno (para trabajadores)
@@ -163,6 +183,15 @@ Por privacidad solo se muestra el **código de turno y el nombre abreviado** (no
 
 ## 4. Supervisión
 
+### 4.0 Panel en vivo
+**Panel en vivo** muestra todas las sedes a la vez y se actualiza cada 10 segundos. Por sede indica:
+- personas en espera, en atención (con médico y consultorio), atendidos y cupos libres;
+- la mayor espera actual (en rojo desde 45 minutos) y la espera promedio del día;
+- si la sede está en pausa o con la jornada cerrada;
+- alertas: tolerancias vencidas, capacidad agotada y correos que no se pudieron enviar.
+
+**Ir a la mesa** abre la Mesa de atención de esa sede.
+
 ### 4.1 Reportes
 
 **Reportes** muestra los indicadores del periodo elegido (7, 30 o 90 días, o un rango personalizado):
@@ -176,6 +205,8 @@ El botón **Exportar** descarga el reporte del periodo y la sede elegidos:
 - **Detalle por día (CSV).**
 
 Estos reportes no tienen datos personales, así que puede descargarlos cualquier usuario con acceso a Reportes. El **listado nominal** (PDF, Excel o CSV, con nombre y DNI de cada atención) requiere los permisos de exportación y de listado nominal. Toda descarga queda en la auditoría.
+
+**Satisfacción del servicio:** al finalizar cada atención, el trabajador recibe por correo un enlace para calificar el **trato** y el **tiempo de espera** (1 a 5 estrellas), con un comentario opcional. Es **anónimo**: los reportes solo muestran promedios, la distribución y los comentarios sin nombre. No se pregunta nada sobre la salud. El enlace vence en 7 días (parámetro `rating.valid_days`) y la encuesta se desactiva con `rating.enabled`.
 
 La tarjeta **Atenciones por médico** muestra cuántas atenciones finalizó cada médico y su duración promedio.
 
@@ -191,7 +222,11 @@ Debajo, las pestañas configuran la **sede elegida en el selector superior**:
 - **Configuración:** capacidad diaria, duración de turno, tolerancia, atenciones simultáneas, avisos por correo y reglas de re-registro. Los cambios se **programan desde una fecha futura**: el día en curso no se altera.
 - **Horario:** bloques de mañana y tarde por día de la semana.
 - **Consultorios:** los consultorios del tópico (p. ej., «Consultorio 1», «Consultorio 2») con su ubicación. Al llamar, la persona ve en la pantalla de sala y en el correo **a qué consultorio acercarse**. Si hay un solo consultorio activo se asigna solo; si hay varios, la encargada elige en la Mesa de atención **desde qué consultorio llama** (el equipo lo recuerda). Un consultorio que deja de usarse se desactiva.
+- **Pantalla de sala:** mensajes que rotan al pie de la pantalla (avisos, campañas de salud), con fechas de vigencia y orden. El administrador puede publicar un mensaje para **todas las sedes**. Cada mensaje se muestra `display.message_seconds` segundos.
 - **Médicos:** los médicos que atienden en el tópico de la sede (nombre, CMP, DNI, especialidad, teléfono). Al pulsar **Iniciar** en la Mesa de atención se registra qué médico atiende: si la sede tiene un solo médico activo se asigna solo; si tiene varios, el sistema pregunta cuál. Un médico que deja de atender se **desactiva** (su historial se conserva).
+  - **Horario:** días y horas en que atiende cada médico (p. ej., lun–mié 8:00–12:00). Sin horario propio, se considera disponible en todo el horario de la sede. Al iniciar una atención, la mesa ofrece primero a los médicos **de turno**.
+  - **Ausencias:** vacaciones, licencia o capacitación (con fechas y motivo administrativo). Ese día el médico no aparece para asignar.
+  - **Capacidad calculada:** si algún médico tiene horario, la capacidad del día se calcula con los **médicos presentes** (minutos de atención ÷ duración del turno), sin superar la capacidad configurada. Una ausencia la reduce automáticamente; un ajuste manual de *Capacidad del día* siempre prevalece. Se desactiva con el parámetro `capacity.by_doctor_schedule`.
 - **Cierres:** feriados o días sin atención; bloquean el registro en esas fechas.
 - **Capacidad del día:** ajuste puntual de un día (p. ej., el médico atenderá medio turno), con motivo obligatorio.
 - **Datos de la sede:** nombre y ubicación del tópico (aparece en los correos de llamado).

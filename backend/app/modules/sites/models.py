@@ -126,3 +126,63 @@ class ConsultingRoom(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
     updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+
+
+class DoctorSchedule(Base):
+    """Bloque del horario semanal de un médico."""
+
+    __tablename__ = "doctor_schedule"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    doctor_id: Mapped[int] = mapped_column(Integer, ForeignKey("doctor.id"))
+    weekday: Mapped[int] = mapped_column(SmallInteger)
+    start_time: Mapped[time] = mapped_column(Time)
+    end_time: Mapped[time] = mapped_column(Time)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=FetchedValue())
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+
+
+class DoctorAbsence(Base):
+    """Ausencia de un médico (rango de fechas)."""
+
+    __tablename__ = "doctor_absence"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    doctor_id: Mapped[int] = mapped_column(Integer, ForeignKey("doctor.id"))
+    date_from: Mapped[date] = mapped_column(Date)
+    date_to: Mapped[date] = mapped_column(Date)
+    reason: Mapped[str] = mapped_column(String(150))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=FetchedValue())
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+
+
+class SitePause(Base):
+    """Pausa de la atención del tópico de una sede."""
+
+    __tablename__ = "site_pause"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    site_id: Mapped[int] = mapped_column(Integer, ForeignKey("site.id"))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    resume_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str] = mapped_column(String(150))
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+    ended_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=FetchedValue())
+
+
+class DisplayMessage(TimestampMixin, Base):
+    """Mensaje rotativo de la pantalla de sala (site_id None = todas las sedes)."""
+
+    __tablename__ = "display_message"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("site.id"))
+    text: Mapped[str] = mapped_column(String(200))
+    valid_from: Mapped[date] = mapped_column(Date)
+    valid_to: Mapped[date | None] = mapped_column(Date)
+    sort_order: Mapped[int] = mapped_column(SmallInteger, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+    updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("app_user.id"))

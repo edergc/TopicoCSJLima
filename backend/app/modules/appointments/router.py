@@ -14,6 +14,7 @@ from app.modules.appointments.schemas import (
     CallNextIn,
     IncidentOut,
     NotificationOut,
+    PauseInfoOut,
     QueueCountsOut,
     QueueOut,
     ReasonOut,
@@ -115,6 +116,7 @@ def get_queue(
         finished=items(snap.finished),
         closed=items(snap.closed),
         incidents=[IncidentOut(code=i.code, message=i.message, ticket_code=i.ticket_code) for i in snap.incidents],
+        pause=PauseInfoOut.model_validate(snap.pause) if snap.pause else None,
     )
 
 

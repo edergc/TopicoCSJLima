@@ -62,7 +62,16 @@ class NotificationDispatcher:
                 n.status = "SENDING"
             db.commit()
             messages = [
-                OutgoingMessage(n.id, n.recipient or "", n.subject or "", n.body_text or "", n.body_html)
+                OutgoingMessage(
+                    n.id,
+                    n.recipient or "",
+                    n.subject or "",
+                    n.body_text or "",
+                    n.body_html,
+                    (n.attachment_name, n.attachment_type or "application/octet-stream", n.attachment_data)
+                    if n.attachment_name and n.attachment_data
+                    else None,
+                )
                 for n in claimed
             ]
 

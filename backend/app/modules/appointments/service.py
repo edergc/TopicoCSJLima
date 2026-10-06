@@ -27,8 +27,10 @@ from app.modules.appointments.state_machine import (
 from app.modules.audit import service as audit
 from app.modules.auth.dependencies import ServiceContext
 from app.modules.notifications import service as notifications
+from app.modules.ratings import service as ratings
+from app.modules.sites import doctors as doctor_rules
 from app.modules.sites import service as sites
-from app.modules.sites.models import ConsultingRoom, Doctor, Site, SiteSettingVersion
+from app.modules.sites.models import ConsultingRoom, Doctor, Site, SitePause, SiteSettingVersion
 from app.modules.workers import service as workers
 
 # Acciones que solo se ejecutan sobre la cola del día en curso.
@@ -188,6 +190,18 @@ class AppointmentService:
 
         match action:
             case Action.CALL:
+                pause = self.db.scalar(
+                    select(SitePause).where(SitePause.site_id == appointment.site_id, SitePause.ended_at.is_(None))
+                )
+                if pause is not None:  # llamar a alguien termina la pausa
+                    pause.ended_at, pause.ended_by = max(now, pause.started_at), ctx.user.id
+                    ctx.audit(
+                        action="SITE_RESUME",
+                        resource_type="site",
+                        resource_id=appointment.site_id,
+                        site_id=appointment.site_id,
+                        after={"automatic": True},
+                    )
                 room_id = self._resolve_room(appointment.site_id, data.room_id)
                 appointment.room = self.db.get(ConsultingRoom, room_id) if room_id else None
                 appointment.called_at, appointment.called_by = now, ctx.user.id
@@ -258,15 +272,20 @@ class AppointmentService:
         return active[0] if active else None
 
     def _resolve_doctor(self, site_id: int, doctor_id: int | None) -> int | None:
-        """Médico que atiende: el indicado, o el único activo de la sede. Sin médicos registrados → None."""
-        active = list(self.db.scalars(select(Doctor.id).where(Doctor.site_id == site_id, Doctor.is_active)))
+        """Médico que atiende: el indicado (presente hoy) o, si no se indica, el único de turno.
+
+        De turno = activo, sin ausencia y dentro de su horario (sin horario: todo el horario de la sede).
+        Si nadie está de turno en este momento, se consideran los presentes del día.
+        """
+        present, on_duty = doctor_rules.assignable(self.db, site_id, self.clock.today(), self.clock.local_now())
         if doctor_id is not None:
-            if doctor_id not in active:
+            if doctor_id not in {d.id for d in present}:
                 raise BusinessRuleError("DOCTOR_INVALID")
             return doctor_id
-        if len(active) > 1:
+        pool = on_duty or present
+        if len(pool) > 1:
             raise BusinessRuleError("DOCTOR_REQUIRED")
-        return active[0] if active else None
+        return pool[0].id if pool else None
 
     # ================================================================ consultas
     def get(self, public_id: uuid.UUID) -> Appointment:
@@ -330,6 +349,9 @@ class AppointmentService:
             .execution_options(populate_existing=True)
         )
         assert service_day is not None
+        fresh = service_day.occupied_count == 0 and service_day.capacity_adjusted_at is None
+        if fresh and sites.apply_planned_capacity(self.db, service_day, self.clock.now(), self.ctx.user.id):
+            self.db.flush()
         return service_day
 
     def _load_for_update(self, public_id: uuid.UUID) -> Appointment:
@@ -475,6 +497,15 @@ class AppointmentService:
                 notifications_enabled=enabled,
                 created_by=self.ctx.user.id,
                 dedup_key=f"{notifications.CANCELLED}:{appointment.id}",
+            )
+        elif action is Action.FINISH:
+            ratings.invite(
+                self.db,
+                appointment,
+                self.clock,
+                self.ctx.settings,
+                notifications_enabled=enabled,
+                created_by=self.ctx.user.id,
             )
         if action in _QUEUE_ADVANCES and setting is not None and setting.upcoming_notice_ahead > 0:
             self._notify_upcoming(appointment.site, appointment.service_date, setting, now)

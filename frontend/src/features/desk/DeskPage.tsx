@@ -13,6 +13,7 @@ import { useDocumentTitle, useHotkey } from "@/shared/lib/hooks";
 import { errorMessage, notify } from "@/shared/lib/notify";
 import { Button, Callout, Select, Skeleton } from "@/shared/ui";
 
+import { DayControls } from "./DayControls";
 import { DoctorPickerDialog } from "./DoctorPickerDialog";
 import { useWorkingRoom } from "./useWorkingRoom";
 import { KpiStrip } from "./KpiStrip";
@@ -41,7 +42,11 @@ export default function DeskPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [starting, setStarting] = useState<Appointment | null>(null);
   const doctors = useDoctors(siteId);
-  const activeDoctors = doctors.data?.filter((d) => d.is_active) ?? [];
+  // Presentes hoy (activos y sin ausencia); los de turno ahora van primero.
+  const presentDoctors = doctors.data?.filter((d) => d.is_active && d.present_today) ?? [];
+  const onDuty = presentDoctors.filter((d) => d.on_duty_now);
+  const doctorPool = onDuty.length ? onDuty : presentDoctors;
+  const pickerDoctors = [...onDuty, ...presentDoctors.filter((d) => !d.on_duty_now)];
   const rooms = useRooms(siteId);
   const activeRooms = rooms.data?.filter((r) => r.is_active) ?? [];
   const [roomId, setRoomId] = useWorkingRoom(siteId, activeRooms);
@@ -58,7 +63,7 @@ export default function DeskPage() {
       return;
     }
     // Con más de un médico activo, se elige quién atiende (con uno solo, el servidor lo asigna).
-    if (action === "START" && activeDoctors.length > 1) {
+    if (action === "START" && doctorPool.length > 1) {
       setStarting(appointment);
       return;
     }
@@ -149,6 +154,8 @@ export default function DeskPage() {
         </div>
       </div>
 
+      {data && <DayControls siteId={site.id} queue={data} />}
+
       {queue.isError && (
         <Callout
           tone="danger"
@@ -226,7 +233,7 @@ export default function DeskPage() {
       {starting && (
         <DoctorPickerDialog
           appointment={starting}
-          doctors={activeDoctors}
+          doctors={pickerDoctors}
           loading={transition.isPending}
           onClose={() => setStarting(null)}
           onConfirm={(doctorId) =>

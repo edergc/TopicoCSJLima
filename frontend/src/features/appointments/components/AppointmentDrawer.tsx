@@ -1,9 +1,10 @@
-import { Mail, RotateCw } from "lucide-react";
+import { Mail, Printer, RotateCw } from "lucide-react";
 
 import { useAuth } from "@/shared/auth/AuthProvider";
 import { CHANNEL_LABEL, statusStyle } from "@/shared/lib/status";
 import { fmt } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/cn";
+import { printTicket } from "@/shared/lib/printTicket";
 import { Badge, Button, DefinitionList, Drawer, Skeleton, StatusBadge } from "@/shared/ui";
 
 import { useAppointment, useAppointmentEvents, useAppointmentNotifications, useResendNotification } from "../api";
@@ -19,10 +20,12 @@ const EVENT_LABEL: Record<string, string> = {
   NO_SHOW: "No se presentó",
   VOID: "Anulado",
   MIGRATE: "Migrado del histórico",
+  CLOSE_DAY: "No atendido al cierre de la jornada",
 };
 
 const NOTIFICATION_LABEL: Record<string, string> = {
   APPT_REGISTERED: "Confirmación de registro",
+  RATING_REQUEST: "Invitación a calificar la atención",
   APPT_UPCOMING: "Aviso de proximidad",
   APPT_CALLED: "Llamado",
   APPT_CANCELLED: "Cancelación",
@@ -62,6 +65,13 @@ export function AppointmentDrawer({ appointmentId, onClose }: { appointmentId: s
         )
       }
       description={appointment ? `${appointment.site_name} · ${fmt.date(appointment.service_date)}` : undefined}
+      footer={
+        appointment && ["REGISTRADO", "EN_ESPERA", "LLAMADO"].includes(appointment.status) ? (
+          <Button variant="secondary" icon={<Printer className="size-4" />} onClick={() => printTicket(appointment)}>
+            Imprimir turno
+          </Button>
+        ) : undefined
+      }
     >
       {!appointment ? (
         <Skeleton className="h-48" />

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, CalendarClock, CalendarOff, DoorOpen, Gauge, History, MapPin, Plus, Settings2, Stethoscope, Trash2 } from "lucide-react";
+import { Building2, CalendarClock, CalendarOff, DoorOpen, Gauge, History, MapPin, MessageSquareText, Plus, Settings2, Stethoscope, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { api } from "@/shared/api/client";
@@ -33,6 +33,7 @@ import {
 } from "@/shared/ui";
 
 import { AllSitesCard } from "./AllSitesCard";
+import { DisplayMessagesTab } from "./DisplayMessagesTab";
 import { DoctorsTab } from "./DoctorsTab";
 import { RoomsTab } from "./RoomsTab";
 
@@ -514,6 +515,9 @@ export default function SitesPage() {
             <TabsTrigger value="doctors">
               <Stethoscope className="size-4" /> Médicos
             </TabsTrigger>
+            <TabsTrigger value="messages">
+              <MessageSquareText className="size-4" /> Pantalla de sala
+            </TabsTrigger>
             <TabsTrigger value="closures">
               <CalendarOff className="size-4" /> Cierres
             </TabsTrigger>
@@ -537,6 +541,9 @@ export default function SitesPage() {
           </TabsContent>
           <TabsContent value="doctors">
             <DoctorsTab siteId={site.id} />
+          </TabsContent>
+          <TabsContent value="messages">
+            <DisplayMessagesTab siteId={site.id} />
           </TabsContent>
           <TabsContent value="closures">
             <ClosuresTab siteId={site.id} />

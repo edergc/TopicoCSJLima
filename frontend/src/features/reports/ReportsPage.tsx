@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { BarChart3, CalendarCheck2, Clock3, Download, FileSpreadsheet, FileText, Gauge, Stethoscope, Timer, UserX } from "lucide-react";
+import { BarChart3, CalendarCheck2, Clock3, Download, FileSpreadsheet, FileText, Gauge, MessageSquareQuote, Star, Stethoscope, Timer, UserX } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { api } from "@/shared/api/client";
@@ -308,6 +308,58 @@ export default function ReportsPage() {
                     value: d.attended,
                   }))}
                 />
+              </div>
+            </Card>
+          )}
+
+          {data && data.rating.invited > 0 && (
+            <Card>
+              <CardHeader
+                title="Satisfacción del servicio"
+                description={`Calificación anónima: ${data.rating.count} respuesta(s) de ${data.rating.invited} invitación(es) enviadas al finalizar la atención.`}
+                icon={<Star className="size-[18px]" />}
+              />
+              <div className="grid gap-6 p-5 lg:grid-cols-[220px_1fr_1.2fr]">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-medium tracking-wide text-ink-soft uppercase">Trato</p>
+                    <p className="tabular text-3xl font-semibold">
+                      {data.rating.avg_score !== null ? fmt.number(data.rating.avg_score, 1) : "—"}
+                      <span className="text-base font-normal text-ink-soft"> / 5</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium tracking-wide text-ink-soft uppercase">Tiempo de espera</p>
+                    <p className="tabular text-2xl font-semibold">
+                      {data.rating.avg_wait_score !== null ? fmt.number(data.rating.avg_wait_score, 1) : "—"}
+                      <span className="text-base font-normal text-ink-soft"> / 5</span>
+                    </p>
+                  </div>
+                </div>
+                <BarList
+                  ariaLabel="Distribución de calificaciones"
+                  color={SINGLE_SERIES_COLOR}
+                  items={[...data.rating.distribution].reverse().map((b) => ({ label: `${b.score} estrella${b.score > 1 ? "s" : ""}`, value: b.count }))}
+                />
+                <div>
+                  <p className="mb-2 flex items-center gap-1.5 text-[13px] font-medium text-ink-muted">
+                    <MessageSquareQuote className="size-4" aria-hidden /> Comentarios recientes
+                  </p>
+                  {data.rating.comments.length === 0 ? (
+                    <p className="text-sm text-ink-soft">Sin comentarios en el periodo.</p>
+                  ) : (
+                    <ul className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                      {data.rating.comments.map((c, i) => (
+                        <li key={i} className="rounded-lg bg-sunken/60 px-3 py-2 text-sm">
+                          <p className="text-ink">«{c.comment}»</p>
+                          <p className="mt-0.5 text-xs text-ink-soft">
+                            {"★".repeat(c.score)} · {c.site_name} · {fmt.date(c.service_date)}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </Card>
           )}

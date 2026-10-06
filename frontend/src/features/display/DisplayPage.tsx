@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { BellRing, CheckCircle2, Clock3, Info, MapPin, Maximize, Minimize, MonitorPlay, Stethoscope, Users, Volume2, VolumeX } from "lucide-react";
+import { BellRing, CheckCircle2, Clock3, Coffee, Info, MapPin, Maximize, Minimize, MonitorPlay, Stethoscope, Users, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -221,8 +221,10 @@ export default function DisplayPage() {
     );
   }
 
-  const main = data?.calling[0];
-  const otherCalls = data?.calling.slice(1, 3) ?? [];
+  // En pausa, el aviso ocupa el lugar principal; los llamados pendientes pasan a la columna derecha.
+  const paused = Boolean(data?.pause_reason);
+  const main = paused ? undefined : data?.calling[0];
+  const otherCalls = (paused ? data?.calling.slice(0, 2) : data?.calling.slice(1, 3)) ?? [];
   const online = !isError;
 
   return (
@@ -330,7 +332,7 @@ export default function DisplayPage() {
       <footer className="relative flex items-center gap-6 border-t border-white/10 bg-black/20 px-[3vw] py-[1.8vh] text-[clamp(0.85rem,1.25vw,1.45rem)]">
         <p className="flex min-w-0 flex-1 items-center gap-3 text-white/80">
           <Info className="size-[1.2em] shrink-0 text-brand-200" aria-hidden />
-          <span className="truncate">{data?.message}</span>
+          {data && <RotatingMessage messages={data.messages} seconds={data.message_seconds} />}
         </p>
         {data && (
           <div className="hidden items-center gap-6 text-white/65 md:flex">
@@ -414,9 +416,38 @@ function Shell({ children, className }: { children: React.ReactNode; className?:
   );
 }
 
+/** Mensajes informativos que rotan al pie (configurables por sede). */
+function RotatingMessage({ messages, seconds }: { messages: string[]; seconds: number }) {
+  const [index, setIndex] = useState(0);
+  const key = messages.join("\u0000");
+  useEffect(() => {
+    if (messages.length < 2) return;
+    const id = window.setInterval(() => setIndex((i) => i + 1), seconds * 1000);
+    return () => window.clearInterval(id);
+  }, [key, messages.length, seconds]);
+  const text = messages.length ? messages[index % messages.length] : "";
+  return (
+    <span key={index % Math.max(messages.length, 1)} className="animate-fade-in truncate">
+      {text}
+    </span>
+  );
+}
+
 function IdleMessage({ board }: { board: DisplayBoard | undefined }) {
   let title = "Espere su llamado";
   let detail = "El número de su turno aparecerá aquí cuando sea su momento.";
+  if (board?.pause_reason && board.pause_resume_at) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center text-center">
+        <Coffee className="size-[clamp(3rem,6vw,7rem)] text-amber-300/80" aria-hidden />
+        <p className="mt-[3vh] text-[clamp(2rem,4vw,4.5rem)] font-semibold">Atención en pausa</p>
+        <p className="mt-[1.5vh] text-[clamp(1.2rem,2.2vw,2.6rem)] text-white/80">
+          Retomamos a las <b className="tabular text-amber-300">{fmt.time(board.pause_resume_at)}</b>
+        </p>
+        <p className="mt-[1vh] text-[clamp(1rem,1.5vw,1.8rem)] text-white/55">{board.pause_reason}</p>
+      </div>
+    );
+  }
   if (board?.day_status === "CLOSED") {
     title = "Atención del día finalizada";
     detail = "Gracias por su visita.";

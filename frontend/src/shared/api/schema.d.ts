@@ -288,7 +288,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Médicos del tópico de la sede */
+        /** Médicos de la sede, con horario y disponibilidad */
         get: operations["list_doctors_api_v1_sites__site_id__doctors_get"];
         put?: never;
         /** Registrar médico */
@@ -314,6 +314,57 @@ export interface paths {
         head?: never;
         /** Modificar o desactivar médico */
         patch: operations["update_doctor_api_v1_sites__site_id__doctors__doctor_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/doctors/{doctor_id}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reemplazar el horario del médico */
+        put: operations["replace_doctor_schedule_api_v1_sites__site_id__doctors__doctor_id__schedule_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/doctors/{doctor_id}/absences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registrar ausencia */
+        post: operations["add_absence_api_v1_sites__site_id__doctors__doctor_id__absences_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/doctors/{doctor_id}/absences/{absence_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Eliminar ausencia */
+        delete: operations["remove_absence_api_v1_sites__site_id__doctors__doctor_id__absences__absence_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/sites/{site_id}/rooms": {
@@ -885,6 +936,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sites/{site_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pausar la atención */
+        post: operations["pause_api_v1_sites__site_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reanudar la atención */
+        post: operations["resume_api_v1_sites__site_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/service-days/{service_date}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cerrar el día: pendientes → no presentado y resumen PDF por correo */
+        post: operations["close_day_api_v1_sites__site_id__service_days__service_date__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Panel en vivo de todas mis sedes */
+        get: operations["live_api_v1_dashboard_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/display-messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mensajes de la pantalla de sala */
+        get: operations["list_messages_api_v1_display_messages_get"];
+        put?: never;
+        /** Crear mensaje */
+        post: operations["create_message_api_v1_display_messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/display-messages/{message_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Modificar o desactivar */
+        patch: operations["update_message_api_v1_display_messages__message_id__patch"];
+        trace?: never;
+    };
     "/api/v1/audit-events": {
         parameters: {
             query?: never;
@@ -1211,10 +1365,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/rating/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Datos de la invitación a calificar */
+        post: operations["rating_lookup_api_v1_public_rating_lookup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enviar la calificación (anónima) */
+        post: operations["rating_submit_api_v1_public_rating_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AbsenceIn */
+        AbsenceIn: {
+            /**
+             * Date From
+             * Format: date
+             */
+            date_from: string;
+            /**
+             * Date To
+             * Format: date
+             */
+            date_to: string;
+            /** Reason */
+            reason: string;
+        };
+        /** AbsenceOut */
+        AbsenceOut: {
+            /** Id */
+            id: number;
+            /** Doctor Id */
+            doctor_id: number;
+            /**
+             * Date From
+             * Format: date
+             */
+            date_from: string;
+            /**
+             * Date To
+             * Format: date
+             */
+            date_to: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** AppointmentCreateIn */
         AppointmentCreateIn: {
             /** Site Id */
@@ -1543,6 +1770,24 @@ export interface components {
             /** End Reason */
             end_reason: string | null;
         };
+        /** DayCloseOut */
+        DayCloseOut: {
+            /**
+             * Service Date
+             * Format: date
+             */
+            service_date: string;
+            /** Marked No Show */
+            marked_no_show: number;
+            /** Attended */
+            attended: number;
+            /** No Show */
+            no_show: number;
+            /** Cancelled */
+            cancelled: number;
+            /** Summary Sent To */
+            summary_sent_to: number;
+        };
         /** DepartmentOut */
         DepartmentOut: {
             /** Id */
@@ -1568,6 +1813,14 @@ export interface components {
             voice_enabled: boolean;
             /** Message */
             message: string;
+            /** Messages */
+            messages: string[];
+            /** Message Seconds */
+            message_seconds: number;
+            /** Pause Reason */
+            pause_reason: string | null;
+            /** Pause Resume At */
+            pause_resume_at: string | null;
             /** Calling */
             calling: components["schemas"]["DisplayTicketOut"][];
             /** In Service */
@@ -1583,6 +1836,66 @@ export interface components {
              * Format: date-time
              */
             generated_at: string;
+        };
+        /** DisplayMessageIn */
+        DisplayMessageIn: {
+            /**
+             * Site Id
+             * @description Vacío = todas las sedes (requiere site:manage).
+             */
+            site_id?: number | null;
+            /** Text */
+            text: string;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+            /** Valid To */
+            valid_to?: string | null;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+        };
+        /** DisplayMessageOut */
+        DisplayMessageOut: {
+            /** Id */
+            id: number;
+            /** Site Id */
+            site_id: number | null;
+            /** Text */
+            text: string;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+            /** Valid To */
+            valid_to: string | null;
+            /** Sort Order */
+            sort_order: number;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** DisplayMessageUpdateIn */
+        DisplayMessageUpdateIn: {
+            /** Text */
+            text?: string | null;
+            /** Valid From */
+            valid_from?: string | null;
+            /** Valid To */
+            valid_to?: string | null;
+            /** Sort Order */
+            sort_order?: number | null;
+            /** Is Active */
+            is_active?: boolean | null;
         };
         /** DisplaySiteOut */
         DisplaySiteOut: {
@@ -1613,6 +1926,24 @@ export interface components {
             doctor: string | null;
             /** Room */
             room: string | null;
+        };
+        /** DoctorBlock */
+        DoctorBlock: {
+            /**
+             * Weekday
+             * @description 1 = lunes … 7 = domingo
+             */
+            weekday: number;
+            /**
+             * Start Time
+             * Format: time
+             */
+            start_time: string;
+            /**
+             * End Time
+             * Format: time
+             */
+            end_time: string;
         };
         /** DoctorIn */
         DoctorIn: {
@@ -1657,6 +1988,30 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Schedule */
+            schedule?: components["schemas"]["DoctorBlock"][];
+            /**
+             * Present Today
+             * @default true
+             */
+            present_today: boolean;
+            /**
+             * On Duty Now
+             * @default true
+             */
+            on_duty_now: boolean;
+            /** Absence Reason */
+            absence_reason?: string | null;
+            /** Upcoming Absences */
+            upcoming_absences?: components["schemas"]["AbsenceOut"][];
+        };
+        /** DoctorScheduleIn */
+        DoctorScheduleIn: {
+            /**
+             * Blocks
+             * @description Lista vacía = disponible en todo el horario de la sede.
+             */
+            blocks: components["schemas"]["DoctorBlock"][];
         };
         /** DoctorUpdateIn */
         DoctorUpdateIn: {
@@ -1782,6 +2137,88 @@ export interface components {
             message: string;
             /** Ticket Code */
             ticket_code: string | null;
+        };
+        /** LiveBoardOut */
+        LiveBoardOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Sites */
+            sites: components["schemas"]["LiveSiteOut"][];
+        };
+        /** LiveCountsOut */
+        LiveCountsOut: {
+            /** Capacity */
+            capacity: number;
+            /** Occupied */
+            occupied: number;
+            /** Available */
+            available: number;
+            /** Waiting */
+            waiting: number;
+            /** Called */
+            called: number;
+            /** In Service */
+            in_service: number;
+            /** Attended */
+            attended: number;
+            /** No Show */
+            no_show: number;
+            /** Cancelled */
+            cancelled: number;
+        };
+        /** LiveInServiceOut */
+        LiveInServiceOut: {
+            /** Ticket Code */
+            ticket_code: string;
+            /** Doctor Name */
+            doctor_name: string | null;
+            /** Room Name */
+            room_name: string | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** LiveIncidentOut */
+        LiveIncidentOut: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** LivePauseOut */
+        LivePauseOut: {
+            /** Reason */
+            reason: string;
+            /**
+             * Resume At
+             * Format: date-time
+             */
+            resume_at: string;
+        };
+        /** LiveSiteOut */
+        LiveSiteOut: {
+            /** Site Id */
+            site_id: number;
+            /** Site Code */
+            site_code: string;
+            /** Site Name */
+            site_name: string;
+            /** Day Status */
+            day_status: string | null;
+            counts: components["schemas"]["LiveCountsOut"];
+            /** Longest Wait Minutes */
+            longest_wait_minutes: number | null;
+            /** Avg Wait Minutes */
+            avg_wait_minutes: number | null;
+            /** In Service */
+            in_service: components["schemas"]["LiveInServiceOut"][];
+            /** Next Ticket Code */
+            next_ticket_code: string | null;
+            pause: components["schemas"]["LivePauseOut"] | null;
+            /** Incidents */
+            incidents: components["schemas"]["LiveIncidentOut"][];
         };
         /** LoginIn */
         LoginIn: {
@@ -1938,6 +2375,50 @@ export interface components {
              */
             updated_at: string;
         };
+        /** PauseIn */
+        PauseIn: {
+            /** Reason */
+            reason: string;
+            /**
+             * Minutes
+             * @description Duración prevista; se muestra la hora de reanudación.
+             */
+            minutes: number;
+        };
+        /** PauseInfoOut */
+        PauseInfoOut: {
+            /** Reason */
+            reason: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Resume At
+             * Format: date-time
+             */
+            resume_at: string;
+        };
+        /** PauseOut */
+        PauseOut: {
+            /** Id */
+            id: number;
+            /** Site Id */
+            site_id: number;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Resume At
+             * Format: date-time
+             */
+            resume_at: string;
+            /** Reason */
+            reason: string;
+        };
         /** PermissionOut */
         PermissionOut: {
             /** Code */
@@ -2047,6 +2528,79 @@ export interface components {
             closed: components["schemas"]["AppointmentOut"][];
             /** Incidents */
             incidents: components["schemas"]["IncidentOut"][];
+            pause?: components["schemas"]["PauseInfoOut"] | null;
+        };
+        /** RatingBucketOut */
+        RatingBucketOut: {
+            /** Score */
+            score: number;
+            /** Count */
+            count: number;
+        };
+        /** RatingCommentOut */
+        RatingCommentOut: {
+            /**
+             * Service Date
+             * Format: date
+             */
+            service_date: string;
+            /** Site Name */
+            site_name: string;
+            /** Score */
+            score: number;
+            /** Comment */
+            comment: string;
+        };
+        /** RatingLookupOut */
+        RatingLookupOut: {
+            /** Site Name */
+            site_name: string;
+            /**
+             * Service Date
+             * Format: date
+             */
+            service_date: string;
+            /** Submitted */
+            submitted: boolean;
+            /** Expired */
+            expired: boolean;
+        };
+        /** RatingSubmitIn */
+        RatingSubmitIn: {
+            /** Token */
+            token: string;
+            /**
+             * Score
+             * @description Trato recibido (1 a 5)
+             */
+            score: number;
+            /**
+             * Wait Score
+             * @description Tiempo de espera (1 a 5)
+             */
+            wait_score?: number | null;
+            /** Comment */
+            comment?: string | null;
+        };
+        /** RatingSummaryOut */
+        RatingSummaryOut: {
+            /** Invited */
+            invited: number;
+            /** Count */
+            count: number;
+            /** Avg Score */
+            avg_score: number | null;
+            /** Avg Wait Score */
+            avg_wait_score: number | null;
+            /** Distribution */
+            distribution: components["schemas"]["RatingBucketOut"][];
+            /** Comments */
+            comments: components["schemas"]["RatingCommentOut"][];
+        };
+        /** RatingTokenIn */
+        RatingTokenIn: {
+            /** Token */
+            token: string;
         };
         /** ReasonAdminOut */
         ReasonAdminOut: {
@@ -2190,6 +2744,7 @@ export interface components {
             by_channel: components["schemas"]["ReportChannelOut"][];
             /** By Doctor */
             by_doctor: components["schemas"]["ReportDoctorOut"][];
+            rating: components["schemas"]["RatingSummaryOut"];
         };
         /** ReportTotalsOut */
         ReportTotalsOut: {
@@ -3630,6 +4185,111 @@ export interface operations {
             };
         };
     };
+    replace_doctor_schedule_api_v1_sites__site_id__doctors__doctor_id__schedule_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+                doctor_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DoctorScheduleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DoctorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_absence_api_v1_sites__site_id__doctors__doctor_id__absences_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+                doctor_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbsenceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DoctorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_absence_api_v1_sites__site_id__doctors__doctor_id__absences__absence_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+                doctor_id: number;
+                absence_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DoctorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_rooms_api_v1_sites__site_id__rooms_get: {
         parameters: {
             query?: {
@@ -4877,6 +5537,221 @@ export interface operations {
             };
         };
     };
+    pause_api_v1_sites__site_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PauseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PauseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_api_v1_sites__site_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_day_api_v1_sites__site_id__service_days__service_date__close_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+                service_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayCloseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_api_v1_dashboard_live_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveBoardOut"];
+                };
+            };
+        };
+    };
+    list_messages_api_v1_display_messages_get: {
+        parameters: {
+            query?: {
+                site_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayMessageOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_message_api_v1_display_messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisplayMessageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayMessageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_message_api_v1_display_messages__message_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                message_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisplayMessageUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayMessageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_events_api_v1_audit_events_get: {
         parameters: {
             query?: {
@@ -5507,6 +6382,70 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DisplayBoardOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rating_lookup_api_v1_public_rating_lookup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RatingTokenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatingLookupOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rating_submit_api_v1_public_rating_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RatingSubmitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

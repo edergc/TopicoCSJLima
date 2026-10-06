@@ -26,6 +26,7 @@
     "@tanstack/react-query": "^5.104.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.49.0",
+    "qrcode-generator": "^1.5.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-hook-form": "^7.89.0",

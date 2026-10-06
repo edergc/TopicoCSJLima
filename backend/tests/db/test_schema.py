@@ -26,6 +26,11 @@ EXPECTED_TABLES = {
     "worker_coverage",
     "doctor",
     "consulting_room",
+    "doctor_schedule",
+    "doctor_absence",
+    "site_pause",
+    "service_rating",
+    "display_message",
     "reason",
     "appointment_status",
     "appointment_status_transition",
@@ -60,7 +65,7 @@ def test_every_table_is_documented(owner_db: psycopg.Connection) -> None:
 
 def test_reference_data_loaded(app_db: psycopg.Connection) -> None:
     assert scalar(app_db, "SELECT count(*) FROM appointment_status") == 8
-    assert scalar(app_db, "SELECT count(*) FROM appointment_status_transition") == 11
+    assert scalar(app_db, "SELECT count(*) FROM appointment_status_transition") == 13
     # Sedes iniciales (las pruebas de la API pueden crear otras)
     assert {"ALZ", "BAR"} <= set(scalar(app_db, "SELECT array_agg(code ORDER BY code) FROM site"))
     assert scalar(app_db, "SELECT array_agg(code ORDER BY code) FROM role") == [
@@ -73,7 +78,7 @@ def test_reference_data_loaded(app_db: psycopg.Connection) -> None:
     assert (
         scalar(app_db, "SELECT count(*) FROM site_schedule WHERE valid_from = DATE '2026-01-01'") == 20
     )  # 2 sedes x 5 días x 2 bloques
-    assert scalar(app_db, "SELECT count(*) FROM notification_template") == 4
+    assert scalar(app_db, "SELECT count(*) FROM notification_template") == 6  # + resumen del día y calificación
 
 
 def test_every_permission_is_assigned_to_some_role(app_db: psycopg.Connection) -> None:

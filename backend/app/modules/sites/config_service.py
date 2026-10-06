@@ -9,11 +9,22 @@ from app.modules.appointments.models import ServiceDay
 from app.modules.audit.service import diff, snapshot
 from app.modules.auth.dependencies import ServiceContext
 from app.modules.sites import service as sites
-from app.modules.sites.models import ConsultingRoom, Doctor, Site, SiteClosure, SiteSchedule, SiteSettingVersion
+from app.modules.sites.models import (
+    ConsultingRoom,
+    Doctor,
+    DoctorAbsence,
+    DoctorSchedule,
+    Site,
+    SiteClosure,
+    SiteSchedule,
+    SiteSettingVersion,
+)
 from app.modules.sites.schemas import (
+    AbsenceIn,
     CapacityAdjustIn,
     ClosureIn,
     DoctorIn,
+    DoctorScheduleIn,
     DoctorUpdateIn,
     RoomIn,
     RoomUpdateIn,
@@ -228,6 +239,8 @@ class SiteConfigService:
             setattr(doctor, field, value)
         doctor.updated_by = self.ctx.user.id
         self.db.flush()
+        if "is_active" in data.model_fields_set:
+            sites.refresh_planned_capacity(self.db, site_id, self.ctx.clock, self.ctx.user.id)
         b, a = diff(before, snapshot(doctor, _DOCTOR_FIELDS))
         self.ctx.audit(
             action="DOCTOR_UPDATE", resource_type="doctor", resource_id=doctor.id, site_id=site_id, before=b, after=a
@@ -344,3 +357,75 @@ class SiteConfigService:
         )
         self.db.commit()
         return room
+
+    # ================================================================ horario y ausencias de médicos
+    def _doctor(self, site_id: int, doctor_id: int, action: str) -> Doctor:
+        self.ctx.require_site(site_id, action=action)
+        doctor = self.db.get(Doctor, doctor_id)
+        if doctor is None or doctor.site_id != site_id:
+            raise NotFoundError("DOCTOR_NOT_FOUND")
+        return doctor
+
+    def replace_doctor_schedule(self, site_id: int, doctor_id: int, data: DoctorScheduleIn) -> None:
+        doctor = self._doctor(site_id, doctor_id, "DOCTOR_SCHEDULE_CHANGE")
+        by_day: dict[int, list[tuple[object, object]]] = {}
+        for b in sorted(data.blocks, key=lambda b: (b.weekday, b.start_time)):
+            previous = by_day.setdefault(b.weekday, [])
+            if previous and b.start_time < previous[-1][1]:  # type: ignore[operator]
+                raise BusinessRuleError("SCHEDULE_OVERLAP_DOCTOR")
+            previous.append((b.start_time, b.end_time))
+        current = list(self.db.scalars(select(DoctorSchedule).where(DoctorSchedule.doctor_id == doctor.id)))
+        before = [snapshot(r, ("weekday", "start_time", "end_time")) for r in current]
+        for row in current:
+            self.db.delete(row)
+        self.db.flush()
+        self.db.add_all(
+            DoctorSchedule(doctor_id=doctor.id, created_by=self.ctx.user.id, **b.model_dump()) for b in data.blocks
+        )
+        self.db.flush()
+        sites.refresh_planned_capacity(self.db, site_id, self.ctx.clock, self.ctx.user.id)
+        self.ctx.audit(
+            action="DOCTOR_SCHEDULE_CHANGE",
+            resource_type="doctor",
+            resource_id=doctor.id,
+            site_id=site_id,
+            before={"blocks": before},
+            after={"blocks": [b.model_dump(mode="json") for b in data.blocks]},
+        )
+        self.db.commit()
+
+    def add_absence(self, site_id: int, doctor_id: int, data: AbsenceIn) -> DoctorAbsence:
+        doctor = self._doctor(site_id, doctor_id, "DOCTOR_ABSENCE_ADD")
+        if data.date_to < self.ctx.clock.today():
+            raise BusinessRuleError("DATE_NOT_ALLOWED", "No se registran ausencias en fechas pasadas.")
+        absence = DoctorAbsence(doctor_id=doctor.id, created_by=self.ctx.user.id, **data.model_dump())
+        self.db.add(absence)
+        self.db.flush()
+        sites.refresh_planned_capacity(self.db, site_id, self.ctx.clock, self.ctx.user.id)
+        self.ctx.audit(
+            action="DOCTOR_ABSENCE_ADD",
+            resource_type="doctor",
+            resource_id=doctor.id,
+            site_id=site_id,
+            after=snapshot(absence, ("date_from", "date_to", "reason")),
+        )
+        self.db.commit()
+        return absence
+
+    def remove_absence(self, site_id: int, doctor_id: int, absence_id: int) -> None:
+        doctor = self._doctor(site_id, doctor_id, "DOCTOR_ABSENCE_REMOVE")
+        absence = self.db.get(DoctorAbsence, absence_id)
+        if absence is None or absence.doctor_id != doctor.id:
+            raise NotFoundError("DOCTOR_ABSENCE_NOT_FOUND")
+        before = snapshot(absence, ("date_from", "date_to", "reason"))
+        self.db.delete(absence)
+        self.db.flush()
+        sites.refresh_planned_capacity(self.db, site_id, self.ctx.clock, self.ctx.user.id)
+        self.ctx.audit(
+            action="DOCTOR_ABSENCE_REMOVE",
+            resource_type="doctor",
+            resource_id=doctor.id,
+            site_id=site_id,
+            before=before,
+        )
+        self.db.commit()

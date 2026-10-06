@@ -10,6 +10,7 @@ from app.core.clock import Clock
 from app.core.errors import BusinessRuleError, ConflictError, NotFoundError
 from app.modules.admin.parameters import get_int
 from app.modules.appointments.models import ServiceDay
+from app.modules.sites import doctors
 from app.modules.sites.models import Site, SiteClosure, SiteSchedule, SiteSettingVersion
 
 
@@ -111,9 +112,67 @@ def registration_blocker(db: Session, site: Site, day: date, clock: Clock) -> st
             return "SERVICE_DAY_CLOSED"
         if service_day.occupied_count >= service_day.capacity:
             return "CAPACITY_REACHED"
-    elif setting.daily_capacity <= 0:  # pragma: no cover - la BD exige capacidad > 0
-        return "CAPACITY_REACHED"
+    elif new_day_capacity(db, site.id, day, setting, blocks) <= 0:
+        return "NO_DOCTOR_AVAILABLE" if setting.daily_capacity > 0 else "CAPACITY_REACHED"
     return None
+
+
+def new_day_capacity(
+    db: Session, site_id: int, day: date, setting: SiteSettingVersion, blocks: list[Block] | None = None
+) -> int:
+    """Capacidad que tendrá un día aún no abierto: la configurada o la calculada por médicos presentes."""
+    blocks = blocks if blocks is not None else blocks_for(db, site_id, day)
+    planned = doctors.planned_capacity(
+        db,
+        site_id,
+        day,
+        base_capacity=setting.daily_capacity,
+        slot_minutes=setting.slot_minutes,
+        site_blocks=[(b.start, b.end) for b in blocks],
+    )
+    return setting.daily_capacity if planned is None else planned
+
+
+def apply_planned_capacity(db: Session, service_day: ServiceDay, now: datetime, user_id: int) -> bool:
+    """Recalcula la capacidad de un día abierto según los médicos presentes.
+
+    No toca días ajustados manualmente por la supervisión ni baja de los cupos ya ocupados.
+    """
+    if service_day.status != "OPEN":
+        return False
+    if service_day.capacity_adjust_reason not in (None, doctors.AUTO_CAPACITY_REASON):
+        return False
+    setting = db.get(SiteSettingVersion, service_day.setting_version_id)
+    if setting is None:  # pragma: no cover - FK
+        return False
+    blocks = blocks_for(db, service_day.site_id, service_day.service_date)
+    planned = doctors.planned_capacity(
+        db,
+        service_day.site_id,
+        service_day.service_date,
+        base_capacity=setting.daily_capacity,
+        slot_minutes=service_day.slot_minutes,
+        site_blocks=[(b.start, b.end) for b in blocks],
+    )
+    target = setting.daily_capacity if planned is None else max(planned, service_day.occupied_count)
+    if target == service_day.capacity:
+        return False
+    service_day.capacity = target
+    service_day.capacity_adjusted_at = now
+    service_day.capacity_adjusted_by = user_id
+    service_day.capacity_adjust_reason = doctors.AUTO_CAPACITY_REASON
+    return True
+
+
+def refresh_planned_capacity(db: Session, site_id: int, clock: Clock, user_id: int) -> None:
+    """Tras cambiar horarios o ausencias de médicos: recalcula los días abiertos desde hoy."""
+    days = db.scalars(
+        select(ServiceDay).where(
+            ServiceDay.site_id == site_id, ServiceDay.service_date >= clock.today(), ServiceDay.status == "OPEN"
+        )
+    )
+    for service_day in days:
+        apply_planned_capacity(db, service_day, clock.now(), user_id)
 
 
 @dataclass(frozen=True)
@@ -133,7 +192,8 @@ class Availability:
 def availability(db: Session, site: Site, day: date, clock: Clock) -> Availability:
     service_day = get_service_day(db, site.id, day)
     setting = effective_setting(db, site.id, day)
-    capacity = service_day.capacity if service_day else (setting.daily_capacity if setting else 0)
+    planned = new_day_capacity(db, site.id, day, setting) if setting else 0
+    capacity = service_day.capacity if service_day else planned
     occupied = service_day.occupied_count if service_day else 0
     closure = closure_on(db, site.id, day)
     blocker = registration_blocker(db, site, day, clock)

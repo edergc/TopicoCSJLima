@@ -28,6 +28,7 @@ class Action(StrEnum):
     CANCEL = "CANCEL"
     NO_SHOW = "NO_SHOW"
     VOID = "VOID"
+    CLOSE_DAY = "CLOSE_DAY"  # cierre de jornada: pendientes → no presentado (lo ejecuta el sistema)
 
 
 ACTIVE_STATUSES: frozenset[str] = frozenset({Status.REGISTRADO, Status.EN_ESPERA, Status.LLAMADO, Status.EN_ATENCION})
@@ -43,6 +44,7 @@ TRANSITIONS: dict[Action, tuple[frozenset[Status], Status]] = {
     Action.CANCEL: (frozenset({Status.REGISTRADO, Status.EN_ESPERA, Status.LLAMADO}), Status.CANCELADO),
     Action.NO_SHOW: (frozenset({Status.LLAMADO}), Status.NO_PRESENTADO),
     Action.VOID: (frozenset({Status.REGISTRADO, Status.EN_ESPERA}), Status.ANULADO),
+    Action.CLOSE_DAY: (frozenset({Status.REGISTRADO, Status.EN_ESPERA}), Status.NO_PRESENTADO),
 }
 
 ACTION_PERMISSION: dict[Action, str] = {
@@ -53,6 +55,7 @@ ACTION_PERMISSION: dict[Action, str] = {
     Action.CANCEL: "appointment:cancel",
     Action.NO_SHOW: "appointment:no_show",
     Action.VOID: "appointment:void",
+    Action.CLOSE_DAY: "service_day:close",
 }
 
 # Tipo de motivo (tabla reason.type) exigido por la acción.
@@ -61,6 +64,7 @@ ACTION_REASON_TYPE: dict[Action, str] = {
     Action.NO_SHOW: "NO_SHOW",
     Action.VOID: "VOID",
     Action.REQUEUE: "REQUEUE",
+    Action.CLOSE_DAY: "NO_SHOW",
 }
 
 # Acciones operadas por el usuario (ACTIVATE la ejecuta el sistema).

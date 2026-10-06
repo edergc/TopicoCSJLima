@@ -35,6 +35,7 @@ def _routers() -> list[APIRouter]:
     from app.modules.auth.router import router as auth_router
     from app.modules.imports.router import router as imports_router
     from app.modules.notifications.router import router as notifications_router
+    from app.modules.operations.router import router as operations_router
     from app.modules.public.router import router as public_router
     from app.modules.reports.router import router as reports_router
     from app.modules.sites.router import router as sites_router
@@ -52,6 +53,7 @@ def _routers() -> list[APIRouter]:
         notifications_router,
         imports_router,
         reports_router,
+        operations_router,
         audit_router,
         users_router,
         admin_router,
