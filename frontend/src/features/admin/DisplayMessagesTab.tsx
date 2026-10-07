@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Globe2, MessageSquareText, Pencil, Plus } from "lucide-react";
+import { Globe2, MessageSquareText, Pencil, Plus, Timer } from "lucide-react";
 import { useState } from "react";
 
 import { api } from "@/shared/api/client";
@@ -8,6 +8,8 @@ import { useAuth } from "@/shared/auth/AuthProvider";
 import { fmt, todayIso } from "@/shared/lib/format";
 import { notify } from "@/shared/lib/notify";
 import { Badge, Button, Card, CardHeader, EmptyState, Field, Input, Modal, Skeleton, Toggle } from "@/shared/ui";
+
+import { useParameters, useUpdateParameter } from "./api";
 
 type Form = { text: string; valid_from: string; valid_to: string; sort_order: number; all_sites: boolean; is_active: boolean };
 
@@ -153,6 +155,51 @@ export function DisplayMessagesTab({ siteId }: { siteId: number }) {
           </div>
         )}
       </Modal>
+      {can("parameter:manage") && <RotationSetting />}
     </Card>
+  );
+}
+
+const SECONDS_KEY = "display.message_seconds";
+
+/** Tiempo de rotación entre mensajes: parámetro global, editable aquí para tenerlo a mano. */
+function RotationSetting() {
+  const { data } = useParameters();
+  const param = data?.find((p) => p.key === SECONDS_KEY);
+  const update = useUpdateParameter();
+  const [draft, setDraft] = useState<string | null>(null);
+  if (!param) return null;
+  const current = Number(param.value);
+  const value = draft ?? String(current);
+  const n = Number(value);
+  const valid = Number.isInteger(n) && n >= 3 && n <= 300;
+
+  return (
+    <div className="flex flex-wrap items-end gap-3 border-t border-line px-5 py-4">
+      <Field label="Segundos entre mensajes" className="w-48">
+        <Input type="number" min={3} max={300} value={value} onChange={(e) => setDraft(e.target.value)} />
+      </Field>
+      <Button
+        size="sm"
+        icon={<Timer className="size-4" />}
+        disabled={!valid || n === current || !param.is_editable}
+        loading={update.isPending}
+        onClick={() =>
+          update.mutate(
+            { key: SECONDS_KEY, value: n },
+            {
+              onSuccess: () => {
+                setDraft(null);
+                notify.success("Tiempo actualizado", "La pantalla de sala lo aplicará en su próxima actualización.");
+              },
+              onError: (e) => notify.error(e),
+            },
+          )
+        }
+      >
+        Guardar
+      </Button>
+      <p className="basis-full text-[0.8125rem] text-ink-soft">Entre 3 y 300 segundos. Se aplica a las pantallas de todas las sedes.</p>
+    </div>
   );
 }
