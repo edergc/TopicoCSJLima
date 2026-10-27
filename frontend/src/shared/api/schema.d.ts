@@ -491,6 +491,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/appointments/{public_id}/room": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cambiar el consultorio de quien fue llamado o está en atención (auditado) */
+        post: operations["change_room_api_v1_appointments__public_id__room_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/appointments/{public_id}/priority": {
         parameters: {
             query?: never;
@@ -2616,6 +2633,16 @@ export interface components {
              * @default false
              */
             priority_enabled: boolean;
+            /**
+             * Rooms
+             * @description Consultorios activos y su ocupación.
+             */
+            rooms?: components["schemas"]["RoomStatusOut"][];
+            /**
+             * Next Room Id
+             * @description Primer consultorio libre (destino del próximo llamado).
+             */
+            next_room_id?: number | null;
         };
         /** RatingBucketOut */
         RatingBucketOut: {
@@ -2878,6 +2905,14 @@ export interface components {
             /** Permission Codes */
             permission_codes: string[];
         };
+        /** RoomChangeIn */
+        RoomChangeIn: {
+            /**
+             * Room Id
+             * @description Consultorio libre al que se reasigna.
+             */
+            room_id: number;
+        };
         /** RoomIn */
         RoomIn: {
             /** Name */
@@ -2909,6 +2944,36 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * RoomStatusOut
+         * @description Consultorio activo y quién lo ocupa ahora (LLAMADO o EN_ATENCION).
+         */
+        RoomStatusOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Location Note */
+            location_note: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "FREE" | "CALLED" | "IN_SERVICE";
+            /** Appointment Public Id */
+            appointment_public_id?: string | null;
+            /** Ticket Code */
+            ticket_code?: string | null;
+            /** Worker Name */
+            worker_name?: string | null;
+            /** Doctor Name */
+            doctor_name?: string | null;
+            /**
+             * Since
+             * @description Hora del llamado o del inicio de la atención.
+             */
+            since?: string | null;
         };
         /** RoomUpdateIn */
         RoomUpdateIn: {
@@ -4760,6 +4825,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QueueOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_room_api_v1_appointments__public_id__room_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoomChangeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentOut"];
                 };
             };
             /** @description Validation Error */

@@ -202,7 +202,7 @@ class AppointmentService:
                         site_id=appointment.site_id,
                         after={"automatic": True},
                     )
-                room_id = self._resolve_room(appointment.site_id, data.room_id)
+                room_id = self._resolve_room(appointment, data.room_id)
                 appointment.room = self.db.get(ConsultingRoom, room_id) if room_id else None
                 appointment.called_at, appointment.called_by = now, ctx.user.id
                 appointment.call_count += 1
@@ -327,20 +327,84 @@ class AppointmentService:
         self.db.commit()
         return appointment
 
-    def _resolve_room(self, site_id: int, room_id: int | None) -> int | None:
-        """Consultorio del llamado: el indicado, o el único activo de la sede. Sin consultorios → None."""
-        active = list(
+    def _resolve_room(self, appointment: Appointment, room_id: int | None) -> int | None:
+        """Consultorio al que se llama: un consultorio atiende a una persona a la vez.
+
+        Sin consultorios en la sede → None. Si no se indica, el primer consultorio libre (orden configurado).
+        Ocupado = alguien LLAMADO o EN_ATENCION en él ese día (salvo esta misma atención). El día operativo se
+        bloquea para que dos llamados simultáneos no elijan el mismo consultorio.
+        """
+        rooms = list(
             self.db.scalars(
-                select(ConsultingRoom.id).where(ConsultingRoom.site_id == site_id, ConsultingRoom.is_active)
+                select(ConsultingRoom.id)
+                .where(ConsultingRoom.site_id == appointment.site_id, ConsultingRoom.is_active)
+                .order_by(ConsultingRoom.sort_order, ConsultingRoom.name)
+            )
+        )
+        if not rooms:
+            if room_id is not None:
+                raise BusinessRuleError("ROOM_INVALID")
+            return None
+        self.db.scalar(
+            select(ServiceDay.id).where(ServiceDay.id == appointment.service_day_id).with_for_update(key_share=True)
+        )
+        busy = set(
+            self.db.scalars(
+                select(Appointment.room_id).where(
+                    Appointment.service_day_id == appointment.service_day_id,
+                    Appointment.status.in_((Status.LLAMADO, Status.EN_ATENCION)),
+                    Appointment.room_id.is_not(None),
+                    Appointment.id != appointment.id,
+                )
             )
         )
         if room_id is not None:
-            if room_id not in active:
+            if room_id not in rooms:
                 raise BusinessRuleError("ROOM_INVALID")
+            if room_id in busy:
+                raise ConflictError("ROOM_BUSY")
             return room_id
-        if len(active) > 1:
-            raise BusinessRuleError("ROOM_REQUIRED")
-        return active[0] if active else None
+        free = next((r for r in rooms if r not in busy), None)
+        if free is None:
+            raise ConflictError("ALL_ROOMS_BUSY")
+        return free
+
+    def change_room(self, public_id: uuid.UUID, room_id: int) -> Appointment:
+        """Reasigna el consultorio de quien fue llamado o está en atención (auditado y en la línea de tiempo).
+
+        Si aún estaba llamado, la pantalla de sala lo vuelve a anunciar con el nuevo consultorio y la tolerancia
+        corre de nuevo.
+        """
+        appointment = self._load_for_update(public_id)
+        self.ctx.require_site(appointment.site_id, action="APPOINTMENT_ROOM_CHANGE")
+        if (
+            appointment.status not in (Status.LLAMADO, Status.EN_ATENCION)
+            or appointment.service_date != self.clock.today()
+        ):
+            raise ConflictError("INVALID_TRANSITION", details={"status": appointment.status, "action": "ROOM_CHANGE"})
+        if room_id == appointment.room_id:
+            return appointment
+        before = appointment.room.name if appointment.room else None
+        room = self.db.get(ConsultingRoom, self._resolve_room(appointment, room_id))
+        assert room is not None
+        now = self.clock.now()
+        appointment.room = room
+        if appointment.status == Status.LLAMADO:
+            appointment.called_at, appointment.called_by = now, self.ctx.user.id
+            appointment.call_count += 1
+        self.db.flush()
+        note = f"Consultorio: {before or 'sin asignar'} → {room.name}"
+        self._add_event(appointment, "ROOM_CHANGE", appointment.status, appointment.status, None, note, now)
+        self.ctx.audit(
+            action="APPOINTMENT_ROOM_CHANGE",
+            resource_type="appointment",
+            resource_id=appointment.public_id,
+            site_id=appointment.site_id,
+            before={"room": before},
+            after={"room": room.name, "ticket_code": appointment.ticket_code},
+        )
+        self.db.commit()
+        return appointment
 
     def _resolve_doctor(self, site_id: int, doctor_id: int | None) -> int | None:
         """Médico que atiende: el indicado (presente hoy) o, si no se indica, el único de turno.
@@ -498,7 +562,13 @@ class AppointmentService:
             .select_from(Appointment)
             .where(Appointment.service_day_id == service_day.id, Appointment.status == Status.EN_ATENCION)
         )
-        if (in_service or 0) >= locked.max_concurrent_in_service:
+        # Con consultorios, cada uno atiende a una persona: el límite es la cantidad de consultorios activos.
+        rooms = self.db.scalar(
+            select(func.count())
+            .select_from(ConsultingRoom)
+            .where(ConsultingRoom.site_id == locked.site_id, ConsultingRoom.is_active)
+        )
+        if (in_service or 0) >= (rooms or locked.max_concurrent_in_service):
             raise ConflictError("MAX_IN_SERVICE_REACHED")
 
     def _add_event(

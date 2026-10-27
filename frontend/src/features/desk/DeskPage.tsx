@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 
 import { AppointmentDrawer } from "@/features/appointments/components/AppointmentDrawer";
 import { ACTIONS_WITH_REASON, ReasonActionDialog } from "@/features/appointments/components/ReasonActionDialog";
-import { useAvailability, useCallNext, useDoctors, useQueue, useRooms, useTransition } from "@/features/appointments/api";
+import { useAvailability, useCallNext, useChangeRoom, useDoctors, useQueue, useTransition } from "@/features/appointments/api";
 import type { Appointment, AppointmentAction } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/AuthProvider";
 import { useSite } from "@/shared/auth/SiteProvider";
@@ -11,16 +11,20 @@ import { cn } from "@/shared/lib/cn";
 import { fmt } from "@/shared/lib/format";
 import { useDocumentTitle, useHotkey } from "@/shared/lib/hooks";
 import { errorMessage, notify } from "@/shared/lib/notify";
-import { Button, Callout, Select, Skeleton } from "@/shared/ui";
+import { Button, Callout, Skeleton } from "@/shared/ui";
 
 import { DayControls } from "./DayControls";
 import { DoctorPickerDialog } from "./DoctorPickerDialog";
 import { PriorityDialog } from "./PriorityDialog";
-import { useWorkingRoom } from "./useWorkingRoom";
 import { KpiStrip } from "./KpiStrip";
 import { QueueBoard } from "./QueueBoard";
+import { RoomChangeDialog } from "./RoomChangeDialog";
+import { RoomsPanel } from "./RoomsPanel";
 import { RegisterPanel, type RegisterPanelHandle } from "./RegisterPanel";
 import { TicketIssued } from "./TicketIssued";
+
+const calledTo = (a: Appointment) =>
+  `${a.worker.display_name} — indíquele que se acerque ${a.room_name ? `al ${a.room_name}` : "al tópico"}.`;
 
 /**
  * Mesa de atención: la pantalla principal de la encargada del tópico.
@@ -49,33 +53,16 @@ export default function DeskPage() {
   const onDuty = presentDoctors.filter((d) => d.on_duty_now);
   const doctorPool = onDuty.length ? onDuty : presentDoctors;
   const pickerDoctors = [...onDuty, ...presentDoctors.filter((d) => !d.on_duty_now)];
-  const rooms = useRooms(siteId);
-  const activeRooms = rooms.data?.filter((r) => r.is_active) ?? [];
-  const [roomId, setRoomId] = useWorkingRoom(siteId, activeRooms);
-  // Con varios consultorios, la encargada indica a cuál llama (se recuerda en este equipo).
-  const needsRoom = activeRooms.length > 1 && roomId === null;
-  const warnRoom = () =>
-    notify.warning("Seleccione su consultorio", "Indíquelo junto al botón «Llamar siguiente»: es adonde se llama a las personas.");
-  // Va junto a «Llamar siguiente» (donde se usa), no en el encabezado. Con un solo consultorio no hay nada que elegir.
-  const roomPicker =
-    activeRooms.length > 1 ? (
-      <label className="flex items-center justify-end gap-2 text-[0.8125rem] text-ink-soft">
-        {needsRoom ? <span className="font-medium text-warning">Elija su consultorio para llamar:</span> : "Llama al"}
-        <Select
-          aria-label="Consultorio al que llama"
-          value={roomId ?? ""}
-          onChange={(e) => setRoomId(e.target.value ? Number(e.target.value) : null)}
-          className={cn("h-8 w-auto py-0 text-[0.8125rem]", needsRoom && "ring-2 ring-warning")}
-        >
-          <option value="">Seleccione…</option>
-          {activeRooms.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </Select>
-      </label>
-    ) : null;
+  // Consultorios: el llamado va al primero libre (o al libre que elija la encargada); uno ocupado no recibe a nadie.
+  const roomStates = queue.data?.rooms ?? [];
+  const freeRooms = roomStates.filter((r) => r.status === "FREE");
+  const [chosenRoomId, setChosenRoomId] = useState<number | null>(null);
+  const targetRoom = freeRooms.find((r) => r.id === chosenRoomId) ?? freeRooms[0] ?? null;
+  const allRoomsBusy = roomStates.length > 0 && freeRooms.length === 0;
+  const [changingRoom, setChangingRoom] = useState<Appointment | null>(null);
+  const changeRoom = useChangeRoom(siteId);
+  const warnRoomsBusy = () =>
+    notify.warning("Todos los consultorios están ocupados", "Finalice una atención (o cambie a alguien de consultorio) antes de llamar.");
 
   const canOperate = can("appointment:operate");
 
@@ -89,15 +76,15 @@ export default function DeskPage() {
       setStarting(appointment);
       return;
     }
-    if (action === "CALL" && needsRoom) {
-      warnRoom();
+    if (action === "CALL" && allRoomsBusy) {
+      warnRoomsBusy();
       return;
     }
     transition.mutate(
-      { appointment, action, body: action === "CALL" && roomId ? { room_id: roomId } : undefined },
+      { appointment, action, body: action === "CALL" && targetRoom ? { room_id: targetRoom.id } : undefined },
       {
         onSuccess: (updated) => {
-          if (action === "CALL") notify.info(`Turno ${updated.ticket_code} llamado`, updated.worker.display_name);
+          if (action === "CALL") notify.info(`Turno ${updated.ticket_code} llamado`, calledTo(updated));
           if (action === "FINISH") notify.success(`Atención ${updated.ticket_code} finalizada`);
         },
       },
@@ -106,19 +93,33 @@ export default function DeskPage() {
 
   const handleCallNext = () => {
     if (!canOperate || callNext.isPending) return;
-    if (needsRoom) {
-      warnRoom();
+    if (allRoomsBusy) {
+      warnRoomsBusy();
       return;
     }
-    callNext.mutate(roomId, {
-      onSuccess: (a) =>
-        notify.info(
-          `Turno ${a.ticket_code} llamado`,
-          `${a.worker.display_name} — indíquele que se acerque ${a.room_name ? `al ${a.room_name}` : "al tópico"}.`,
-        ),
+    callNext.mutate(targetRoom?.id ?? null, {
+      onSuccess: (a) => {
+        setChosenRoomId(null);
+        notify.info(`Turno ${a.ticket_code} llamado`, calledTo(a));
+      },
       onError: (error) => notify.error(error),
     });
   };
+
+  const handleChangeRoom = (appointment: Appointment, roomId: number) =>
+    changeRoom.mutate(
+      { appointment, roomId },
+      {
+        onSuccess: (a) => {
+          setChangingRoom(null);
+          notify.info(
+            `${a.ticket_code} → ${a.room_name}`,
+            a.status === "LLAMADO" ? "La pantalla de sala lo vuelve a anunciar con el nuevo consultorio." : "Consultorio actualizado.",
+          );
+        },
+        onError: (error) => notify.error(error),
+      },
+    );
 
   useHotkey("F2", () => registerRef.current?.focus());
   useHotkey("F4", handleCallNext, canOperate);
@@ -219,7 +220,14 @@ export default function DeskPage() {
               onCallNext={handleCallNext}
               callingNext={callNext.isPending}
               canOperate={canOperate}
-              roomPicker={roomPicker}
+              roomsPanel={
+                roomStates.length > 1 ? (
+                  <RoomsPanel rooms={roomStates} targetId={targetRoom?.id ?? null} onTarget={setChosenRoomId} />
+                ) : null
+              }
+              targetRoomName={roomStates.length > 1 ? (targetRoom?.name ?? null) : null}
+              allRoomsBusy={allRoomsBusy}
+              onChangeRoom={roomStates.length > 1 && freeRooms.length > 0 ? setChangingRoom : undefined}
               pendingId={transition.isPending ? (transition.variables?.appointment.public_id ?? null) : null}
               onPriority={can("appointment:create") ? setPriorityFor : undefined}
             />
@@ -237,6 +245,15 @@ export default function DeskPage() {
       </div>
 
       {priorityFor && <PriorityDialog appointment={priorityFor} onClose={() => setPriorityFor(null)} />}
+      {changingRoom && (
+        <RoomChangeDialog
+          appointment={changingRoom}
+          rooms={freeRooms}
+          loading={changeRoom.isPending}
+          onPick={(roomId) => handleChangeRoom(changingRoom, roomId)}
+          onClose={() => setChangingRoom(null)}
+        />
+      )}
       {starting && (
         <DoctorPickerDialog
           appointment={starting}

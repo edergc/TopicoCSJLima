@@ -33,6 +33,8 @@ const ACTION_LABEL: Record<string, string> = {
   ACCESS_DENIED: "Acceso denegado",
   APPOINTMENT_REGISTER: "Registro de atención",
   APPOINTMENT_CALL: "Llamado",
+  APPOINTMENT_ROOM_CHANGE: "Cambio de consultorio",
+  APPOINTMENT_PRIORITY: "Cambio de prioridad",
   APPOINTMENT_START: "Inicio de atención",
   APPOINTMENT_FINISH: "Fin de atención",
   APPOINTMENT_REQUEUE: "Devolución a la cola",

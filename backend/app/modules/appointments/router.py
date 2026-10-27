@@ -20,6 +20,8 @@ from app.modules.appointments.schemas import (
     QueueCountsOut,
     QueueOut,
     ReasonOut,
+    RoomChangeIn,
+    RoomStatusOut,
     StatusOut,
     TransitionIn,
     WorkerBriefOut,
@@ -29,6 +31,7 @@ from app.modules.appointments.state_machine import Action, allowed_actions
 from app.modules.auth.dependencies import ServiceContext, require
 from app.modules.notifications.models import Notification
 from app.modules.sites import service as sites
+from app.modules.sites.models import ConsultingRoom
 from app.modules.users.models import AppUser
 from app.shared.schemas import Page, PageParams
 from app.shared.text import display_name, short_name
@@ -105,6 +108,8 @@ def get_queue(
     def items(group: list[queue_view.QueueItem]) -> list[AppointmentOut]:
         return [appointment_out(i.appointment, ctx, i) for i in group]
 
+    rooms = room_status(ctx, site_id, snap)
+
     return QueueOut(
         site_id=site.id,
         site_name=site.name,
@@ -122,7 +127,54 @@ def get_queue(
         incidents=[IncidentOut(code=i.code, message=i.message, ticket_code=i.ticket_code) for i in snap.incidents],
         pause=PauseInfoOut.model_validate(snap.pause) if snap.pause else None,
         priority_enabled=priority.enabled(ctx.db),
+        rooms=rooms,
+        next_room_id=next((r.id for r in rooms if r.status == "FREE"), None),
     )
+
+
+def room_status(ctx: ServiceContext, site_id: int, snap: queue_view.QueueSnapshot) -> list[RoomStatusOut]:
+    """Consultorios activos (orden configurado) con quien los ocupa: llamado o en atención."""
+    occupant = {i.appointment.room_id: i.appointment for i in snap.called + snap.in_service if i.appointment.room_id}
+    active = ctx.db.scalars(
+        select(ConsultingRoom)
+        .where(ConsultingRoom.site_id == site_id, ConsultingRoom.is_active)
+        .order_by(ConsultingRoom.sort_order, ConsultingRoom.name)
+    )
+    out = []
+    for room in active:
+        a = occupant.get(room.id)
+        if a is None:
+            out.append(RoomStatusOut(id=room.id, name=room.name, location_note=room.location_note, status="FREE"))
+            continue
+        w = a.worker
+        in_service = a.status == "EN_ATENCION"
+        out.append(
+            RoomStatusOut(
+                id=room.id,
+                name=room.name,
+                location_note=room.location_note,
+                status="IN_SERVICE" if in_service else "CALLED",
+                appointment_public_id=a.public_id,
+                ticket_code=a.ticket_code,
+                worker_name=display_name(w.first_names, w.paternal_surname, w.maternal_surname),
+                doctor_name=a.doctor.full_name if a.doctor else None,
+                since=a.started_at if in_service else a.called_at,
+            )
+        )
+    return out
+
+
+@router.post(
+    "/appointments/{public_id}/room",
+    response_model=AppointmentOut,
+    summary="Cambiar el consultorio de quien fue llamado o está en atención (auditado)",
+)
+def change_room(
+    public_id: uuid.UUID, body: RoomChangeIn, ctx: Annotated[ServiceContext, Depends(require("appointment:operate"))]
+) -> AppointmentOut:
+    appointment = AppointmentService(ctx).change_room(public_id, body.room_id)
+    snap = queue_view.build_snapshot(ctx.db, appointment.site, appointment.service_date, ctx.clock)
+    return appointment_out(appointment, ctx, snap.item_for(appointment.id))
 
 
 @router.post(

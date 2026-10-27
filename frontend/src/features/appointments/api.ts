@@ -142,6 +142,16 @@ export function useCallNext(siteId: number | undefined) {
   });
 }
 
+/** Reasigna el consultorio de quien fue llamado o está en atención (si estaba llamado, se vuelve a anunciar). */
+export function useChangeRoom(siteId: number | undefined) {
+  const invalidate = useInvalidateOperation();
+  return useMutation({
+    mutationFn: ({ appointment, roomId }: { appointment: Pick<Appointment, "public_id">; roomId: number }) =>
+      api.post<Appointment>(`/appointments/${appointment.public_id}/room`, { room_id: roomId }),
+    onSettled: () => invalidate(siteId),
+  });
+}
+
 export function useAppointment(id: string | null) {
   return useQuery({
     queryKey: keys.appointment(id ?? ""),

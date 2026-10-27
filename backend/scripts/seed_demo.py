@@ -275,19 +275,6 @@ def main() -> int:
             for order, (name, note) in enumerate(room_list, 1):
                 body = {"name": name, "location_note": note, "sort_order": order}
                 client.post(url, json=body, headers=login(SUPERVISOR_DEMO)).raise_for_status()
-    rooms = {
-        code: [
-            r["id"]
-            for r in client.get(
-                f"{API_PREFIX}/sites/{sid}/rooms", params={"active_only": True}, headers=login(SUPERVISOR_DEMO)
-            ).json()
-        ]
-        for code, sid in sites.items()
-    }
-
-    def room_for(site: str) -> dict[str, object]:
-        return {"room_id": rng.choice(rooms[site])} if rooms.get(site) else {}
-
     # Horarios de los médicos de demostración (solo si aún no tienen) y mensajes de la pantalla de sala
     for sid in sites.values():
         listed = client.get(f"{API_PREFIX}/sites/{sid}/doctors", headers=login(SUPERVISOR_DEMO)).json()
@@ -364,7 +351,7 @@ def main() -> int:
                 if roll < 0.08:
                     act(user, appt, "cancel", reason_id=rng.choice(simple_cancel))
                     continue
-                act(user, appt, "call", **room_for(site))
+                act(user, appt, "call")
                 if roll < 0.15:
                     clock.advance(minutes=11)
                     act(user, appt, "no-show")
@@ -395,7 +382,7 @@ def main() -> int:
 
         # Primeras atenciones del día: llamar → iniciar → finalizar
         for appt in registered[:4]:
-            act(OPERATOR_ALZ, appt, "call", **room_for("ALZ"))
+            act(OPERATOR_ALZ, appt, "call")
             clock.advance(minutes=3)
             act(OPERATOR_ALZ, appt, "start", **doctor_for("ALZ"))
             clock.advance(minutes=rng.randint(9, 14))
@@ -408,14 +395,14 @@ def main() -> int:
             reason_id=cancel_reason["id"],
             note="Se atenderá en la clínica por la tarde",
         )
-        act(OPERATOR_ALZ, registered[5], "call", **room_for("ALZ"))
+        act(OPERATOR_ALZ, registered[5], "call")
         clock.advance(minutes=11)
         act(OPERATOR_ALZ, registered[5], "no-show")
-        act(OPERATOR_ALZ, registered[6], "call", **room_for("ALZ"))
+        act(OPERATOR_ALZ, registered[6], "call")
         clock.advance(minutes=2)
         act(OPERATOR_ALZ, registered[6], "start", **doctor_for("ALZ"))
         clock.advance(minutes=4)
-        act(OPERATOR_ALZ, registered[7], "call", **room_for("ALZ"))
+        act(OPERATOR_ALZ, registered[7], "call")
 
         for dni in today_pool[20:26]:
             register("BAR", dni, "PHONE")

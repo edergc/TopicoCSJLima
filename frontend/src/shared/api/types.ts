@@ -29,6 +29,7 @@ export type Appointment = S["AppointmentOut"];
 export type AppointmentCreateIn = S["AppointmentCreateIn"];
 export type TransitionIn = S["TransitionIn"];
 export type Queue = S["QueueOut"];
+export type RoomStatus = S["RoomStatusOut"];
 export type QueueCounts = S["QueueCountsOut"];
 export type Incident = S["IncidentOut"];
 export type AppointmentEvent = S["AppointmentEventOut"];

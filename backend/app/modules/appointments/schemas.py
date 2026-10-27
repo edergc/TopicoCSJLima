@@ -119,6 +119,24 @@ class PauseInfoOut(ApiOut):
     resume_at: datetime
 
 
+class RoomChangeIn(ApiModel):
+    room_id: int = Field(description="Consultorio libre al que se reasigna.")
+
+
+class RoomStatusOut(ApiOut):
+    """Consultorio activo y quién lo ocupa ahora (LLAMADO o EN_ATENCION)."""
+
+    id: int
+    name: str
+    location_note: str | None
+    status: Literal["FREE", "CALLED", "IN_SERVICE"]
+    appointment_public_id: uuid.UUID | None = None
+    ticket_code: str | None = None
+    worker_name: str | None = None
+    doctor_name: str | None = None
+    since: datetime | None = Field(default=None, description="Hora del llamado o del inicio de la atención.")
+
+
 class QueueOut(ApiOut):
     site_id: int
     site_name: str
@@ -136,6 +154,10 @@ class QueueOut(ApiOut):
     incidents: list[IncidentOut]
     pause: PauseInfoOut | None = None
     priority_enabled: bool = False
+    rooms: list[RoomStatusOut] = Field(default_factory=list, description="Consultorios activos y su ocupación.")
+    next_room_id: int | None = Field(
+        default=None, description="Primer consultorio libre (destino del próximo llamado)."
+    )
 
 
 class AppointmentEventOut(ApiOut):

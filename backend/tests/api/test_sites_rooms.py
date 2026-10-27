@@ -63,16 +63,56 @@ def test_new_site_with_rooms_and_call_routing(
     auto = client.post(api(f"/sites/{sid}/queue/call-next"), headers=operator.headers).json()
     assert auto["room_name"] == "Consultorio 1"
 
-    # Dos consultorios: hay que indicar a cuál se llama
+    # Dos consultorios: el llamado va al primero libre; uno ocupado no recibe a nadie más
     two = client.post(rooms_url, json={"name": "Consultorio 2", "sort_order": 2}, headers=supervisor.headers).json()
     register(client, operator, sid, make_worker())
-    missing = client.post(api(f"/sites/{sid}/queue/call-next"), headers=operator.headers)
-    assert missing.json()["code"] == "ROOM_REQUIRED"
-    routed = client.post(api(f"/sites/{sid}/queue/call-next"), json={"room_id": two["id"]}, headers=operator.headers)
-    assert routed.json()["room_name"] == "Consultorio 2"
+    second = client.post(api(f"/sites/{sid}/queue/call-next"), headers=operator.headers).json()
+    assert second["room_name"] == "Consultorio 2"  # el 1 está ocupado por el llamado anterior
+    third = register(client, operator, sid, make_worker()).json()
+    assert (
+        client.post(api(f"/sites/{sid}/queue/call-next"), headers=operator.headers).json()["code"] == "ALL_ROOMS_BUSY"
+    )
+    busy = client.post(
+        api(f"/sites/{sid}/queue/call-next"), json={"room_id": one.json()["id"]}, headers=operator.headers
+    )
+    assert busy.json()["code"] == "ROOM_BUSY"
+    queue = client.get(api(f"/sites/{sid}/queue"), headers=operator.headers).json()
+    assert [(r["name"], r["status"], r["ticket_code"]) for r in queue["rooms"]] == [
+        ("Consultorio 1", "CALLED", auto["ticket_code"]),
+        ("Consultorio 2", "CALLED", second["ticket_code"]),
+    ]
+    assert queue["next_room_id"] is None
 
+    # Atención en paralelo: tantas como consultorios activos (el parámetro de la sede sigue en 1)
+    for appt in (auto, second):
+        started = client.post(api(f"/appointments/{appt['public_id']}/start"), json={}, headers=operator.headers)
+        assert started.json()["status"] == "EN_ATENCION", started.text
+    client.post(api(f"/appointments/{auto['public_id']}/finish"), json={}, headers=operator.headers)
+
+    # Reasignar a quien está en atención: libera su consultorio y queda en la línea de tiempo
+    moved = client.post(
+        api(f"/appointments/{second['public_id']}/room"), json={"room_id": one.json()["id"]}, headers=operator.headers
+    )
+    assert moved.json()["room_name"] == "Consultorio 1", moved.text
+    events = client.get(api(f"/appointments/{second['public_id']}/events"), headers=operator.headers).json()
+    assert (events[-1]["action"], events[-1]["note"]) == ("ROOM_CHANGE", "Consultorio: Consultorio 2 → Consultorio 1")
+
+    # Reasignar a quien fue llamado: la pantalla de sala lo vuelve a anunciar con el nuevo consultorio
+    called = client.post(api(f"/sites/{sid}/queue/call-next"), headers=operator.headers).json()
+    assert (called["ticket_code"], called["room_name"]) == (third["ticket_code"], "Consultorio 2")
+    taken = client.post(
+        api(f"/appointments/{called['public_id']}/room"), json={"room_id": one.json()["id"]}, headers=operator.headers
+    )
+    assert taken.json()["code"] == "ROOM_BUSY"
+    client.post(api(f"/appointments/{second['public_id']}/finish"), json={}, headers=operator.headers)
+    moved = client.post(
+        api(f"/appointments/{called['public_id']}/room"), json={"room_id": one.json()["id"]}, headers=operator.headers
+    ).json()
+    assert (moved["room_name"], moved["call_count"]) == ("Consultorio 1", 2)
     board = client.get(api("/public/display/sjl")).json()
-    assert board["calling"][0]["room"] == "Consultorio 2"
+    assert (board["calling"][0]["room"], board["calling"][0]["call_count"]) == ("Consultorio 1", 2)
+    client.post(api(f"/appointments/{called['public_id']}/start"), json={}, headers=operator.headers)
+    client.post(api(f"/appointments/{called['public_id']}/finish"), json={}, headers=operator.headers)
 
     # Consultorio desactivado: no se puede usar
     client.patch(f"{rooms_url}/{two['id']}", json={"is_active": False}, headers=supervisor.headers)

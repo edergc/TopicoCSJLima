@@ -3,6 +3,7 @@ import {
   CheckCheck,
   ChevronDown,
   Clock3,
+  DoorOpen,
   MoreHorizontal,
   Play,
   Stethoscope,
@@ -30,13 +31,31 @@ interface Props {
   callingNext: boolean;
   canOperate: boolean;
   pendingId: string | null;
-  /** Selector del consultorio al que se llama (solo con varios consultorios activos). */
-  roomPicker?: ReactNode;
+  /** Estado de los consultorios (solo con varios consultorios activos). */
+  roomsPanel?: ReactNode;
+  /** Consultorio al que irá el próximo llamado (con varios consultorios). */
+  targetRoomName?: string | null;
+  /** Todos los consultorios ocupados: no se puede llamar. */
+  allRoomsBusy?: boolean;
+  /** Reasignar consultorio (con varios consultorios y alguno libre). */
+  onChangeRoom?: (appointment: Appointment) => void;
   /** Abre el diálogo de prioridad (solo si la prioridad está habilitada). */
   onPriority?: (appointment: Appointment) => void;
 }
 
-function InServiceCard({ appointment, onAction, onOpen, busy }: { appointment: Appointment; onAction: Act; onOpen: Props["onOpen"]; busy: boolean }) {
+function InServiceCard({
+  appointment,
+  onAction,
+  onOpen,
+  onChangeRoom,
+  busy,
+}: {
+  appointment: Appointment;
+  onAction: Act;
+  onOpen: Props["onOpen"];
+  onChangeRoom?: Props["onChangeRoom"];
+  busy: boolean;
+}) {
   const now = useNow(15_000);
   const elapsed = minutesSince(appointment.started_at, now);
   return (
@@ -52,9 +71,15 @@ function InServiceCard({ appointment, onAction, onOpen, busy }: { appointment: A
         <p className="truncate text-sm font-medium text-ink">{appointment.worker.display_name}</p>
         <p className="text-[0.8125rem] text-ink-muted">
           Desde las {fmt.time(appointment.started_at)} · {formatDuration(elapsed)}
+          {appointment.room_name && <> · {appointment.room_name}</>}
           {appointment.doctor_name && <> · {appointment.doctor_name}</>}
         </p>
       </button>
+      {onChangeRoom && (
+        <Button variant="secondary" onClick={() => onChangeRoom(appointment)} icon={<DoorOpen className="size-4" />}>
+          Cambiar consultorio
+        </Button>
+      )}
       {appointment.allowed_actions.includes("FINISH") && (
         <Button size="lg" onClick={() => onAction(appointment, "FINISH")} loading={busy} icon={<CheckCheck className="size-5" />}>
           Finalizar atención
@@ -64,7 +89,19 @@ function InServiceCard({ appointment, onAction, onOpen, busy }: { appointment: A
   );
 }
 
-function CalledCard({ appointment, onAction, onOpen, busy }: { appointment: Appointment; onAction: Act; onOpen: Props["onOpen"]; busy: boolean }) {
+function CalledCard({
+  appointment,
+  onAction,
+  onOpen,
+  onChangeRoom,
+  busy,
+}: {
+  appointment: Appointment;
+  onAction: Act;
+  onOpen: Props["onOpen"];
+  onChangeRoom?: Props["onChangeRoom"];
+  busy: boolean;
+}) {
   const now = useNow(1000);
   const remaining = countdown(appointment.tolerance_expires_at, now);
   const can = (a: AppointmentAction) => appointment.allowed_actions.includes(a);
@@ -102,6 +139,11 @@ function CalledCard({ appointment, onAction, onOpen, busy }: { appointment: Appo
             <IconButton label="Más acciones" variant="secondary" icon={<MoreHorizontal className="size-4" />} />
           </MenuTrigger>
           <MenuContent>
+            {onChangeRoom && (
+              <MenuItem onSelect={() => onChangeRoom(appointment)}>
+                <DoorOpen className="size-4" /> Cambiar consultorio
+              </MenuItem>
+            )}
             {can("REQUEUE") && (
               <MenuItem onSelect={() => onAction(appointment, "REQUEUE")}>
                 <Undo2 className="size-4" /> Devolver a la cola
@@ -199,7 +241,20 @@ function WaitingRow({
   );
 }
 
-export function QueueBoard({ queue, onAction, onOpen, onCallNext, callingNext, canOperate, pendingId, roomPicker, onPriority }: Props) {
+export function QueueBoard({
+  queue,
+  onAction,
+  onOpen,
+  onCallNext,
+  callingNext,
+  canOperate,
+  pendingId,
+  roomsPanel,
+  targetRoomName,
+  allRoomsBusy,
+  onChangeRoom,
+  onPriority,
+}: Props) {
   const [showClosed, setShowClosed] = useState(false);
   const finished = [...queue.finished, ...queue.closed].sort((a, b) => b.ticket_number - a.ticket_number);
   const next = queue.waiting[0];
@@ -209,31 +264,50 @@ export function QueueBoard({ queue, onAction, onOpen, onCallNext, callingNext, c
       {(queue.in_service.length > 0 || queue.called.length > 0) && (
         <section aria-label="Atención en curso" className="space-y-3">
           {queue.in_service.map((a) => (
-            <InServiceCard key={a.public_id} appointment={a} onAction={onAction} onOpen={onOpen} busy={pendingId === a.public_id} />
+            <InServiceCard
+              key={a.public_id}
+              appointment={a}
+              onAction={onAction}
+              onOpen={onOpen}
+              onChangeRoom={onChangeRoom}
+              busy={pendingId === a.public_id}
+            />
           ))}
           {queue.called.map((a) => (
-            <CalledCard key={a.public_id} appointment={a} onAction={onAction} onOpen={onOpen} busy={pendingId === a.public_id} />
+            <CalledCard
+              key={a.public_id}
+              appointment={a}
+              onAction={onAction}
+              onOpen={onOpen}
+              onChangeRoom={onChangeRoom}
+              busy={pendingId === a.public_id}
+            />
           ))}
         </section>
       )}
 
-      {canOperate && roomPicker}
+      {roomsPanel}
       {canOperate && (
         <Button
           size="xl"
           className="w-full justify-between"
           onClick={onCallNext}
           loading={callingNext}
-          disabled={!next}
+          disabled={!next || allRoomsBusy}
           icon={<BellRing className="size-6" aria-hidden />}
           trailing={
             <span className="ml-auto flex items-center gap-3">
-              {next && <span className="tabular rounded-lg bg-white/15 px-3 py-1 text-xl">{next.ticket_code}</span>}
+              {next && !allRoomsBusy && <span className="tabular rounded-lg bg-white/15 px-3 py-1 text-xl">{next.ticket_code}</span>}
+              {next && targetRoomName && !allRoomsBusy && (
+                <span className="flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1 text-base font-semibold">
+                  <DoorOpen className="size-5" aria-hidden /> {targetRoomName}
+                </span>
+              )}
               <Kbd>F4</Kbd>
             </span>
           }
         >
-          {next ? "LLAMAR SIGUIENTE" : "No hay trabajadores en espera"}
+          {!next ? "No hay trabajadores en espera" : allRoomsBusy ? "Todos los consultorios ocupados" : "LLAMAR SIGUIENTE"}
         </Button>
       )}
 

@@ -22,6 +22,7 @@ const EVENT_LABEL: Record<string, string> = {
   MIGRATE: "Migrado del histórico",
   CLOSE_DAY: "No atendido al cierre de la jornada",
   PRIORITY: "Cambio de prioridad",
+  ROOM_CHANGE: "Cambio de consultorio",
 };
 
 const NOTIFICATION_LABEL: Record<string, string> = {
