@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.modules.sites.models import Doctor
 
 from .conftest import Actor, api, register, site_id
+from .test_sites_rooms import WEEK
 
 
 @pytest.fixture
@@ -84,3 +85,38 @@ def test_doctor_registry_and_assignment(
     assert {"doctor": "Dra. Ana Pérez Soto", "attended": 1} in [
         {k: d[k] for k in ("doctor", "attended")} for d in summary["by_doctor"]
     ]
+
+
+def test_delete_only_unused_rooms_and_doctors(
+    client: TestClient, make_user: Callable[..., Actor], make_worker: Callable[..., str], db: Session
+) -> None:
+    admin = make_user("ADMIN", sites=("ALZ",))
+    body = {"code": "DEL", "name": "Sede de prueba", "short_name": "Prueba", "ticket_prefix": "D", "blocks": WEEK}
+    assert client.post(api("/sites"), json=body, headers=admin.headers).status_code == 201
+    sid = site_id(db, "DEL")
+    supervisor = make_user("SUPERVISOR", sites=("DEL",))
+    operator = make_user("OPERATOR", sites=("DEL",))
+    rooms, doctors = api(f"/sites/{sid}/rooms"), api(f"/sites/{sid}/doctors")
+    used_room = client.post(rooms, json={"name": "Consultorio 1"}, headers=supervisor.headers).json()
+    used_doc = client.post(
+        doctors, json={"full_name": "Dra. Usada Ruiz", "cmp": _cmp()}, headers=supervisor.headers
+    ).json()
+    _start(client, operator, sid, make_worker())  # con un solo consultorio y médico, se asignan solos
+
+    spare_room = client.post(rooms, json={"name": "Consultorio 2"}, headers=supervisor.headers).json()
+    spare_doc = client.post(
+        doctors, json={"full_name": "Dr. Nuevo Paz", "cmp": _cmp()}, headers=supervisor.headers
+    ).json()
+    client.put(
+        f"{doctors}/{spare_doc['id']}/schedule",
+        json={"blocks": [{"weekday": 1, "start_time": "08:00", "end_time": "12:00"}]},
+        headers=supervisor.headers,
+    )
+
+    assert client.delete(f"{rooms}/{spare_room['id']}", headers=operator.headers).status_code == 403
+    assert client.delete(f"{rooms}/{spare_room['id']}", headers=supervisor.headers).status_code == 204
+    assert client.delete(f"{doctors}/{spare_doc['id']}", headers=supervisor.headers).status_code == 204
+    assert client.delete(f"{rooms}/{used_room['id']}", headers=supervisor.headers).json()["code"] == "ROOM_IN_USE"
+    assert client.delete(f"{doctors}/{used_doc['id']}", headers=supervisor.headers).json()["code"] == "DOCTOR_IN_USE"
+    assert [r["name"] for r in client.get(rooms, headers=supervisor.headers).json()] == ["Consultorio 1"]
+    assert [d["full_name"] for d in client.get(doctors, headers=supervisor.headers).json()] == ["Dra. Usada Ruiz"]

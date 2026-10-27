@@ -309,7 +309,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** Eliminar médico (si nunca atendió) */
+        delete: operations["delete_doctor_api_v1_sites__site_id__doctors__doctor_id__delete"];
         options?: never;
         head?: never;
         /** Modificar o desactivar médico */
@@ -395,7 +396,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** Eliminar consultorio (si nunca se usó) */
+        delete: operations["delete_room_api_v1_sites__site_id__rooms__room_id__delete"];
         options?: never;
         head?: never;
         /** Modificar o desactivar consultorio */
@@ -4234,6 +4236,36 @@ export interface operations {
             };
         };
     };
+    delete_doctor_api_v1_sites__site_id__doctors__doctor_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+                doctor_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_doctor_api_v1_sites__site_id__doctors__doctor_id__patch: {
         parameters: {
             query?: never;
@@ -4431,6 +4463,36 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RoomOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_room_api_v1_sites__site_id__rooms__room_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: number;
+                room_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

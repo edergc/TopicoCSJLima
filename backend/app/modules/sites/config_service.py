@@ -2,12 +2,13 @@
 
 from datetime import date, timedelta
 
-from sqlalchemy import insert, select, text
+from sqlalchemy import delete, exists, insert, select, text
 
 from app.core.errors import BusinessRuleError, NotFoundError
-from app.modules.appointments.models import ServiceDay
+from app.modules.appointments.models import Appointment, ServiceDay
 from app.modules.audit.service import diff, snapshot
 from app.modules.auth.dependencies import ServiceContext
+from app.modules.ratings.models import ServiceRating
 from app.modules.sites import service as sites
 from app.modules.sites.models import (
     ConsultingRoom,
@@ -357,6 +358,45 @@ class SiteConfigService:
         )
         self.db.commit()
         return room
+
+    def delete_room(self, site_id: int, room_id: int) -> None:
+        """Solo si nunca se usó en una atención; si tiene historial, se desactiva."""
+        self.ctx.require_site(site_id, action="ROOM_DELETE")
+        room = self.db.get(ConsultingRoom, room_id)
+        if room is None or room.site_id != site_id:
+            raise NotFoundError("ROOM_NOT_FOUND")
+        if self.db.scalar(select(exists().where(Appointment.room_id == room_id))):
+            raise BusinessRuleError("ROOM_IN_USE")
+        before = snapshot(room, _ROOM_FIELDS)
+        self.db.delete(room)
+        self.ctx.audit(
+            action="ROOM_DELETE", resource_type="consulting_room", resource_id=room_id, site_id=site_id, before=before
+        )
+        self.db.commit()
+
+    def delete_doctor(self, site_id: int, doctor_id: int) -> None:
+        """Solo si nunca atendió ni fue calificado; si tiene historial, se desactiva. Arrastra horario y ausencias."""
+        self.ctx.require_site(site_id, action="DOCTOR_DELETE")
+        doctor = self.db.get(Doctor, doctor_id)
+        if doctor is None or doctor.site_id != site_id:
+            raise NotFoundError("DOCTOR_NOT_FOUND")
+        used = select(exists().where(Appointment.doctor_id == doctor_id)).union_all(
+            select(exists().where(ServiceRating.doctor_id == doctor_id))
+        )
+        if any(self.db.scalars(used)):
+            raise BusinessRuleError("DOCTOR_IN_USE")
+        before = snapshot(doctor, _DOCTOR_FIELDS)
+        was_active = doctor.is_active
+        self.db.execute(delete(DoctorSchedule).where(DoctorSchedule.doctor_id == doctor_id))
+        self.db.execute(delete(DoctorAbsence).where(DoctorAbsence.doctor_id == doctor_id))
+        self.db.delete(doctor)
+        self.db.flush()
+        if was_active:
+            sites.refresh_planned_capacity(self.db, site_id, self.ctx.clock, self.ctx.user.id)
+        self.ctx.audit(
+            action="DOCTOR_DELETE", resource_type="doctor", resource_id=doctor_id, site_id=site_id, before=before
+        )
+        self.db.commit()
 
     # ================================================================ horario y ausencias de médicos
     def _doctor(self, site_id: int, doctor_id: int, action: str) -> Doctor:

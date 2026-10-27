@@ -77,7 +77,7 @@ Todas las transiciones aceptan `{version}` para el control de concurrencia optim
 | GET / POST / DELETE | `/sites/{id}/closures` | días sin atención |
 | GET | `/sites/all` | todas las sedes, incluidas las inactivas (`site:manage`) |
 | POST | `/sites` | crear sede con configuración y horario iniciales; los administradores reciben acceso (`site:manage`) |
-| GET / POST / PATCH | `/sites/{id}/rooms[/{room_id}]` | consultorios (lectura: `site:read`; cambios: `site:configure`). Al llamar, `POST /sites/{id}/queue/call-next` y `POST /appointments/{id}/call` aceptan `room_id` (obligatorio si hay más de un consultorio activo; con uno solo se asigna automáticamente) |
+| GET / POST / PATCH / DELETE | `/sites/{id}/rooms[/{room_id}]` | consultorios (lectura: `site:read`; cambios: `site:configure`). `DELETE` solo si nunca se usó en una atención (si no, `ROOM_IN_USE`: se desactiva). Al llamar, `POST /sites/{id}/queue/call-next` y `POST /appointments/{id}/call` aceptan `room_id` (obligatorio si hay más de un consultorio activo; con uno solo se asigna automáticamente) |
 | PUT | `/sites/{id}/doctors/{doctor_id}/schedule` | horario semanal del médico (`site:configure`); recalcula la capacidad de los días abiertos |
 | POST / DELETE | `/sites/{id}/doctors/{doctor_id}/absences[/{absence_id}]` | ausencias del médico (`site:configure`) |
 | POST | `/sites/{id}/pause` · `/sites/{id}/resume` | pausar / reanudar la atención (`appointment:operate`); llamar a alguien reanuda automáticamente |
@@ -86,7 +86,7 @@ Todas las transiciones aceptan `{version}` para el control de concurrencia optim
 | PUT / DELETE | `/admin/branding/logo` | cargar (PNG/JPEG, máx. 512 KB, validado por contenido) o quitar el logo (`parameter:manage`) |
 | GET | `/dashboard/live` | panel en vivo de todas las sedes del usuario (`queue:read`) |
 | GET / POST / PATCH | `/display-messages[/{id}]` | mensajes de la pantalla de sala (lectura `site:read`; cambios `site:configure`; para todas las sedes `site:manage`) |
-| GET / POST / PATCH | `/sites/{id}/doctors[/{doctor_id}]` | médicos de la sede (lectura: `site:read`; alta y cambios: `site:configure`). Al iniciar una atención, `POST /appointments/{id}/start` acepta `doctor_id` (obligatorio si hay más de un médico activo; con uno solo se asigna automáticamente) |
+| GET / POST / PATCH / DELETE | `/sites/{id}/doctors[/{doctor_id}]` | médicos de la sede (lectura: `site:read`; alta y cambios: `site:configure`). `DELETE` solo si nunca atendió (si no, `DOCTOR_IN_USE`: se desactiva). Al iniciar una atención, `POST /appointments/{id}/start` acepta `doctor_id` (obligatorio si hay más de un médico activo; con uno solo se asigna automáticamente) |
 | PATCH | `/sites/{id}/service-days/{date}/capacity` | `service_day:adjust` (ajuste auditado del día) |
 
 ### Trabajadores e importación

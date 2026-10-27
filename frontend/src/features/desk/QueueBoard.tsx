@@ -10,7 +10,7 @@ import {
   UserX,
   Users,
   XCircle, HeartHandshake } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import type { Appointment, AppointmentAction, Queue } from "@/shared/api/types";
 import { cn } from "@/shared/lib/cn";
@@ -30,6 +30,8 @@ interface Props {
   callingNext: boolean;
   canOperate: boolean;
   pendingId: string | null;
+  /** Selector del consultorio al que se llama (solo con varios consultorios activos). */
+  roomPicker?: ReactNode;
   /** Abre el diálogo de prioridad (solo si la prioridad está habilitada). */
   onPriority?: (appointment: Appointment) => void;
 }
@@ -197,7 +199,7 @@ function WaitingRow({
   );
 }
 
-export function QueueBoard({ queue, onAction, onOpen, onCallNext, callingNext, canOperate, pendingId, onPriority }: Props) {
+export function QueueBoard({ queue, onAction, onOpen, onCallNext, callingNext, canOperate, pendingId, roomPicker, onPriority }: Props) {
   const [showClosed, setShowClosed] = useState(false);
   const finished = [...queue.finished, ...queue.closed].sort((a, b) => b.ticket_number - a.ticket_number);
   const next = queue.waiting[0];
@@ -215,6 +217,7 @@ export function QueueBoard({ queue, onAction, onOpen, onCallNext, callingNext, c
         </section>
       )}
 
+      {canOperate && roomPicker}
       {canOperate && (
         <Button
           size="xl"

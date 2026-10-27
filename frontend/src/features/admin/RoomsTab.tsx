@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { DoorOpen, Pencil, Plus } from "lucide-react";
+import { DoorOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { keys, useRooms } from "@/features/appointments/api";
@@ -7,7 +7,7 @@ import { api } from "@/shared/api/client";
 import type { Room } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/AuthProvider";
 import { notify } from "@/shared/lib/notify";
-import { Badge, Button, Card, CardHeader, EmptyState, Field, Input, Modal, Skeleton, Toggle } from "@/shared/ui";
+import { Badge, Button, Card, CardHeader, ConfirmDialog, EmptyState, Field, Input, Modal, Skeleton, Toggle } from "@/shared/ui";
 
 type Form = { name: string; location_note: string; sort_order: number; is_active: boolean };
 
@@ -17,6 +17,7 @@ export function RoomsTab({ siteId }: { siteId: number }) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useRooms(siteId);
   const [editing, setEditing] = useState<{ room: Room | null; form: Form } | null>(null);
+  const [deleting, setDeleting] = useState<Room | null>(null);
   const canEdit = can("site:configure");
 
   const save = useMutation({
@@ -32,6 +33,20 @@ export function RoomsTab({ siteId }: { siteId: number }) {
       void queryClient.invalidateQueries({ queryKey: keys.rooms(siteId) });
     },
     onError: (e) => notify.error(e),
+  });
+
+  // Solo se elimina si nunca se usó en una atención; con historial, el servidor pide desactivarlo.
+  const remove = useMutation({
+    mutationFn: (room: Room) => api.delete(`/sites/${siteId}/rooms/${room.id}`),
+    onSuccess: () => {
+      notify.success("Consultorio eliminado");
+      setDeleting(null);
+      void queryClient.invalidateQueries({ queryKey: keys.rooms(siteId) });
+    },
+    onError: (e) => {
+      setDeleting(null);
+      notify.error(e);
+    },
   });
 
   const form = editing?.form;
@@ -82,6 +97,11 @@ export function RoomsTab({ siteId }: { siteId: number }) {
                   Editar
                 </Button>
               )}
+              {canEdit && (
+                <Button size="sm" variant="ghost" className="text-danger" icon={<Trash2 className="size-4" />} onClick={() => setDeleting(r)}>
+                  Eliminar
+                </Button>
+              )}
             </li>
           ))}
         </ul>
@@ -126,6 +146,16 @@ export function RoomsTab({ siteId }: { siteId: number }) {
           </div>
         )}
       </Modal>
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        tone="danger"
+        title={`Eliminar ${deleting?.name ?? "consultorio"}`}
+        description="Solo se puede eliminar si nunca se usó en una atención. Si ya tiene historial, desactívelo desde «Editar»."
+        confirmLabel="Eliminar"
+        loading={remove.isPending}
+        onConfirm={() => deleting && remove.mutate(deleting)}
+      />
     </Card>
   );
 }

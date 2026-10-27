@@ -228,6 +228,12 @@ def update_doctor(site_id: int, doctor_id: int, body: DoctorUpdateIn, ctx: Confi
     return _doctors_out(ctx, site_id, [doctor_id])[0]
 
 
+@router.delete("/{site_id}/doctors/{doctor_id}", status_code=204, summary="Eliminar médico (si nunca atendió)")
+def delete_doctor(site_id: int, doctor_id: int, ctx: ConfigureCtx) -> Response:
+    SiteConfigService(ctx).delete_doctor(site_id, doctor_id)
+    return Response(status_code=204)
+
+
 @router.put(
     "/{site_id}/doctors/{doctor_id}/schedule", response_model=DoctorOut, summary="Reemplazar el horario del médico"
 )
@@ -270,3 +276,9 @@ def create_room(site_id: int, body: RoomIn, ctx: ConfigureCtx) -> ConsultingRoom
 @router.patch("/{site_id}/rooms/{room_id}", response_model=RoomOut, summary="Modificar o desactivar consultorio")
 def update_room(site_id: int, room_id: int, body: RoomUpdateIn, ctx: ConfigureCtx) -> ConsultingRoom:
     return SiteConfigService(ctx).update_room(site_id, room_id, body)
+
+
+@router.delete("/{site_id}/rooms/{room_id}", status_code=204, summary="Eliminar consultorio (si nunca se usó)")
+def delete_room(site_id: int, room_id: int, ctx: ConfigureCtx) -> Response:
+    SiteConfigService(ctx).delete_room(site_id, room_id)
+    return Response(status_code=204)

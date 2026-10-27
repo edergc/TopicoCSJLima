@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from app.core.clock import FixedClock
 from app.modules.notifications.models import Notification
 from app.modules.sites.models import SystemParameter
 
@@ -57,7 +58,12 @@ def test_priority_is_disabled_by_default(
 
 @pytest.mark.usefixtures("priority_on")
 def test_priority_order_with_fairness_cap(
-    client: TestClient, make_user: Callable[..., Actor], make_worker: Callable[..., str], db: Session, site: str
+    client: TestClient,
+    make_user: Callable[..., Actor],
+    make_worker: Callable[..., str],
+    db: Session,
+    site: str,
+    clock: FixedClock,
 ) -> None:
     operator = make_user("OPERATOR", sites=(site,))
     sid = site_id(db, site)
@@ -85,6 +91,7 @@ def test_priority_order_with_fairness_cap(
     assert [a["ticket_code"] for a in queue["waiting"]] == [a["ticket_code"] for a in expected]
     called = []
     for _ in expected:
+        clock.advance(minutes=1)  # cada llamado con su hora: la racha de prioritarios se cuenta por called_at
         a = client.post(api(f"/sites/{sid}/queue/call-next"), headers=operator.headers).json()
         called.append(a["ticket_code"])
         client.post(api(f"/appointments/{a['public_id']}/start"), json={}, headers=operator.headers)

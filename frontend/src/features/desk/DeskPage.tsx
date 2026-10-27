@@ -54,8 +54,28 @@ export default function DeskPage() {
   const [roomId, setRoomId] = useWorkingRoom(siteId, activeRooms);
   // Con varios consultorios, la encargada indica a cuál llama (se recuerda en este equipo).
   const needsRoom = activeRooms.length > 1 && roomId === null;
-  const roomName = activeRooms.find((r) => r.id === roomId)?.name;
-  const warnRoom = () => notify.warning("Seleccione su consultorio", "Indique arriba a qué consultorio se llama a las personas.");
+  const warnRoom = () =>
+    notify.warning("Seleccione su consultorio", "Indíquelo junto al botón «Llamar siguiente»: es adonde se llama a las personas.");
+  // Va junto a «Llamar siguiente» (donde se usa), no en el encabezado. Con un solo consultorio no hay nada que elegir.
+  const roomPicker =
+    activeRooms.length > 1 ? (
+      <label className="flex items-center justify-end gap-2 text-[0.8125rem] text-ink-soft">
+        {needsRoom ? <span className="font-medium text-warning">Elija su consultorio para llamar:</span> : "Llama al"}
+        <Select
+          aria-label="Consultorio al que llama"
+          value={roomId ?? ""}
+          onChange={(e) => setRoomId(e.target.value ? Number(e.target.value) : null)}
+          className={cn("h-8 w-auto py-0 text-[0.8125rem]", needsRoom && "ring-2 ring-warning")}
+        >
+          <option value="">Seleccione…</option>
+          {activeRooms.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </Select>
+      </label>
+    ) : null;
 
   const canOperate = can("appointment:operate");
 
@@ -121,25 +141,6 @@ export default function DeskPage() {
               {b.block === "AM" ? "Mañana" : "Tarde"} {b.start.slice(0, 5)}–{b.end.slice(0, 5)}
             </span>
           ))}
-          {activeRooms.length > 1 && (
-            <label className={cn("inline-flex items-center gap-2", needsRoom && "font-semibold text-warning")}>
-              Consultorio
-              <Select
-                aria-label="Consultorio al que llama"
-                value={roomId ?? ""}
-                onChange={(e) => setRoomId(e.target.value ? Number(e.target.value) : null)}
-                className={cn("h-8 w-auto py-0 text-[0.8125rem]", needsRoom && "ring-2 ring-warning")}
-              >
-                <option value="">Seleccione…</option>
-                {activeRooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </Select>
-            </label>
-          )}
-          {activeRooms.length === 1 && roomName && <span className="hidden md:inline">{roomName}</span>}
           <a
             href={`/pantalla/${site.code.toLowerCase()}`}
             target="_blank"
@@ -218,6 +219,7 @@ export default function DeskPage() {
               onCallNext={handleCallNext}
               callingNext={callNext.isPending}
               canOperate={canOperate}
+              roomPicker={roomPicker}
               pendingId={transition.isPending ? (transition.variables?.appointment.public_id ?? null) : null}
               onPriority={can("appointment:create") ? setPriorityFor : undefined}
             />

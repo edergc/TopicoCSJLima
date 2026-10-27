@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, CalendarX2, Pencil, Plus, Stethoscope } from "lucide-react";
+import { CalendarClock, CalendarX2, Pencil, Plus, Stethoscope, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { keys, useDoctors } from "@/features/appointments/api";
@@ -7,7 +7,7 @@ import { api } from "@/shared/api/client";
 import type { Doctor } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/AuthProvider";
 import { notify } from "@/shared/lib/notify";
-import { Badge, Button, Card, CardHeader, EmptyState, Field, Input, Modal, Skeleton, Toggle } from "@/shared/ui";
+import { Badge, Button, Card, CardHeader, ConfirmDialog, EmptyState, Field, Input, Modal, Skeleton, Toggle } from "@/shared/ui";
 
 import { DoctorAbsencesModal, DoctorScheduleModal, DoctorTodayBadge, scheduleSummary } from "./DoctorAvailability";
 
@@ -35,6 +35,7 @@ export function DoctorsTab({ siteId }: { siteId: number }) {
   const [editing, setEditing] = useState<{ doctor: Doctor | null; form: Form } | null>(null);
   const [scheduleFor, setScheduleFor] = useState<Doctor | null>(null);
   const [absencesFor, setAbsencesFor] = useState<Doctor | null>(null);
+  const [deleting, setDeleting] = useState<Doctor | null>(null);
   const canEdit = can("site:configure");
 
   const save = useMutation({
@@ -57,6 +58,20 @@ export function DoctorsTab({ siteId }: { siteId: number }) {
       void queryClient.invalidateQueries({ queryKey: keys.doctors(siteId) });
     },
     onError: (e) => notify.error(e),
+  });
+
+  // Solo se elimina si nunca atendió; con historial, el servidor pide desactivarlo.
+  const remove = useMutation({
+    mutationFn: (doctor: Doctor) => api.delete(`/sites/${siteId}/doctors/${doctor.id}`),
+    onSuccess: () => {
+      notify.success("Médico eliminado");
+      setDeleting(null);
+      void queryClient.invalidateQueries({ queryKey: keys.doctors(siteId) });
+    },
+    onError: (e) => {
+      setDeleting(null);
+      notify.error(e);
+    },
   });
 
   const form = editing?.form;
@@ -116,6 +131,9 @@ export function DoctorsTab({ siteId }: { siteId: number }) {
                   </Button>
                   <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing({ doctor: d, form: toForm(d) })}>
                     Editar
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-danger" icon={<Trash2 className="size-4" />} onClick={() => setDeleting(d)}>
+                    Eliminar
                   </Button>
                 </div>
               )}
@@ -182,6 +200,16 @@ export function DoctorsTab({ siteId }: { siteId: number }) {
           </div>
         )}
       </Modal>
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        tone="danger"
+        title={`Eliminar a ${deleting?.full_name ?? "el médico"}`}
+        description="Solo se puede eliminar si nunca atendió. Si ya tiene atenciones, desactívelo desde «Editar» para conservar el historial."
+        confirmLabel="Eliminar"
+        loading={remove.isPending}
+        onConfirm={() => deleting && remove.mutate(deleting)}
+      />
     </Card>
   );
 }
