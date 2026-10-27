@@ -200,24 +200,42 @@ Cualquier PC o mini-PC conectado a la TV, con Chrome o Edge, en la red instituci
 
 ## 4. Actualización a una nueva versión
 
+### 4.1 Carpeta de producción
+
+El sistema en uso corre desde **`E:\PROGRAMACION\TopicoCSJ-app`**, un `git worktree` del repositorio, separado de la carpeta de desarrollo (`E:\PROGRAMACION\TopicoCSJLima`). Editar archivos o cambiar de rama en desarrollo **no afecta** al sistema: solo cambia cuando se publica una versión ya confirmada con commit.
+
+| Carpeta | Uso |
+|---|---|
+| `TopicoCSJLima` | Desarrollo y pruebas. Su `backend\.env` se usa para las pruebas automáticas. |
+| `TopicoCSJ-app` | Producción: los servicios, las tareas programadas y su propio `backend\.env` y `.venv`. **No se edita a mano.** |
+| `TopicoCSJ-data` | Datos: frontend publicado, logs, backups, Caddy (compartida, no cambia). |
+
+**Publicar una versión** (desde la carpeta de desarrollo, como administrador):
+
 ```powershell
 cd E:\PROGRAMACION\TopicoCSJLima
-deploy\windows\backup\backup.ps1            # backup previo (recomendado)
-git pull
-powershell -ExecutionPolicy Bypass -File deploy\windows\install.ps1
+git pull                                                        # o sus commits locales en main
+powershell -ExecutionPolicy Bypass -File deploy\windows\release.ps1            # publica main
+powershell -ExecutionPolicy Bypass -File deploy\windows\release.ps1 -Ref 5b7b49e   # vuelve a una versión anterior
 ```
 
-El instalador es idempotente: actualiza las dependencias, aplica las migraciones nuevas, recompila el frontend y reinicia los servicios. Conserva `backend\.env` (incluida la configuración SMTP) y los certificados.
+`release.ps1` verifica que la carpeta de producción no tenga cambios locales, la lleva a la versión indicada y ejecuta su `update.ps1`.
 
-**Actualización rápida** (sin tocar puertos, certificados ni tareas programadas):
+**Crear la carpeta de producción** (solo la primera vez, o para rehacerla):
 
 ```powershell
 cd E:\PROGRAMACION\TopicoCSJLima
-git pull
-powershell -ExecutionPolicy Bypass -File deploy\windows\update.ps1
+git worktree add --detach E:\PROGRAMACION\TopicoCSJ-app main
+Copy-Item backend\.env E:\PROGRAMACION\TopicoCSJ-app\backend\.env
+powershell -ExecutionPolicy Bypass -File E:\PROGRAMACION\TopicoCSJ-app\deploy\windows\install.ps1 -TlsMode none -HostNames 172.20.1.51
 ```
 
-Hace backup, instala dependencias, aplica migraciones, compila y publica el frontend, y **reinicia por completo** la API: detiene también los procesos de uvicorn que pudieran quedar vivos de un despliegue anterior (un `Restart-Service` simple puede dejarlos atendiendo con el código viejo). Solo detiene procesos cuyo ejecutable es el entorno virtual de este proyecto. Al final verifica `/api/v1/health`.
+El instalador crea el entorno virtual de producción y registra los servicios y las tareas apuntando a `TopicoCSJ-app`.
+
+### 4.2 Qué hace cada script
+
+- **`update.ps1`** (lo llama `release.ps1`): backup, dependencias, migraciones, compila y publica el frontend, y **reinicia por completo** la API. Detiene también los procesos de uvicorn que pudieran quedar vivos de un despliegue anterior (un `Restart-Service` simple puede dejarlos atendiendo con el código viejo). Solo detiene procesos cuyo ejecutable es el entorno virtual de esa carpeta. Al final verifica `/api/v1/health`.
+- **`install.ps1`**: lo mismo, más puertos, HTTPS, servicios, firewall y tareas programadas. Es idempotente; úselo desde `TopicoCSJ-app` cuando cambien esos ajustes. Conserva `backend\.env` (incluida la configuración SMTP) y los certificados.
 
 ## 5. Operación diaria
 
