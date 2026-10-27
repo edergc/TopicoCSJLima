@@ -135,17 +135,27 @@ def _mark_pending_no_show(
     return closed
 
 
+AUTO_CLOSE_GRACE = timedelta(hours=1)
+
+
 def auto_close_past_days(db: Session, clock: Clock) -> int:
     """Cierra los días pasados que nadie cerró (acción del sistema; lo ejecuta el proceso de fondo).
 
     Si quedó alguien EN_ATENCION no se inventa el fin de su atención: ese día queda abierto (y se registra
     en el log) hasta que una persona finalice la atención y cierre el día.
+
+    No toca los días creados hace menos de AUTO_CLOSE_GRACE: en el uso real un día pasado nunca se crea
+    después de su fecha, pero la carga de datos de demostración sí los recrea y los está operando.
     """
     now = clock.now()
     days = list(
         db.scalars(
             select(ServiceDay)
-            .where(ServiceDay.status == "OPEN", ServiceDay.service_date < clock.today())
+            .where(
+                ServiceDay.status == "OPEN",
+                ServiceDay.service_date < clock.today(),
+                ServiceDay.created_at < now - AUTO_CLOSE_GRACE,
+            )
             .order_by(ServiceDay.service_date, ServiceDay.id)
             .limit(50)
             .with_for_update(skip_locked=True, key_share=True)
