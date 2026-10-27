@@ -6,12 +6,15 @@ from typing import Any
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.core.clock import Clock
 from app.core.context import get_request_context
 from app.core.errors import BusinessRuleError, NotFoundError
+from app.core.logging import get_logger
 from app.modules.admin.parameters import get_bool
 from app.modules.appointments import queue as queue_view
-from app.modules.appointments.models import Appointment, AppointmentEvent, Reason
+from app.modules.appointments.models import Appointment, AppointmentEvent, Reason, ServiceDay
 from app.modules.appointments.state_machine import Status
+from app.modules.audit import service as audit
 from app.modules.auth.dependencies import ServiceContext
 from app.modules.branding import service as branding
 from app.modules.notifications import service as notifications
@@ -20,6 +23,8 @@ from app.modules.reports import service as reports
 from app.modules.sites import service as sites
 from app.modules.sites.models import DisplayMessage, Site, SitePause
 from app.modules.users.models import AppUser, Role, user_role, user_site
+
+log = get_logger("app.operations")
 
 # ================================================================== pausa (2.3)
 
@@ -87,6 +92,97 @@ def resume_site(ctx: ServiceContext, site_id: int, *, automatic: bool = False) -
 _PENDING = (Status.REGISTRADO, Status.EN_ESPERA, Status.LLAMADO)
 
 
+def _closing_reason(db: Session) -> Reason:
+    reason = db.scalar(select(Reason).where(Reason.type == "NO_SHOW", Reason.code == "CIERRE_JORNADA"))
+    assert reason is not None, "Falta el motivo CIERRE_JORNADA (migración 0006)"
+    return reason
+
+
+def _mark_pending_no_show(
+    db: Session,
+    appointments: list[Appointment],
+    reason: Reason,
+    now: datetime,
+    user_id: int | None,
+    ip: str | None,
+    request_id: str | None,
+) -> int:
+    """Pendientes (registrado, en espera, llamado) → NO_PRESENTADO con el motivo de cierre de jornada."""
+    closed = 0
+    for appt in appointments:
+        if appt.status not in _PENDING:
+            continue
+        previous = appt.status
+        appt.status = Status.NO_PRESENTADO
+        appt.closed_at, appt.closed_by = now, user_id
+        appt.close_reason = reason
+        db.add(
+            AppointmentEvent(
+                appointment_id=appt.id,
+                action="CLOSE_DAY" if previous != Status.LLAMADO else "NO_SHOW",
+                from_status=previous,
+                to_status=Status.NO_PRESENTADO,
+                reason_id=reason.id,
+                note="Cierre de jornada",
+                occurred_at=now,
+                user_id=user_id,
+                ip=ip,
+                request_id=request_id,
+            )
+        )
+        closed += 1
+    db.flush()
+    return closed
+
+
+def auto_close_past_days(db: Session, clock: Clock) -> int:
+    """Cierra los días pasados que nadie cerró (acción del sistema; lo ejecuta el proceso de fondo).
+
+    Si quedó alguien EN_ATENCION no se inventa el fin de su atención: ese día queda abierto (y se registra
+    en el log) hasta que una persona finalice la atención y cierre el día.
+    """
+    now = clock.now()
+    days = list(
+        db.scalars(
+            select(ServiceDay)
+            .where(ServiceDay.status == "OPEN", ServiceDay.service_date < clock.today())
+            .order_by(ServiceDay.service_date, ServiceDay.id)
+            .limit(50)
+            .with_for_update(skip_locked=True, key_share=True)
+        )
+    )
+    closed = 0
+    for service_day in days:
+        appointments = list(
+            db.scalars(
+                select(Appointment)
+                .where(Appointment.service_day_id == service_day.id)
+                .with_for_update(of=Appointment, key_share=True)
+            ).unique()
+        )
+        if any(a.status == Status.EN_ATENCION for a in appointments):
+            log.warning("service_day_autoclose_skipped", service_day_id=service_day.id, reason="DAY_HAS_IN_SERVICE")
+            continue
+        marked = _mark_pending_no_show(db, appointments, _closing_reason(db), now, None, None, None)
+        service_day.status = "CLOSED"
+        service_day.closed_at = now
+        audit.record(
+            db,
+            action="SERVICE_DAY_AUTO_CLOSE",
+            username="sistema",
+            resource_type="service_day",
+            resource_id=service_day.id,
+            site_id=service_day.site_id,
+            after={"service_date": service_day.service_date, "marked_no_show": marked},
+        )
+        log.info(
+            "service_day_auto_closed", service_day_id=service_day.id, service_date=service_day.service_date.isoformat()
+        )
+        closed += 1
+    db.commit()
+    return closed
+
+
 def close_day(ctx: ServiceContext, site_id: int, day: date) -> dict[str, Any]:
     """Cierra la jornada: pendientes → NO_PRESENTADO (motivo automático), día CLOSED, resumen PDF por correo."""
     db, clock = ctx.db, ctx.clock
@@ -109,35 +205,10 @@ def close_day(ctx: ServiceContext, site_id: int, day: date) -> dict[str, Any]:
     )
     if any(a.status == Status.EN_ATENCION for a in appointments):
         raise BusinessRuleError("DAY_HAS_IN_SERVICE")
-    reason = db.scalar(select(Reason).where(Reason.type == "NO_SHOW", Reason.code == "CIERRE_JORNADA"))
-    assert reason is not None, "Falta el motivo CIERRE_JORNADA (migración 0006)"
-
+    reason = _closing_reason(db)
     now = clock.now()
     req = get_request_context()
-    closed = 0
-    for appt in appointments:
-        if appt.status not in _PENDING:
-            continue
-        previous = appt.status
-        appt.status = Status.NO_PRESENTADO
-        appt.closed_at, appt.closed_by = now, ctx.user.id
-        appt.close_reason = reason
-        db.add(
-            AppointmentEvent(
-                appointment_id=appt.id,
-                action="CLOSE_DAY" if previous != Status.LLAMADO else "NO_SHOW",
-                from_status=previous,
-                to_status=Status.NO_PRESENTADO,
-                reason_id=reason.id,
-                note="Cierre de jornada",
-                occurred_at=now,
-                user_id=ctx.user.id,
-                ip=req.ip,
-                request_id=req.request_id,
-            )
-        )
-        closed += 1
-    db.flush()
+    closed = _mark_pending_no_show(db, appointments, reason, now, ctx.user.id, req.ip, req.request_id)
     service_day.status = "CLOSED"
     service_day.closed_at, service_day.closed_by = now, ctx.user.id
     pause = active_pause(db, site_id)

@@ -2,6 +2,7 @@
 
 import datetime as dt
 import re
+import uuid
 from collections.abc import Callable, Iterator
 
 import pytest
@@ -265,3 +266,69 @@ def _deactivate_global_messages(db: Session) -> Iterator[None]:
 
     db.execute(update(DisplayMessage).where(DisplayMessage.site_id.is_(None)).values(is_active=False))
     db.commit()
+
+
+def test_past_days_close_automatically(
+    client: TestClient,
+    app: FastAPI,
+    make_user: Callable[..., Actor],
+    make_worker: Callable[..., str],
+    db: Session,
+    clock: FixedClock,
+    site: str,
+) -> None:
+    from app.modules.appointments.models import Appointment, ServiceDay
+    from app.modules.audit.models import AuditEvent
+    from app.modules.notifications.worker import close_past_days
+
+    sid = site_id(db, site)
+    operator = make_user("OPERATOR", sites=(site,))
+    admin = make_user("ADMIN", sites=(site,))
+    body = {
+        "code": site + "X",
+        "name": f"Sede {site}X",
+        "short_name": site + "X",
+        "ticket_prefix": "ZZ",
+        "blocks": WEEK,
+    }
+    assert client.post(api("/sites"), json=body, headers=admin.headers).status_code == 201
+    busy = site_id(db, site + "X")
+    busy_operator = make_user("OPERATOR", sites=(site + "X",))
+
+    called, waiting = (register(client, operator, sid, make_worker()).json() for _ in range(2))
+    client.post(api(f"/sites/{sid}/queue/call-next"), headers=operator.headers)
+    in_service = register(client, busy_operator, busy, make_worker()).json()
+    client.post(api(f"/sites/{busy}/queue/call-next"), headers=busy_operator.headers)
+    client.post(api(f"/appointments/{in_service['public_id']}/start"), json={}, headers=busy_operator.headers)
+    day = clock.today()
+
+    assert close_past_days(app.state.session_factory, clock) >= 0  # el mismo día no se cierra nada propio
+    clock.advance(days=1)
+    close_past_days(app.state.session_factory, clock)
+
+    def day_status(site_pk: int) -> str:
+        db.expire_all()
+        value = db.scalar(
+            select(ServiceDay.status).where(ServiceDay.site_id == site_pk, ServiceDay.service_date == day)
+        )
+        assert value is not None
+        return value
+
+    assert day_status(sid) == "CLOSED"
+
+    def status(appt: dict[str, str]) -> tuple[str, str | None, int | None]:
+        row = db.scalar(select(Appointment).where(Appointment.public_id == uuid.UUID(appt["public_id"])))
+        assert row is not None
+        return row.status, row.close_reason.code if row.close_reason else None, row.closed_by
+
+    for appt in (called, waiting):
+        assert status(appt) == ("NO_PRESENTADO", "CIERRE_JORNADA", None)  # sin persona: lo cerró el sistema
+    assert (
+        db.scalar(
+            select(AuditEvent.username).where(AuditEvent.action == "SERVICE_DAY_AUTO_CLOSE", AuditEvent.site_id == sid)
+        )
+        == "sistema"
+    )
+    # Con alguien EN_ATENCION no se inventa el fin de su atención: el día queda abierto.
+    assert day_status(busy) == "OPEN"
+    assert status(in_service)[0] == "EN_ATENCION"

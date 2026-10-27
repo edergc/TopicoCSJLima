@@ -5,7 +5,7 @@ import type { WorkerSummary } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/AuthProvider";
 import { fmt, todayIso } from "@/shared/lib/format";
 import { useDebounced, useDocumentTitle } from "@/shared/lib/hooks";
-import { errorMessage, notify } from "@/shared/lib/notify";
+import { notify } from "@/shared/lib/notify";
 import {
   Badge,
   Button,
@@ -16,7 +16,6 @@ import {
   DefinitionList,
   Drawer,
   Field,
-  Input,
   PageHeader,
   Pagination,
   SearchInput,
@@ -26,7 +25,7 @@ import {
   type Column,
 } from "@/shared/ui";
 
-import { useAddCoverage, useEndCoverage, useUpdateWorker, useWorker, useWorkerSearch } from "./api";
+import { useAddCoverage, useUpdateWorker, useWorker, useWorkerSearch } from "./api";
 import { WorkerFormModal } from "./WorkerForm";
 
 const PAGE_SIZE = 25;
@@ -37,12 +36,8 @@ function WorkerDetail({ id, onClose }: { id: string | null; onClose: () => void 
   const [editing, setEditing] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [reason, setReason] = useState("");
-  const [ending, setEnding] = useState<number | null>(null);
-  const [endReason, setEndReason] = useState("");
-  const [endDate, setEndDate] = useState(todayIso());
   const update = useUpdateWorker(id ?? "");
   const addCoverage = useAddCoverage(id ?? "");
-  const endCoverage = useEndCoverage(id ?? "");
   const canManage = can("worker:manage");
   const today = todayIso();
   const active = worker?.coverages.find((c) => c.valid_from <= today && (!c.valid_to || c.valid_to >= today));
@@ -135,23 +130,19 @@ function WorkerDetail({ id, onClose }: { id: string | null; onClose: () => void 
             ) : (
               <ul className="space-y-2">
                 {worker.coverages.map((c) => (
-                  <li key={c.id} className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-sm">
-                    <div className="flex-1">
-                      <p className="font-medium">{c.insurer_name}</p>
-                      <p className="tabular text-xs text-ink-soft">
-                        {fmt.date(c.valid_from)} — {c.valid_to ? fmt.date(c.valid_to) : "vigente"}
-                        {c.end_reason && ` · ${c.end_reason}`}
-                      </p>
-                    </div>
-                    {canManage && !c.valid_to && (
-                      <Button size="sm" variant="ghost" onClick={() => setEnding(c.id)}>
-                        Terminar
-                      </Button>
-                    )}
+                  <li key={c.id} className="rounded-xl border border-line px-3 py-2.5 text-sm">
+                    <p className="font-medium">{c.insurer_name}</p>
+                    <p className="tabular text-xs text-ink-soft">
+                      {fmt.date(c.valid_from)} — {c.valid_to ? fmt.date(c.valid_to) : "vigente"}
+                      {c.end_reason && ` · ${c.end_reason}`}
+                    </p>
                   </li>
                 ))}
               </ul>
             )}
+            <p className="mt-2 text-xs text-ink-soft">
+              La cobertura termina sola en su fecha de fin, o al importar un Excel con la opción de terminar a quienes ya no figuran.
+            </p>
           </section>
         </div>
       )}
@@ -181,38 +172,6 @@ function WorkerDetail({ id, onClose }: { id: string | null; onClose: () => void 
         <Field label="Motivo" required>
           <Textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} rows={2} />
         </Field>
-      </ConfirmDialog>
-      <ConfirmDialog
-        open={ending !== null}
-        onOpenChange={(o) => !o && setEnding(null)}
-        tone="danger"
-        title="Terminar cobertura EPS"
-        confirmLabel="Terminar cobertura"
-        loading={endCoverage.isPending}
-        confirmDisabled={endReason.trim().length < 3 || !endDate}
-        onConfirm={() =>
-          ending !== null &&
-          endCoverage.mutate(
-            { coverageId: ending, valid_to: endDate, end_reason: endReason.trim() },
-            {
-              onSuccess: () => {
-                setEnding(null);
-                notify.success("Cobertura terminada");
-              },
-              onError: (e) => notify.error(e),
-            },
-          )
-        }
-      >
-        <div className="space-y-4">
-          <Field label="Vigente hasta" required>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </Field>
-          <Field label="Motivo" required>
-            <Textarea value={endReason} onChange={(e) => setEndReason(e.target.value)} maxLength={200} rows={2} />
-          </Field>
-          {endCoverage.isError && <Callout tone="danger">{errorMessage(endCoverage.error)}</Callout>}
-        </div>
       </ConfirmDialog>
     </Drawer>
   );

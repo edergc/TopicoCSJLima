@@ -167,6 +167,8 @@ Al terminar la jornada, la supervisora (permiso «Cerrar el día operativo») pu
 
 > Si la encargada también debe cerrar el día, el administrador puede dar ese permiso a su rol en *Usuarios y roles → Roles y permisos*.
 
+**Cierre automático:** si nadie cerró el día, el sistema lo cierra solo pasada la medianoche. Hace lo mismo con los pendientes (pasan a no presentado con el mismo motivo), pero no envía el resumen por correo. En la auditoría figura como «Cierre automático del día», hecho por *sistema*. Si quedó alguien **en atención**, el sistema no inventa la hora de fin: ese día queda abierto hasta que se finalice esa atención y se cierre el día.
+
 ---
 
 ## 3. Consulta del turno (para trabajadores)

@@ -113,8 +113,3 @@ class WorkerUpdateIn(ApiModel):
 class CoverageIn(ApiModel):
     valid_from: date
     valid_to: date | None = None
-
-
-class CoverageEndIn(ApiModel):
-    valid_to: date
-    end_reason: Annotated[str, StringConstraints(min_length=3, max_length=200)]

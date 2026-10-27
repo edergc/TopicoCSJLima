@@ -11,7 +11,13 @@
 - [`appointment_status`](#appointment_status) — Estados de la atención. Define qué estados ocupan cupo y cuáles son finales.
 - [`appointment_status_transition`](#appointment_status_transition) — Máquina de estados: únicas transiciones permitidas. La BD rechaza cualquier otra.
 - [`audit_event`](#audit_event) — Auditoría funcional. Solo inserción; cada fila encadena el hash de la anterior (detección de alteraciones).
+- [`brand_asset`](#brand_asset) — Recursos de identidad visual (logo institucional PNG/JPEG, máx. 512 KB).
+- [`consulting_room`](#consulting_room) — Consultorios del tópico de cada sede. No se eliminan: se desactivan.
 - [`department`](#department) — Dependencias (órganos jurisdiccionales/administrativos) de la CSJ Lima.
+- [`display_message`](#display_message) — Mensajes que rotan al pie de la pantalla de sala. site_id NULL = todas las sedes.
+- [`doctor`](#doctor) — Médicos que atienden en el tópico de cada sede. No se eliminan: se desactivan.
+- [`doctor_absence`](#doctor_absence) — Ausencias del médico (vacaciones, licencia, capacitación). Lo ausentan del día y reducen la capacidad calculada.
+- [`doctor_schedule`](#doctor_schedule) — Horario semanal de cada médico (bloques por día; se reemplaza completo y queda auditado). Sin bloques = disponible en todo el horario de la sede.
 - [`import_batch`](#import_batch) — Lote de importación de Excel. Flujo: UPLOADED → VALIDATED → CONFIRMED \| DISCARDED \| FAILED.
 - [`import_row`](#import_row) — Filas en staging de un lote: dato crudo, dato normalizado, resultado de validación y diferencias.
 - [`insurer`](#insurer) — Entidades prestadoras de salud (EPS). Inicialmente: RIMAC.
@@ -23,8 +29,10 @@
 - [`role`](#role) — Roles: agrupaciones de permisos. is_system = rol base que no puede eliminarse.
 - [`role_permission`](#role_permission) — Asignación de permisos a roles.
 - [`service_day`](#service_day) — Día operativo por sede. Congela la configuración vigente y es el punto de serialización de registros (bloqueo de fila).
+- [`service_rating`](#service_rating) — Calificación anónima del servicio (trato y tiempo de espera; nunca datos de salud). Los reportes solo muestran agregados y comentarios sin identificar.
 - [`site`](#site) — Sedes con tópico de atención (p. ej., Javier Alzamora Valdez, Anselmo Barreto).
 - [`site_closure`](#site_closure) — Días en que el tópico de una sede no atiende (feriados, cierres).
+- [`site_pause`](#site_pause) — Pausas de la atención del tópico (refrigerio, emergencia, reunión). Una sola activa por sede.
 - [`site_schedule`](#site_schedule) — Bloques de atención (mañana/tarde) por día de semana, con vigencia.
 - [`site_setting_version`](#site_setting_version) — Configuración operativa por sede, versionada por fecha de vigencia. Se aplica la versión con mayor valid_from <= fecha.
 - [`system_parameter`](#system_parameter) — Parámetros globales configurables sin modificar código.
@@ -66,7 +74,7 @@ Usuarios del sistema (personal administrativo). No incluye a los trabajadores at
 | `uq_app_user_username` | UNIQUE | `UNIQUE (username)` |
 | `app_user_created_by_fkey` | FK | `FOREIGN KEY (created_by) REFERENCES app_user(id)` |
 | `app_user_updated_by_fkey` | FK | `FOREIGN KEY (updated_by) REFERENCES app_user(id)` |
-| `ck_app_user_auth_provider` | CHECK | `CHECK (((auth_provider)::text = ANY ((ARRAY['LOCAL'::character varying, 'LDAP'::character varying])::text[])))` |
+| `ck_app_user_auth_provider` | CHECK | `CHECK (((auth_provider)::text = ANY (ARRAY[('LOCAL'::character varying)::text, ('LDAP'::character varying)::text])))` |
 | `ck_app_user_email_format` | CHECK | `CHECK (((email IS NULL) OR ((email)::text ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$'::text)))` |
 | `ck_app_user_failed_attempts` | CHECK | `CHECK ((failed_login_attempts >= 0))` |
 | `ck_app_user_full_name_not_blank` | CHECK | `CHECK ((btrim((full_name)::text) <> ''::text))` |
@@ -112,6 +120,11 @@ Solicitud de atención con turno. Registro administrativo: NO contiene informaci
 | `version` | integer | no | 1 | Control de concurrencia optimista (lo gestiona el ORM). |
 | `created_at` | timestamp with time zone | no | now() |  |
 | `updated_at` | timestamp with time zone | no | now() |  |
+| `doctor_id` | integer | sí |  | Médico que realizó la atención (se asigna al iniciarla). |
+| `room_id` | integer | sí |  | Consultorio al que se llamó a la persona (se asigna al llamar). |
+| `priority_reason_id` | integer | sí |  | Categoría de atención prioritaria (regla explícita, auditada). NULL = orden normal de registro. |
+| `priority_set_at` | timestamp with time zone | sí |  |  |
+| `priority_set_by` | bigint | sí |  |  |
 
 **Restricciones**
 
@@ -123,21 +136,26 @@ Solicitud de atención con turno. Registro administrativo: NO contiene informaci
 | `appointment_called_by_fkey` | FK | `FOREIGN KEY (called_by) REFERENCES app_user(id)` |
 | `appointment_close_reason_id_fkey` | FK | `FOREIGN KEY (close_reason_id) REFERENCES reason(id)` |
 | `appointment_closed_by_fkey` | FK | `FOREIGN KEY (closed_by) REFERENCES app_user(id)` |
+| `appointment_doctor_id_fkey` | FK | `FOREIGN KEY (doctor_id) REFERENCES doctor(id)` |
 | `appointment_finished_by_fkey` | FK | `FOREIGN KEY (finished_by) REFERENCES app_user(id)` |
 | `appointment_origin_appointment_id_fkey` | FK | `FOREIGN KEY (origin_appointment_id) REFERENCES appointment(id)` |
+| `appointment_priority_reason_id_fkey` | FK | `FOREIGN KEY (priority_reason_id) REFERENCES reason(id)` |
+| `appointment_priority_set_by_fkey` | FK | `FOREIGN KEY (priority_set_by) REFERENCES app_user(id)` |
 | `appointment_registered_by_fkey` | FK | `FOREIGN KEY (registered_by) REFERENCES app_user(id)` |
+| `appointment_room_id_fkey` | FK | `FOREIGN KEY (room_id) REFERENCES consulting_room(id)` |
 | `appointment_service_day_id_fkey` | FK | `FOREIGN KEY (service_day_id) REFERENCES service_day(id)` |
 | `appointment_site_id_fkey` | FK | `FOREIGN KEY (site_id) REFERENCES site(id)` |
 | `appointment_started_by_fkey` | FK | `FOREIGN KEY (started_by) REFERENCES app_user(id)` |
 | `appointment_status_fkey` | FK | `FOREIGN KEY (status) REFERENCES appointment_status(code)` |
 | `appointment_worker_id_fkey` | FK | `FOREIGN KEY (worker_id) REFERENCES worker(id)` |
 | `ck_appointment_call_count` | CHECK | `CHECK ((call_count >= 0))` |
-| `ck_appointment_called_data` | CHECK | `CHECK ((((status)::text <> ALL ((ARRAY['LLAMADO'::character varying, 'NO_PRESENTADO'::character varying])::text[])) OR ((channel)::text = 'MIGRATION'::text) OR ((called_at IS NOT NULL) AND (called_by IS NOT NULL))))` |
-| `ck_appointment_channel` | CHECK | `CHECK (((channel)::text = ANY ((ARRAY['PHONE'::character varying, 'WALK_IN'::character varying, 'WEB'::character varying, 'MIGRATION'::character varying])::text[])))` |
-| `ck_appointment_closed_data` | CHECK | `CHECK ((((status)::text <> ALL ((ARRAY['CANCELADO'::character varying, 'NO_PRESENTADO'::character varying, 'ANULADO'::character varying])::text[])) OR ((closed_at IS NOT NULL) AND (closed_by IS NOT NULL) AND ((close_reason_id IS NOT NULL) OR ((channel)::text = 'MIGRATION'::text)))))` |
+| `ck_appointment_called_data` | CHECK | `CHECK ((((status)::text <> 'LLAMADO'::text) OR ((channel)::text = 'MIGRATION'::text) OR ((called_at IS NOT NULL) AND (called_by IS NOT NULL))))` |
+| `ck_appointment_channel` | CHECK | `CHECK (((channel)::text = ANY (ARRAY[('PHONE'::character varying)::text, ('WALK_IN'::character varying)::text, ('WEB'::character varying)::text, ('MIGRATION'::character varying)::text])))` |
+| `ck_appointment_closed_data` | CHECK | `CHECK ((((status)::text <> ALL ((ARRAY['CANCELADO'::character varying, 'NO_PRESENTADO'::character varying, 'ANULADO'::character varying])::text[])) OR ((closed_at IS NOT NULL) AND ((closed_by IS NOT NULL) OR ((status)::text = 'NO_PRESENTADO'::text)) AND ((close_reason_id IS NOT NULL) OR ((channel)::text = 'MIGRATION'::text)))))` |
 | `ck_appointment_finished_data` | CHECK | `CHECK ((((status)::text <> 'ATENDIDO'::text) OR ((channel)::text = 'MIGRATION'::text) OR ((finished_at IS NOT NULL) AND (finished_by IS NOT NULL))))` |
 | `ck_appointment_not_self_origin` | CHECK | `CHECK (((origin_appointment_id IS NULL) OR (origin_appointment_id <> id)))` |
-| `ck_appointment_started_data` | CHECK | `CHECK ((((status)::text <> ALL ((ARRAY['EN_ATENCION'::character varying, 'ATENDIDO'::character varying])::text[])) OR ((channel)::text = 'MIGRATION'::text) OR ((started_at IS NOT NULL) AND (started_by IS NOT NULL))))` |
+| `ck_appointment_priority_data` | CHECK | `CHECK (((priority_reason_id IS NULL) OR ((priority_set_at IS NOT NULL) AND (priority_set_by IS NOT NULL))))` |
+| `ck_appointment_started_data` | CHECK | `CHECK ((((status)::text <> ALL (ARRAY[('EN_ATENCION'::character varying)::text, ('ATENDIDO'::character varying)::text])) OR ((channel)::text = 'MIGRATION'::text) OR ((started_at IS NOT NULL) AND (started_by IS NOT NULL))))` |
 | `ck_appointment_ticket` | CHECK | `CHECK (((ticket_number > 0) AND ((ticket_code)::text ~ '^[A-Z]{1,3}-[0-9]{3}$'::text)))` |
 | `ck_appointment_time_order` | CHECK | `CHECK ((((called_at IS NULL) OR (called_at >= registered_at)) AND ((started_at IS NULL) OR (started_at >= registered_at)) AND ((finished_at IS NULL) OR (started_at IS NULL) OR (finished_at >= started_at)) AND ((closed_at IS NULL) OR (closed_at >= registered_at))))` |
 | `ck_appointment_version` | CHECK | `CHECK ((version > 0))` |
@@ -145,11 +163,13 @@ Solicitud de atención con turno. Registro administrativo: NO contiene informaci
 **Índices adicionales**
 
 - `ix_appointment_close_reason`: `CREATE INDEX ix_appointment_close_reason ON topico.appointment USING btree (close_reason_id) WHERE (close_reason_id IS NOT NULL)`
+- `ix_appointment_doctor`: `CREATE INDEX ix_appointment_doctor ON topico.appointment USING btree (doctor_id) WHERE (doctor_id IS NOT NULL)`
 - `ix_appointment_origin`: `CREATE INDEX ix_appointment_origin ON topico.appointment USING btree (origin_appointment_id) WHERE (origin_appointment_id IS NOT NULL)`
 - `ix_appointment_queue`: `CREATE INDEX ix_appointment_queue ON topico.appointment USING btree (service_day_id, status, ticket_number)`
+- `ix_appointment_room`: `CREATE INDEX ix_appointment_room ON topico.appointment USING btree (room_id) WHERE (room_id IS NOT NULL)`
 - `ix_appointment_site_date`: `CREATE INDEX ix_appointment_site_date ON topico.appointment USING btree (site_id, service_date)`
 - `ix_appointment_worker_date`: `CREATE INDEX ix_appointment_worker_date ON topico.appointment USING btree (worker_id, service_date DESC)`
-- `uq_appointment_worker_active_day`: `CREATE UNIQUE INDEX uq_appointment_worker_active_day ON topico.appointment USING btree (worker_id, service_date) WHERE ((status)::text = ANY ((ARRAY['REGISTRADO'::character varying, 'EN_ESPERA'::character varying, 'LLAMADO'::character varying, 'EN_ATENCION'::character varying])::text[]))`
+- `uq_appointment_worker_active_day`: `CREATE UNIQUE INDEX uq_appointment_worker_active_day ON topico.appointment USING btree (worker_id, service_date) WHERE ((status)::text = ANY (ARRAY[('REGISTRADO'::character varying)::text, ('EN_ESPERA'::character varying)::text, ('LLAMADO'::character varying)::text, ('EN_ATENCION'::character varying)::text]))`
 
 **Triggers**
 
@@ -186,8 +206,8 @@ Historial inmutable de cambios de estado de cada atención (línea de tiempo).
 | `appointment_event_reason_id_fkey` | FK | `FOREIGN KEY (reason_id) REFERENCES reason(id)` |
 | `appointment_event_to_status_fkey` | FK | `FOREIGN KEY (to_status) REFERENCES appointment_status(code)` |
 | `appointment_event_user_id_fkey` | FK | `FOREIGN KEY (user_id) REFERENCES app_user(id)` |
-| `ck_appointment_event_action` | CHECK | `CHECK (((action)::text = ANY ((ARRAY['REGISTER'::character varying, 'ACTIVATE'::character varying, 'CALL'::character varying, 'REQUEUE'::character varying, 'START'::character varying, 'FINISH'::character varying, 'CANCEL'::character varying, 'NO_SHOW'::character varying, 'VOID'::character varying, 'MIGRATE'::character varying])::text[])))` |
-| `ck_appointment_event_from` | CHECK | `CHECK ((((action)::text = ANY ((ARRAY['REGISTER'::character varying, 'MIGRATE'::character varying])::text[])) = (from_status IS NULL)))` |
+| `ck_appointment_event_action` | CHECK | `CHECK (((action)::text = ANY ((ARRAY['REGISTER'::character varying, 'ACTIVATE'::character varying, 'CALL'::character varying, 'REQUEUE'::character varying, 'START'::character varying, 'FINISH'::character varying, 'CANCEL'::character varying, 'NO_SHOW'::character varying, 'VOID'::character varying, 'MIGRATE'::character varying, 'CLOSE_DAY'::character varying, 'PRIORITY'::character varying])::text[])))` |
+| `ck_appointment_event_from` | CHECK | `CHECK ((((action)::text = ANY (ARRAY[('REGISTER'::character varying)::text, ('MIGRATE'::character varying)::text])) = (from_status IS NULL)))` |
 
 **Índices adicionales**
 
@@ -275,7 +295,7 @@ Auditoría funcional. Solo inserción; cada fila encadena el hash de la anterior
 | `audit_event_user_id_fkey` | FK | `FOREIGN KEY (user_id) REFERENCES app_user(id)` |
 | `ck_audit_event_action_format` | CHECK | `CHECK (((action)::text ~ '^[A-Z][A-Z0-9_]{2,59}$'::text))` |
 | `ck_audit_event_hash_format` | CHECK | `CHECK ((hash ~ '^[0-9a-f]{64}$'::text))` |
-| `ck_audit_event_result` | CHECK | `CHECK (((result)::text = ANY ((ARRAY['SUCCESS'::character varying, 'DENIED'::character varying, 'FAILURE'::character varying])::text[])))` |
+| `ck_audit_event_result` | CHECK | `CHECK (((result)::text = ANY (ARRAY[('SUCCESS'::character varying)::text, ('DENIED'::character varying)::text, ('FAILURE'::character varying)::text])))` |
 
 **Índices adicionales**
 
@@ -289,6 +309,64 @@ Auditoría funcional. Solo inserción; cada fila encadena el hash de la anterior
 - `trg_audit_event_before_insert` → `tg_audit_event_before_insert()`
 - `trg_audit_event_forbid_change` → `tg_forbid_change()`
 - `trg_audit_event_forbid_truncate` → `tg_forbid_change()`
+
+## brand_asset
+
+Recursos de identidad visual (logo institucional PNG/JPEG, máx. 512 KB).
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+|---|---|---|---|---|
+| `code` | character varying(20) | no |  |  |
+| `content_type` | character varying(40) | no |  |  |
+| `data` | bytea | no |  |  |
+| `updated_at` | timestamp with time zone | no | now() |  |
+| `updated_by` | bigint | sí |  |  |
+
+**Restricciones**
+
+| Nombre | Tipo | Definición |
+|---|---|---|
+| `brand_asset_pkey` | PK | `PRIMARY KEY (code)` |
+| `brand_asset_updated_by_fkey` | FK | `FOREIGN KEY (updated_by) REFERENCES app_user(id)` |
+| `ck_brand_asset_code` | CHECK | `CHECK (((code)::text = 'LOGO'::text))` |
+| `ck_brand_asset_size` | CHECK | `CHECK ((octet_length(data) <= 524288))` |
+| `ck_brand_asset_type` | CHECK | `CHECK (((content_type)::text = ANY ((ARRAY['image/png'::character varying, 'image/jpeg'::character varying])::text[])))` |
+
+## consulting_room
+
+Consultorios del tópico de cada sede. No se eliminan: se desactivan.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+|---|---|---|---|---|
+| `id` | integer | no | IDENTITY |  |
+| `site_id` | integer | no |  |  |
+| `name` | character varying(60) | no |  | Nombre visible en la pantalla de sala y en el correo de llamado (p. ej., "Consultorio 1"). |
+| `location_note` | character varying(150) | sí |  | Indicación de ubicación (p. ej., "Primer piso, al fondo"). |
+| `sort_order` | smallint | no | 0 | Orden de presentación. |
+| `is_active` | boolean | no | true |  |
+| `created_at` | timestamp with time zone | no | now() |  |
+| `updated_at` | timestamp with time zone | no | now() |  |
+| `created_by` | bigint | sí |  |  |
+| `updated_by` | bigint | sí |  |  |
+
+**Restricciones**
+
+| Nombre | Tipo | Definición |
+|---|---|---|
+| `consulting_room_pkey` | PK | `PRIMARY KEY (id)` |
+| `consulting_room_created_by_fkey` | FK | `FOREIGN KEY (created_by) REFERENCES app_user(id)` |
+| `consulting_room_site_id_fkey` | FK | `FOREIGN KEY (site_id) REFERENCES site(id)` |
+| `consulting_room_updated_by_fkey` | FK | `FOREIGN KEY (updated_by) REFERENCES app_user(id)` |
+| `ck_consulting_room_name_not_blank` | CHECK | `CHECK ((btrim((name)::text) <> ''::text))` |
+
+**Índices adicionales**
+
+- `ix_consulting_room_site_active`: `CREATE INDEX ix_consulting_room_site_active ON topico.consulting_room USING btree (site_id) WHERE is_active`
+- `uq_consulting_room_site_name`: `CREATE UNIQUE INDEX uq_consulting_room_site_name ON topico.consulting_room USING btree (site_id, lower((name)::text))`
+
+**Triggers**
+
+- `trg_consulting_room_updated_at` → `tg_set_updated_at()`
 
 ## department
 
@@ -316,6 +394,137 @@ Dependencias (órganos jurisdiccionales/administrativos) de la CSJ Lima.
 **Triggers**
 
 - `trg_department_updated_at` → `tg_set_updated_at()`
+
+## display_message
+
+Mensajes que rotan al pie de la pantalla de sala. site_id NULL = todas las sedes.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+|---|---|---|---|---|
+| `id` | integer | no | IDENTITY |  |
+| `site_id` | integer | sí |  |  |
+| `text` | character varying(200) | no |  |  |
+| `valid_from` | date | no |  |  |
+| `valid_to` | date | sí |  |  |
+| `sort_order` | smallint | no | 0 |  |
+| `is_active` | boolean | no | true |  |
+| `created_at` | timestamp with time zone | no | now() |  |
+| `updated_at` | timestamp with time zone | no | now() |  |
+| `created_by` | bigint | sí |  |  |
+| `updated_by` | bigint | sí |  |  |
+
+**Restricciones**
+
+| Nombre | Tipo | Definición |
+|---|---|---|
+| `display_message_pkey` | PK | `PRIMARY KEY (id)` |
+| `display_message_created_by_fkey` | FK | `FOREIGN KEY (created_by) REFERENCES app_user(id)` |
+| `display_message_site_id_fkey` | FK | `FOREIGN KEY (site_id) REFERENCES site(id)` |
+| `display_message_updated_by_fkey` | FK | `FOREIGN KEY (updated_by) REFERENCES app_user(id)` |
+| `ck_display_message_range` | CHECK | `CHECK (((valid_to IS NULL) OR (valid_to >= valid_from)))` |
+| `ck_display_message_text` | CHECK | `CHECK ((btrim((text)::text) <> ''::text))` |
+
+**Triggers**
+
+- `trg_display_message_updated_at` → `tg_set_updated_at()`
+
+## doctor
+
+Médicos que atienden en el tópico de cada sede. No se eliminan: se desactivan.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+|---|---|---|---|---|
+| `id` | integer | no | IDENTITY |  |
+| `site_id` | integer | no |  |  |
+| `full_name` | character varying(150) | no |  | Nombre completo del profesional, tal como se muestra (p. ej., "Dra. Ana Pérez Soto"). |
+| `document_number` | character varying(8) | sí |  | DNI del profesional (opcional). |
+| `cmp` | character varying(6) | sí |  | Número de colegiatura del Colegio Médico del Perú (opcional, único por sede). |
+| `specialty` | character varying(80) | sí |  | Especialidad (opcional), p. ej. Medicina General. |
+| `phone` | character varying(20) | sí |  |  |
+| `email` | character varying(150) | sí |  |  |
+| `is_active` | boolean | no | true | Solo los médicos activos pueden asignarse a nuevas atenciones. |
+| `created_at` | timestamp with time zone | no | now() |  |
+| `updated_at` | timestamp with time zone | no | now() |  |
+| `created_by` | bigint | sí |  |  |
+| `updated_by` | bigint | sí |  |  |
+
+**Restricciones**
+
+| Nombre | Tipo | Definición |
+|---|---|---|
+| `doctor_pkey` | PK | `PRIMARY KEY (id)` |
+| `doctor_created_by_fkey` | FK | `FOREIGN KEY (created_by) REFERENCES app_user(id)` |
+| `doctor_site_id_fkey` | FK | `FOREIGN KEY (site_id) REFERENCES site(id)` |
+| `doctor_updated_by_fkey` | FK | `FOREIGN KEY (updated_by) REFERENCES app_user(id)` |
+| `ck_doctor_cmp_format` | CHECK | `CHECK (((cmp IS NULL) OR ((cmp)::text ~ '^[0-9]{1,6}$'::text)))` |
+| `ck_doctor_document_format` | CHECK | `CHECK (((document_number IS NULL) OR ((document_number)::text ~ '^[0-9]{8}$'::text)))` |
+| `ck_doctor_name_not_blank` | CHECK | `CHECK ((btrim((full_name)::text) <> ''::text))` |
+
+**Índices adicionales**
+
+- `ix_doctor_site_active`: `CREATE INDEX ix_doctor_site_active ON topico.doctor USING btree (site_id) WHERE is_active`
+- `uq_doctor_site_cmp`: `CREATE UNIQUE INDEX uq_doctor_site_cmp ON topico.doctor USING btree (site_id, cmp) WHERE (cmp IS NOT NULL)`
+- `uq_doctor_site_document`: `CREATE UNIQUE INDEX uq_doctor_site_document ON topico.doctor USING btree (site_id, document_number) WHERE (document_number IS NOT NULL)`
+
+**Triggers**
+
+- `trg_doctor_updated_at` → `tg_set_updated_at()`
+
+## doctor_absence
+
+Ausencias del médico (vacaciones, licencia, capacitación). Lo ausentan del día y reducen la capacidad calculada.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+|---|---|---|---|---|
+| `id` | bigint | no | IDENTITY |  |
+| `doctor_id` | integer | no |  |  |
+| `date_from` | date | no |  |  |
+| `date_to` | date | no |  |  |
+| `reason` | character varying(150) | no |  | Motivo administrativo (sin datos clínicos del profesional). |
+| `created_at` | timestamp with time zone | no | now() |  |
+| `created_by` | bigint | sí |  |  |
+
+**Restricciones**
+
+| Nombre | Tipo | Definición |
+|---|---|---|
+| `doctor_absence_pkey` | PK | `PRIMARY KEY (id)` |
+| `doctor_absence_created_by_fkey` | FK | `FOREIGN KEY (created_by) REFERENCES app_user(id)` |
+| `doctor_absence_doctor_id_fkey` | FK | `FOREIGN KEY (doctor_id) REFERENCES doctor(id)` |
+| `ck_doctor_absence_range` | CHECK | `CHECK ((date_to >= date_from))` |
+| `ck_doctor_absence_reason` | CHECK | `CHECK ((btrim((reason)::text) <> ''::text))` |
+
+**Índices adicionales**
+
+- `ix_doctor_absence_doctor`: `CREATE INDEX ix_doctor_absence_doctor ON topico.doctor_absence USING btree (doctor_id, date_from, date_to)`
+
+## doctor_schedule
+
+Horario semanal de cada médico (bloques por día; se reemplaza completo y queda auditado). Sin bloques = disponible en todo el horario de la sede.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+|---|---|---|---|---|
+| `id` | bigint | no | IDENTITY |  |
+| `doctor_id` | integer | no |  |  |
+| `weekday` | smallint | no |  | 1 = lunes … 7 = domingo. |
+| `start_time` | time without time zone | no |  |  |
+| `end_time` | time without time zone | no |  |  |
+| `created_at` | timestamp with time zone | no | now() |  |
+| `created_by` | bigint | sí |  |  |
+
+**Restricciones**
+
+| Nombre | Tipo | Definición |
+|---|---|---|
+| `doctor_schedule_pkey` | PK | `PRIMARY KEY (id)` |
+| `doctor_schedule_created_by_fkey` | FK | `FOREIGN KEY (created_by) REFERENCES app_user(id)` |
+| `doctor_schedule_doctor_id_fkey` | FK | `FOREIGN KEY (doctor_id) REFERENCES doctor(id)` |
+| `ck_doctor_schedule_times` | CHECK | `CHECK ((end_time > start_time))` |
+| `ck_doctor_schedule_weekday` | CHECK | `CHECK (((weekday >= 1) AND (weekday <= 7)))` |
+
+**Índices adicionales**
+
+- `ix_doctor_schedule_doctor`: `CREATE INDEX ix_doctor_schedule_doctor ON topico.doctor_schedule USING btree (doctor_id, weekday)`
 
 ## import_batch
 
@@ -362,10 +571,10 @@ Lote de importación de Excel. Flujo: UPLOADED → VALIDATED → CONFIRMED \| DI
 | `ck_import_batch_confirmed` | CHECK | `CHECK ((((status)::text <> 'CONFIRMED'::text) OR ((confirmed_at IS NOT NULL) AND (confirmed_by IS NOT NULL))))` |
 | `ck_import_batch_counts` | CHECK | `CHECK (((total_rows >= 0) AND (new_count >= 0) AND (update_count >= 0) AND (unchanged_count >= 0) AND (error_count >= 0) AND (duplicate_count >= 0) AND (deactivated_count >= 0)))` |
 | `ck_import_batch_discarded` | CHECK | `CHECK ((((status)::text <> 'DISCARDED'::text) OR ((discarded_at IS NOT NULL) AND (discarded_by IS NOT NULL))))` |
-| `ck_import_batch_kind` | CHECK | `CHECK (((kind)::text = ANY ((ARRAY['WORKERS_EPS'::character varying, 'HISTORICAL_APPOINTMENTS'::character varying])::text[])))` |
+| `ck_import_batch_kind` | CHECK | `CHECK (((kind)::text = ANY (ARRAY[('WORKERS_EPS'::character varying)::text, ('HISTORICAL_APPOINTMENTS'::character varying)::text])))` |
 | `ck_import_batch_sha256` | CHECK | `CHECK ((file_sha256 ~ '^[0-9a-f]{64}$'::text))` |
 | `ck_import_batch_size` | CHECK | `CHECK ((file_size_bytes > 0))` |
-| `ck_import_batch_status` | CHECK | `CHECK (((status)::text = ANY ((ARRAY['UPLOADED'::character varying, 'VALIDATED'::character varying, 'CONFIRMED'::character varying, 'DISCARDED'::character varying, 'FAILED'::character varying])::text[])))` |
+| `ck_import_batch_status` | CHECK | `CHECK (((status)::text = ANY (ARRAY[('UPLOADED'::character varying)::text, ('VALIDATED'::character varying)::text, ('CONFIRMED'::character varying)::text, ('DISCARDED'::character varying)::text, ('FAILED'::character varying)::text])))` |
 
 **Índices adicionales**
 
@@ -405,7 +614,7 @@ Filas en staging de un lote: dato crudo, dato normalizado, resultado de validaci
 | `ck_import_row_error_has_messages` | CHECK | `CHECK ((((outcome)::text <> 'ERROR'::text) OR (jsonb_array_length(errors) > 0)))` |
 | `ck_import_row_errors_array` | CHECK | `CHECK (((jsonb_typeof(errors) = 'array'::text) AND (jsonb_typeof(warnings) = 'array'::text)))` |
 | `ck_import_row_number` | CHECK | `CHECK ((row_number > 0))` |
-| `ck_import_row_outcome` | CHECK | `CHECK (((outcome)::text = ANY ((ARRAY['NEW'::character varying, 'UPDATE'::character varying, 'UNCHANGED'::character varying, 'ERROR'::character varying, 'DUPLICATE_IN_FILE'::character varying])::text[])))` |
+| `ck_import_row_outcome` | CHECK | `CHECK (((outcome)::text = ANY (ARRAY[('NEW'::character varying)::text, ('UPDATE'::character varying)::text, ('UNCHANGED'::character varying)::text, ('ERROR'::character varying)::text, ('DUPLICATE_IN_FILE'::character varying)::text])))` |
 
 **Índices adicionales**
 
@@ -455,6 +664,9 @@ Bandeja de salida (outbox). Se inserta en la misma transacción del evento y un 
 | `created_at` | timestamp with time zone | no | now() |  |
 | `updated_at` | timestamp with time zone | no | now() |  |
 | `created_by` | bigint | sí |  |  |
+| `attachment_name` | character varying(150) | sí |  |  |
+| `attachment_type` | character varying(80) | sí |  |  |
+| `attachment_data` | bytea | sí |  | Adjunto opcional (p. ej., PDF del resumen del día), máximo 5 MB. |
 
 **Restricciones**
 
@@ -464,11 +676,12 @@ Bandeja de salida (outbox). Se inserta en la misma transacción del evento y un 
 | `uq_notification_dedup_key` | UNIQUE | `UNIQUE (dedup_key)` |
 | `notification_appointment_id_fkey` | FK | `FOREIGN KEY (appointment_id) REFERENCES appointment(id)` |
 | `notification_created_by_fkey` | FK | `FOREIGN KEY (created_by) REFERENCES app_user(id)` |
+| `ck_notification_attachment` | CHECK | `CHECK ((((attachment_data IS NULL) AND (attachment_name IS NULL)) OR ((attachment_data IS NOT NULL) AND (attachment_name IS NOT NULL) AND (attachment_type IS NOT NULL) AND (octet_length(attachment_data) <= 5242880))))` |
 | `ck_notification_attempts` | CHECK | `CHECK (((attempts >= 0) AND ((max_attempts >= 1) AND (max_attempts <= 20)) AND (attempts <= max_attempts)))` |
 | `ck_notification_channel` | CHECK | `CHECK (((channel)::text = 'EMAIL'::text))` |
-| `ck_notification_recipient` | CHECK | `CHECK ((((status)::text = ANY ((ARRAY['SKIPPED'::character varying, 'CANCELLED'::character varying])::text[])) OR (recipient IS NOT NULL)))` |
+| `ck_notification_recipient` | CHECK | `CHECK ((((status)::text = ANY (ARRAY[('SKIPPED'::character varying)::text, ('CANCELLED'::character varying)::text])) OR (recipient IS NOT NULL)))` |
 | `ck_notification_sent` | CHECK | `CHECK ((((status)::text <> 'SENT'::text) OR (sent_at IS NOT NULL)))` |
-| `ck_notification_status` | CHECK | `CHECK (((status)::text = ANY ((ARRAY['PENDING'::character varying, 'SENDING'::character varying, 'SENT'::character varying, 'FAILED'::character varying, 'SKIPPED'::character varying, 'CANCELLED'::character varying])::text[])))` |
+| `ck_notification_status` | CHECK | `CHECK (((status)::text = ANY (ARRAY[('PENDING'::character varying)::text, ('SENDING'::character varying)::text, ('SENT'::character varying)::text, ('FAILED'::character varying)::text, ('SKIPPED'::character varying)::text, ('CANCELLED'::character varying)::text])))` |
 
 **Índices adicionales**
 
@@ -556,7 +769,7 @@ Motivos administrativos (cancelación, anulación, no presentado, devolución a 
 | `uq_reason_type_code` | UNIQUE | `UNIQUE (type, code)` |
 | `reason_updated_by_fkey` | FK | `FOREIGN KEY (updated_by) REFERENCES app_user(id)` |
 | `ck_reason_code_format` | CHECK | `CHECK (((code)::text ~ '^[A-Z][A-Z0-9_]{1,39}$'::text))` |
-| `ck_reason_type` | CHECK | `CHECK (((type)::text = ANY ((ARRAY['CANCEL'::character varying, 'VOID'::character varying, 'NO_SHOW'::character varying, 'REQUEUE'::character varying])::text[])))` |
+| `ck_reason_type` | CHECK | `CHECK (((type)::text = ANY ((ARRAY['CANCEL'::character varying, 'VOID'::character varying, 'NO_SHOW'::character varying, 'REQUEUE'::character varying, 'PRIORITY'::character varying])::text[])))` |
 
 **Triggers**
 
@@ -590,7 +803,7 @@ Sesiones (refresh tokens rotativos). Solo se guarda el SHA-256 del token.
 | `refresh_token_user_id_fkey` | FK | `FOREIGN KEY (user_id) REFERENCES app_user(id)` |
 | `ck_refresh_token_expiry` | CHECK | `CHECK ((expires_at > issued_at))` |
 | `ck_refresh_token_hash_format` | CHECK | `CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))` |
-| `ck_refresh_token_revoked_reason` | CHECK | `CHECK (((revoked_reason IS NULL) OR ((revoked_reason)::text = ANY ((ARRAY['ROTATED'::character varying, 'LOGOUT'::character varying, 'REUSE_DETECTED'::character varying, 'ADMIN'::character varying, 'PASSWORD_CHANGED'::character varying])::text[]))))` |
+| `ck_refresh_token_revoked_reason` | CHECK | `CHECK (((revoked_reason IS NULL) OR ((revoked_reason)::text = ANY (ARRAY[('ROTATED'::character varying)::text, ('LOGOUT'::character varying)::text, ('REUSE_DETECTED'::character varying)::text, ('ADMIN'::character varying)::text, ('PASSWORD_CHANGED'::character varying)::text]))))` |
 
 **Índices adicionales**
 
@@ -690,14 +903,51 @@ Día operativo por sede. Congela la configuración vigente y es el punto de seri
 | `ck_service_day_closed` | CHECK | `CHECK ((((status)::text <> 'CLOSED'::text) OR (closed_at IS NOT NULL)))` |
 | `ck_service_day_concurrent` | CHECK | `CHECK (((max_concurrent_in_service >= 1) AND (max_concurrent_in_service <= 10)))` |
 | `ck_service_day_slot` | CHECK | `CHECK (((slot_minutes >= 5) AND (slot_minutes <= 120)))` |
-| `ck_service_day_status` | CHECK | `CHECK (((status)::text = ANY ((ARRAY['OPEN'::character varying, 'CLOSED'::character varying])::text[])))` |
-| `ck_service_day_tickets` | CHECK | `CHECK ((((last_ticket_number >= 0) AND (last_ticket_number <= 999)) AND (occupied_count <= last_ticket_number)))` |
+| `ck_service_day_status` | CHECK | `CHECK (((status)::text = ANY (ARRAY[('OPEN'::character varying)::text, ('CLOSED'::character varying)::text])))` |
+| `ck_service_day_tickets` | CHECK | `CHECK (((last_ticket_number >= 0) AND (last_ticket_number <= 999) AND (occupied_count <= last_ticket_number)))` |
 | `ck_service_day_tolerance` | CHECK | `CHECK (((tolerance_minutes >= 0) AND (tolerance_minutes <= 120)))` |
 
 **Triggers**
 
 - `trg_service_day_forbid_delete` → `tg_forbid_change()`
 - `trg_service_day_updated_at` → `tg_set_updated_at()`
+
+## service_rating
+
+Calificación anónima del servicio (trato y tiempo de espera; nunca datos de salud). Los reportes solo muestran agregados y comentarios sin identificar.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+|---|---|---|---|---|
+| `id` | bigint | no | IDENTITY |  |
+| `appointment_id` | bigint | no |  | Solo para impedir más de una calificación por atención; nunca se expone. |
+| `site_id` | integer | no |  |  |
+| `service_date` | date | no |  |  |
+| `doctor_id` | integer | sí |  |  |
+| `token_hash` | character(64) | no |  | SHA-256 del enlace enviado por correo; el enlace no se guarda. |
+| `expires_at` | timestamp with time zone | no |  |  |
+| `score` | smallint | sí |  |  |
+| `wait_score` | smallint | sí |  |  |
+| `comment` | character varying(500) | sí |  |  |
+| `submitted_at` | timestamp with time zone | sí |  |  |
+| `created_at` | timestamp with time zone | no | now() |  |
+
+**Restricciones**
+
+| Nombre | Tipo | Definición |
+|---|---|---|
+| `service_rating_pkey` | PK | `PRIMARY KEY (id)` |
+| `uq_service_rating_appointment` | UNIQUE | `UNIQUE (appointment_id)` |
+| `uq_service_rating_token` | UNIQUE | `UNIQUE (token_hash)` |
+| `service_rating_appointment_id_fkey` | FK | `FOREIGN KEY (appointment_id) REFERENCES appointment(id)` |
+| `service_rating_doctor_id_fkey` | FK | `FOREIGN KEY (doctor_id) REFERENCES doctor(id)` |
+| `service_rating_site_id_fkey` | FK | `FOREIGN KEY (site_id) REFERENCES site(id)` |
+| `ck_service_rating_score` | CHECK | `CHECK (((score IS NULL) OR ((score >= 1) AND (score <= 5))))` |
+| `ck_service_rating_submitted` | CHECK | `CHECK (((submitted_at IS NULL) = (score IS NULL)))` |
+| `ck_service_rating_wait` | CHECK | `CHECK (((wait_score IS NULL) OR ((wait_score >= 1) AND (wait_score <= 5))))` |
+
+**Índices adicionales**
+
+- `ix_service_rating_site_date`: `CREATE INDEX ix_service_rating_site_date ON topico.service_rating USING btree (site_id, service_date) WHERE (submitted_at IS NOT NULL)`
 
 ## site
 
@@ -759,6 +1009,38 @@ Días en que el tópico de una sede no atiende (feriados, cierres).
 | `site_closure_site_id_fkey` | FK | `FOREIGN KEY (site_id) REFERENCES site(id)` |
 | `ck_site_closure_reason_not_blank` | CHECK | `CHECK ((btrim((reason)::text) <> ''::text))` |
 
+## site_pause
+
+Pausas de la atención del tópico (refrigerio, emergencia, reunión). Una sola activa por sede.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+|---|---|---|---|---|
+| `id` | bigint | no | IDENTITY |  |
+| `site_id` | integer | no |  |  |
+| `started_at` | timestamp with time zone | no |  |  |
+| `resume_at` | timestamp with time zone | no |  | Hora prevista de reanudación (se muestra en la pantalla de sala y desplaza las horas estimadas). |
+| `ended_at` | timestamp with time zone | sí |  |  |
+| `reason` | character varying(150) | no |  |  |
+| `created_by` | bigint | sí |  |  |
+| `ended_by` | bigint | sí |  |  |
+| `created_at` | timestamp with time zone | no | now() |  |
+
+**Restricciones**
+
+| Nombre | Tipo | Definición |
+|---|---|---|
+| `site_pause_pkey` | PK | `PRIMARY KEY (id)` |
+| `site_pause_created_by_fkey` | FK | `FOREIGN KEY (created_by) REFERENCES app_user(id)` |
+| `site_pause_ended_by_fkey` | FK | `FOREIGN KEY (ended_by) REFERENCES app_user(id)` |
+| `site_pause_site_id_fkey` | FK | `FOREIGN KEY (site_id) REFERENCES site(id)` |
+| `ck_site_pause_ended` | CHECK | `CHECK (((ended_at IS NULL) OR (ended_at >= started_at)))` |
+| `ck_site_pause_reason` | CHECK | `CHECK ((btrim((reason)::text) <> ''::text))` |
+| `ck_site_pause_resume` | CHECK | `CHECK ((resume_at > started_at))` |
+
+**Índices adicionales**
+
+- `uq_site_pause_active`: `CREATE UNIQUE INDEX uq_site_pause_active ON topico.site_pause USING btree (site_id) WHERE (ended_at IS NULL)`
+
 ## site_schedule
 
 Bloques de atención (mañana/tarde) por día de semana, con vigencia.
@@ -788,7 +1070,7 @@ Bloques de atención (mañana/tarde) por día de semana, con vigencia.
 | `site_schedule_updated_by_fkey` | FK | `FOREIGN KEY (updated_by) REFERENCES app_user(id)` |
 | `ex_site_schedule_block` | EXCLUDE | `EXCLUDE USING gist (site_id WITH =, weekday WITH =, block WITH =, daterange(valid_from, valid_to, '[]'::text) WITH &&)` |
 | `ex_site_schedule_time_overlap` | EXCLUDE | `EXCLUDE USING gist (site_id WITH =, weekday WITH =, daterange(valid_from, valid_to, '[]'::text) WITH &&, timerange(start_time, end_time, '[)'::text) WITH &&)` |
-| `ck_site_schedule_block` | CHECK | `CHECK (((block)::text = ANY ((ARRAY['AM'::character varying, 'PM'::character varying])::text[])))` |
+| `ck_site_schedule_block` | CHECK | `CHECK (((block)::text = ANY (ARRAY[('AM'::character varying)::text, ('PM'::character varying)::text])))` |
 | `ck_site_schedule_times` | CHECK | `CHECK ((end_time > start_time))` |
 | `ck_site_schedule_validity` | CHECK | `CHECK (((valid_to IS NULL) OR (valid_to >= valid_from)))` |
 | `ck_site_schedule_weekday` | CHECK | `CHECK (((weekday >= 1) AND (weekday <= 7)))` |
@@ -962,7 +1244,7 @@ Trabajadores de la CSJ Lima (dato personal). Solo datos administrativos, sin inf
 | `ck_worker_birth_date` | CHECK | `CHECK (((birth_date IS NULL) OR (birth_date >= '1900-01-01'::date)))` |
 | `ck_worker_deactivation` | CHECK | `CHECK ((is_active OR (deactivated_at IS NOT NULL)))` |
 | `ck_worker_document_format` | CHECK | `CHECK (((((document_type)::text = 'DNI'::text) AND ((document_number)::text ~ '^[0-9]{8}$'::text)) OR (((document_type)::text = 'CE'::text) AND ((document_number)::text ~ '^[A-Z0-9]{8,12}$'::text)) OR (((document_type)::text = 'PAS'::text) AND ((document_number)::text ~ '^[A-Z0-9]{6,12}$'::text))))` |
-| `ck_worker_document_type` | CHECK | `CHECK (((document_type)::text = ANY ((ARRAY['DNI'::character varying, 'CE'::character varying, 'PAS'::character varying])::text[])))` |
+| `ck_worker_document_type` | CHECK | `CHECK (((document_type)::text = ANY (ARRAY[('DNI'::character varying)::text, ('CE'::character varying)::text, ('PAS'::character varying)::text])))` |
 | `ck_worker_email_format` | CHECK | `CHECK (((institutional_email IS NULL) OR ((institutional_email)::text ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$'::text)))` |
 | `ck_worker_names_not_blank` | CHECK | `CHECK (((btrim((first_names)::text) <> ''::text) AND (btrim((paternal_surname)::text) <> ''::text)))` |
 | `ck_worker_phone_format` | CHECK | `CHECK (((phone IS NULL) OR ((phone)::text ~ '^\+?[0-9 ]{6,20}$'::text)))` |

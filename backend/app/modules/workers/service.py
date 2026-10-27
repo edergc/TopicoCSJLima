@@ -10,7 +10,7 @@ from app.core.errors import BusinessRuleError, NotFoundError
 from app.modules.audit.service import diff, snapshot
 from app.modules.auth.dependencies import ServiceContext
 from app.modules.workers.models import Department, Insurer, Worker, WorkerCoverage
-from app.modules.workers.schemas import CoverageEndIn, CoverageIn, WorkerCreateIn, WorkerUpdateIn
+from app.modules.workers.schemas import CoverageIn, WorkerCreateIn, WorkerUpdateIn
 from app.shared.text import is_valid_dni, normalize_document, normalize_key
 
 ELIGIBLE_INSURER = "RIMAC"
@@ -189,28 +189,6 @@ class WorkerService:
             resource_type="worker",
             resource_id=worker.public_id,
             after=snapshot(coverage, ("valid_from", "valid_to")),
-        )
-        self.db.commit()
-        self.db.refresh(worker)
-        return worker
-
-    def end_coverage(self, public_id: object, coverage_id: int, data: CoverageEndIn) -> Worker:
-        worker = get_worker(self.db, public_id)
-        coverage = next((c for c in worker.coverages if c.id == coverage_id), None)
-        if coverage is None:
-            raise NotFoundError()
-        if data.valid_to < coverage.valid_from:
-            raise BusinessRuleError("VALIDATION_ERROR", "La fecha de término no puede ser anterior al inicio.")
-        before = snapshot(coverage, ("valid_to", "end_reason"))
-        coverage.valid_to = data.valid_to
-        coverage.end_reason = data.end_reason
-        coverage.updated_by = self.ctx.user.id
-        self.ctx.audit(
-            action="WORKER_COVERAGE_END",
-            resource_type="worker",
-            resource_id=worker.public_id,
-            before=before,
-            after=snapshot(coverage, ("valid_to", "end_reason")),
         )
         self.db.commit()
         self.db.refresh(worker)

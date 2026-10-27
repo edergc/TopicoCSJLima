@@ -1,7 +1,8 @@
 """Procesos en segundo plano (hilo dentro del proceso; sin colas externas).
 
 1. Despacho de la bandeja de salida (outbox) con reintentos y backoff exponencial.
-2. Mantenimiento: activa las atenciones REGISTRADO cuyo día llegó (REGISTRADO → EN_ESPERA).
+2. Mantenimiento: activa las atenciones REGISTRADO cuyo día llegó (REGISTRADO → EN_ESPERA) y cierra
+   los días pasados que nadie cerró (pendientes → NO_PRESENTADO, como «Cerrar día»).
 
 Es seguro con varios workers de Uvicorn: los registros se reclaman con FOR UPDATE SKIP LOCKED.
 """
@@ -21,6 +22,7 @@ from app.modules.appointments.state_machine import Status
 from app.modules.audit import service as audit
 from app.modules.notifications.channels import Channel, DeliveryError, OutgoingMessage, build_channel
 from app.modules.notifications.models import Notification
+from app.modules.operations.service import auto_close_past_days
 
 log = get_logger("app.notifications")
 
@@ -151,6 +153,12 @@ def activate_due_appointments(session_factory: sessionmaker[Session], clock: Clo
         return len(due)
 
 
+def close_past_days(session_factory: sessionmaker[Session], clock: Clock) -> int:
+    """Cierre automático de los días pasados que quedaron abiertos. Devuelve cuántos cerró."""
+    with session_factory() as db:
+        return auto_close_past_days(db, clock)
+
+
 class BackgroundDispatcher:
     """Hilo de fondo que ejecuta periódicamente el despacho y el mantenimiento."""
 
@@ -173,6 +181,7 @@ class BackgroundDispatcher:
         log.info("background_worker_started", interval_seconds=self.interval)
         while not self._stop.is_set():
             try:
+                close_past_days(self.factory, self.clock)
                 activate_due_appointments(self.factory, self.clock)
                 while self.dispatcher.process_batch() == BATCH_SIZE and not self._stop.is_set():
                     pass

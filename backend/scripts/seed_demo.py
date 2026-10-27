@@ -193,6 +193,7 @@ def seed_reference(session_factory: object, rng: random.Random, *, with_email: b
 
 
 def main() -> int:
+    global DEMO_PASSWORD  # la usan la creación de usuarios, el inicio de sesión y el Excel de accesos
     parser = argparse.ArgumentParser()
     parser.add_argument("--test-db", action="store_true")
     parser.add_argument("--date", type=dt.date.fromisoformat, default=None)
@@ -201,9 +202,13 @@ def main() -> int:
     parser.add_argument("--allow-production", action="store_true")
     parser.add_argument("--test-email", default=None, help="Correo del trabajador de prueba (recibe notificaciones)")
     parser.add_argument(
+        "--password", default=DEMO_PASSWORD, help="Clave actual de los usuarios demo (si ya existen y se cambió)"
+    )
+    parser.add_argument(
         "--report", default="../DATOS-DE-PRUEBA.xlsx", help="Excel con accesos, trabajadores y atenciones"
     )
     args = parser.parse_args()
+    DEMO_PASSWORD = args.password
 
     settings = get_settings()
     if settings.is_production and not args.allow_production:

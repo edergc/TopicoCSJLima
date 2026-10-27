@@ -10,7 +10,6 @@ from app.modules.auth.dependencies import ServiceContext, require
 from app.modules.workers import service as workers
 from app.modules.workers.models import Department, Worker, WorkerCoverage
 from app.modules.workers.schemas import (
-    CoverageEndIn,
     CoverageIn,
     CoverageOut,
     DepartmentOut,
@@ -153,11 +152,6 @@ def update_worker(public_id: uuid.UUID, body: WorkerUpdateIn, ctx: ManageCtx) ->
 @router.post("/{public_id}/coverages", response_model=WorkerOut, status_code=201, summary="Agregar cobertura EPS")
 def add_coverage(public_id: uuid.UUID, body: CoverageIn, ctx: ManageCtx) -> WorkerOut:
     return worker_out(workers.WorkerService(ctx).add_coverage(public_id, body), ctx)
-
-
-@router.post("/{public_id}/coverages/{coverage_id}/end", response_model=WorkerOut, summary="Terminar cobertura EPS")
-def end_coverage(public_id: uuid.UUID, coverage_id: int, body: CoverageEndIn, ctx: ManageCtx) -> WorkerOut:
-    return worker_out(workers.WorkerService(ctx).end_coverage(public_id, coverage_id, body), ctx)
 
 
 @catalog_router.get("/departments", response_model=list[DepartmentOut], summary="Dependencias")

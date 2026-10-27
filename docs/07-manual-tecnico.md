@@ -41,7 +41,7 @@ router (HTTP) → servicio (regla de negocio + transacción) → ORM/SQL → Pos
 | `sites/` | Sedes, configuración versionada, horarios, cierres, disponibilidad, ventana de registro |
 | `workers/` | Trabajadores, dependencias, cobertura EPS, elegibilidad |
 | `appointments/` | Máquina de estados, registro, transiciones, llamar siguiente, vista de cola, hora estimada |
-| `notifications/` | Outbox, plantillas Jinja2 en sandbox, canal SMTP, hilo de despacho con reintentos |
+| `notifications/` | Outbox, plantillas Jinja2 en sandbox, canal SMTP, hilo de despacho con reintentos. El mismo hilo activa los turnos del día y **cierra los días pasados que nadie cerró** (`operations.auto_close_past_days`) |
 | `imports/` | Lectura de Excel con sinónimos de columnas, staging, confirmación transaccional |
 | `reports/` | Agregados y exportación (CSV/XLSX) |
 | `audit/` | Registro (en la transacción o aislado) y verificación de la cadena |

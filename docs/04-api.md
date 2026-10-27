@@ -95,7 +95,7 @@ Todas las transiciones aceptan `{version}` para el control de concurrencia optim
 | GET | `/workers?q=` | `worker:read` |
 | GET | `/workers/{id}` | `worker:read` (lectura auditada) |
 | POST / PATCH | `/workers`, `/workers/{id}` | `worker:manage` |
-| POST | `/workers/{id}/coverages`, `/coverages/{cid}/end` | `worker:manage` |
+| POST | `/workers/{id}/coverages` | `worker:manage` (la cobertura termina en su fecha de fin o al importar con «terminar a quienes no figuran») |
 | POST | `/imports` (multipart `file`) | `import:manage`: carga y **valida** sin aplicar |
 | GET | `/imports`, `/imports/{id}`, `/imports/{id}/rows?outcome=`, `/imports/{id}/errors.csv` | previsualización |
 | POST | `/imports/{id}/confirm` `{deactivate_missing}` · `/imports/{id}/discard` | confirmación transaccional |

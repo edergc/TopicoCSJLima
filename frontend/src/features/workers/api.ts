@@ -52,12 +52,3 @@ export function useAddCoverage(id: string) {
     onSuccess: invalidate,
   });
 }
-
-export function useEndCoverage(id: string) {
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: ({ coverageId, ...body }: { coverageId: number; valid_to: string; end_reason: string }) =>
-      api.post<Worker>(`/workers/${id}/coverages/${coverageId}/end`, body),
-    onSuccess: invalidate,
-  });
-}

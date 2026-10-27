@@ -54,6 +54,8 @@ const ACTION_LABEL: Record<string, string> = {
   SITE_CLOSURE_ADD: "Registro de cierre",
   SITE_CLOSURE_REMOVE: "Eliminación de cierre",
   SERVICE_DAY_CAPACITY_ADJUST: "Ajuste de capacidad del día",
+  SERVICE_DAY_CLOSE: "Cierre del día",
+  SERVICE_DAY_AUTO_CLOSE: "Cierre automático del día",
   USER_CREATE: "Alta de usuario",
   USER_UPDATE: "Modificación de usuario",
   USER_PERMISSIONS_CHANGE: "Cambio de roles/sedes",

@@ -472,23 +472,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/workers/{public_id}/coverages/{coverage_id}/end": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Terminar cobertura EPS */
-        post: operations["end_coverage_api_v1_workers__public_id__coverages__coverage_id__end_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/sites/{site_id}/queue": {
         parameters: {
             query?: never;
@@ -1830,16 +1813,6 @@ export interface components {
              * @default false
              */
             deactivate_missing: boolean;
-        };
-        /** CoverageEndIn */
-        CoverageEndIn: {
-            /**
-             * Valid To
-             * Format: date
-             */
-            valid_to: string;
-            /** End Reason */
-            end_reason: string;
         };
         /** CoverageIn */
         CoverageIn: {
@@ -4687,42 +4660,6 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WorkerOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    end_coverage_api_v1_workers__public_id__coverages__coverage_id__end_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                public_id: string;
-                coverage_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CoverageEndIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
                 headers: {
                     [name: string]: unknown;
                 };
