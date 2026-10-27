@@ -64,7 +64,7 @@ cd backend; .\.venv\Scripts\python -m app.cli create-admin --username admin --fu
 
 Acceso: `https://<servidor>:42000` (este servidor, por ahora: `http://172.20.1.51:42000`) · Diagnóstico: `deploy\windows\status.ps1`
 
-**Publicar cambios en producción:** `deploy\windows\release.ps1`. El sistema corre desde una carpeta propia (`TopicoCSJ-app`), separada de la de desarrollo; ver [Despliegue §4](docs/05-despliegue.md).
+**Publicar cambios:** `deploy\windows\update.ps1` (ver [Despliegue §4](docs/05-despliegue.md)).
 
 **Desarrollo:** ver [backend/README.md](backend/README.md) y [frontend/README.md](frontend/README.md).
 
