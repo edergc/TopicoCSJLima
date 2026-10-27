@@ -42,7 +42,8 @@ if (-not $SkipBackup) {
 Write-Step "Dependencias del backend y migraciones"
 Push-Location $backend
 try {
-    $out = Invoke-Native { & $python -m pip install --quiet --disable-pip-version-check -e . }
+    # constraints.txt: las versiones exactas probadas (sin él, pip instalaría las últimas disponibles).
+    $out = Invoke-Native { & $python -m pip install --quiet --disable-pip-version-check -e . -c constraints.txt }
     if ($LASTEXITCODE -ne 0) { throw "Falló la instalación de dependencias: $($out | Out-String)" }
     $out = Invoke-Native { & $python -m alembic upgrade head }
     if ($LASTEXITCODE -ne 0) { throw "Falló la migración: $($out | Out-String)" }

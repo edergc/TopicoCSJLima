@@ -111,7 +111,8 @@ if (-not (Test-Path $VenvPython)) {
 Push-Location $BackendDir
 try {
     Invoke-Native { & $VenvPython -m pip install --quiet --disable-pip-version-check --upgrade pip } | Out-Null
-    $out = Invoke-Native { & $VenvPython -m pip install --quiet --disable-pip-version-check -e . }
+    # constraints.txt: las versiones exactas probadas (sin él, pip instalaría las últimas disponibles).
+    $out = Invoke-Native { & $VenvPython -m pip install --quiet --disable-pip-version-check -e . -c constraints.txt }
     if ($LASTEXITCODE -ne 0) { throw "Falló la instalación de dependencias del backend: $($out | Out-String)" }
     $basePrefix = "$(Invoke-Native { & $VenvPython -c "import sys; print(sys.base_prefix)" })".Trim()
     Write-Ok "Dependencias instaladas (Python base: $basePrefix)"

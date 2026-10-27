@@ -41,7 +41,7 @@ powershell -ExecutionPolicy Bypass -File ..\database\bootstrap\bootstrap.ps1
 # 1) Entorno e instalación
 cd backend
 python -m venv .venv
-.\.venv\Scripts\pip install -e ".[dev]"
+.\.venv\Scripts\pip install -e ".[dev]" -c constraints.txt   # versiones exactas probadas
 
 # 2) Esquema de BD
 .\.venv\Scripts\alembic upgrade head

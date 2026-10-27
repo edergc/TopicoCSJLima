@@ -48,6 +48,7 @@ Es un monolito modular: sin microservicios, sin colas externas y sin dependencia
 | [06 · Backup y restauración](docs/06-backup-restauracion.md) | Estrategia, retención, verificación y recuperación ante desastres |
 | [07 · Manual técnico](docs/07-manual-tecnico.md) | Arquitectura interna, seguridad, observabilidad y cómo extender |
 | [08 · Manual de usuario](docs/08-manual-usuario.md) | Guía por rol, con capturas |
+| [09 · Hoja de ruta](docs/09-hoja-de-ruta.md) · [10 · Firewall del servidor](docs/10-firewall-servidor.md) | Próximas fases · propuesta de firewall para TI |
 | [Base de datos](database/README.md) · [Backend](backend/README.md) · [Frontend](frontend/README.md) | Guías de cada componente |
 
 ## Inicio rápido
@@ -61,7 +62,9 @@ powershell -ExecutionPolicy Bypass -File deploy\windows\install.ps1         # se
 cd backend; .\.venv\Scripts\python -m app.cli create-admin --username admin --full-name "Nombre Apellido"
 ```
 
-Acceso: `https://<servidor>:42000` · Diagnóstico: `deploy\windows\status.ps1`
+Acceso: `https://<servidor>:42000` (este servidor, por ahora: `http://172.20.1.51:42000`) · Diagnóstico: `deploy\windows\status.ps1`
+
+**Publicar cambios en producción:** `deploy\windows\release.ps1`. El sistema corre desde una carpeta propia (`TopicoCSJ-app`), separada de la de desarrollo; ver [Despliegue §4](docs/05-despliegue.md).
 
 **Desarrollo:** ver [backend/README.md](backend/README.md) y [frontend/README.md](frontend/README.md).
 
