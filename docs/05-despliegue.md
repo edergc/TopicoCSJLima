@@ -227,6 +227,7 @@ powershell -ExecutionPolicy Bypass -File deploy\windows\release.ps1 -Ref 5b7b49e
 cd E:\PROGRAMACION\TopicoCSJLima
 git worktree add --detach E:\PROGRAMACION\TopicoCSJ-app main
 Copy-Item backend\.env E:\PROGRAMACION\TopicoCSJ-app\backend\.env
+Copy-Item deploy\windows\bin E:\PROGRAMACION\TopicoCSJ-app\deploy\windows\ -Recurse   # Caddy y WinSW (el proxy bloquea GitHub)
 powershell -ExecutionPolicy Bypass -File E:\PROGRAMACION\TopicoCSJ-app\deploy\windows\install.ps1 -TlsMode none -HostNames 172.20.1.51
 ```
 
