@@ -12,6 +12,7 @@ from app.modules.auth.dependencies import ServiceContext, require
 from app.modules.imports.models import ImportBatch, ImportRow
 from app.modules.imports.service import ImportService
 from app.shared.schemas import ApiModel, ApiOut, Page, PageParams
+from app.shared.text import spreadsheet_safe
 
 router = APIRouter(prefix="/imports", tags=["Importación de Excel"])
 
@@ -106,13 +107,14 @@ def download_errors(public_id: uuid.UUID, ctx: Ctx) -> StreamingResponse:
     writer = csv.writer(buffer, delimiter=";")
     writer.writerow(["Fila", "Resultado", "DNI", "Errores", "Advertencias"])
     for r in rows:
+        # El DNI y los mensajes pueden traer el texto tal cual venía en el Excel cargado.
         writer.writerow(
             [
                 r.row_number,
                 r.outcome,
-                (r.normalized or {}).get("document_number", ""),
-                " | ".join(r.errors),
-                " | ".join(r.warnings),
+                spreadsheet_safe((r.normalized or {}).get("document_number", "")),
+                spreadsheet_safe(" | ".join(r.errors)),
+                spreadsheet_safe(" | ".join(r.warnings)),
             ]
         )
     buffer.seek(0)

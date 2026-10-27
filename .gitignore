@@ -45,3 +45,7 @@ deploy/windows/bin/
 DATOS-DE-PRUEBA.xlsx
 USUARIOS-DE-PRUEBA.txt
 CARGAR-DATOS-DE-PRUEBA.bat
+usuarios-sistema.md
+
+# Prompt original de requerimientos (referencia local, no forma parte del producto)
+promptTopico.txt

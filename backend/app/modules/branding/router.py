@@ -45,9 +45,7 @@ def get_logo(db: DbDep) -> Response:
 
 
 @admin_router.put("/logo", response_model=BrandingOut, summary="Cargar o reemplazar el logo (PNG/JPEG, máx. 512 KB)")
-def upload_logo(
-    ctx: ManageCtx, file: Annotated[UploadFile, File(description="Logo PNG o JPEG")]
-) -> branding.Branding:
+def upload_logo(ctx: ManageCtx, file: Annotated[UploadFile, File(description="Logo PNG o JPEG")]) -> branding.Branding:
     data = file.file.read(branding.MAX_LOGO_BYTES + 1)
     mime = branding.detect_image_type(data)
     asset = ctx.db.get(BrandAsset, "LOGO")

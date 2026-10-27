@@ -2,6 +2,7 @@
 
 import re
 import unicodedata
+from typing import cast
 
 _DNI_RE = re.compile(r"^\d{8}$")
 _SPACES = re.compile(r"\s+")
@@ -20,6 +21,16 @@ def normalize_document(raw: object) -> str:
     if text.isdigit() and 5 <= len(text) < 8:
         text = text.zfill(8)
     return text.upper()
+
+
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def spreadsheet_safe[T](value: T) -> T:
+    """Texto para CSV/Excel: un apóstrofo inicial evita que Excel lo ejecute como fórmula (OWASP)."""
+    if isinstance(value, str) and value.startswith(_FORMULA_PREFIXES):
+        return cast(T, "'" + value)
+    return value
 
 
 def is_valid_dni(value: str) -> bool:

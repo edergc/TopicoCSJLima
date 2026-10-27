@@ -32,6 +32,7 @@ from reportlab.platypus import (
 )
 
 from app.core.clock import INSTITUTION_TZ
+from app.shared.text import spreadsheet_safe
 
 BRAND = colors.HexColor("#7A1E2C")
 BRAND_DARK = colors.HexColor("#45111A")
@@ -159,7 +160,7 @@ def _xl_table(
         for c, value in enumerate(values, 1):
             if isinstance(value, datetime):
                 value = value.astimezone(INSTITUTION_TZ).replace(tzinfo=None)
-            cell = ws.cell(row=r, column=c, value=value)
+            cell = ws.cell(row=r, column=c, value=spreadsheet_safe(value))
             cell.border = Border(bottom=_XL_THIN)
             if isinstance(value, date) and not isinstance(value, datetime):
                 cell.number_format = "DD/MM/YYYY"

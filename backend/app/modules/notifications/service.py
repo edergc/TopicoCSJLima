@@ -19,7 +19,7 @@ from app.modules.admin.parameters import get_int, get_str
 from app.modules.appointments.models import Appointment
 from app.modules.branding import service as branding
 from app.modules.notifications.models import Notification, NotificationTemplate
-from app.modules.notifications.templating import render
+from app.modules.notifications.templating import render, render_html
 
 log = get_logger(__name__)
 
@@ -94,7 +94,7 @@ def enqueue(
     try:
         subject = render(template.subject, context)[:200]
         body_text = render(template.body_text, context)
-        body_html = render(template.body_html, context) if template.body_html else None
+        body_html = render_html(template.body_html, context) if template.body_html else None
         if body_html is None and body_text:
             body_html = branding.email_html(body_text, branding.get_branding(db))
     except Exception as exc:  # una plantilla defectuosa no debe impedir la operación
@@ -143,7 +143,7 @@ def enqueue_direct(
     try:
         subject = render(template.subject, context)[:200]
         body_text = render(template.body_text, context)
-        body_html = render(template.body_html, context) if template.body_html else None
+        body_html = render_html(template.body_html, context) if template.body_html else None
         if body_html is None and body_text:
             body_html = branding.email_html(body_text, branding.get_branding(db))
     except Exception as exc:

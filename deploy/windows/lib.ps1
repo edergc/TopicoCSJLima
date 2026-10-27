@@ -88,6 +88,22 @@ function New-RandomSecret([int]$Length = 64) {
     return ([Convert]::ToBase64String($bytes) -replace '[+/=]', '').Substring(0, $Length)
 }
 
+function Set-PrivateAcl([string]$Path, [string]$ServiceRights = "") {
+    <# Deja el archivo o carpeta solo para Administradores y SYSTEM (sin herencia: los usuarios del
+       servidor ya no lo leen). $ServiceRights (R, M...) se otorga además a LOCAL SERVICE si se indica. #>
+    if (-not (Test-Path $Path)) { return }
+    $inherit = if (Test-Path $Path -PathType Container) { "(OI)(CI)" } else { "" }
+    $grants = @("*S-1-5-32-544:${inherit}F", "*S-1-5-18:${inherit}F")
+    if ($ServiceRights) { $grants += "*S-1-5-19:${inherit}$ServiceRights" }
+    & icacls $Path /inheritance:r /grant:r @grants /Q | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "No se pudieron restringir los permisos de $Path" }
+    if ($inherit) {
+        # El contenido hereda de la carpeta (sin /T en el paso anterior: dejaría los archivos sin permisos).
+        & takeown /F $Path /R /A /D S 2>&1 | Out-Null
+        & icacls (Join-Path $Path "*") /reset /T /C /Q | Out-Null
+    }
+}
+
 function Write-Log([string]$File, [string]$Message) {
     $dir = Split-Path $File
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }

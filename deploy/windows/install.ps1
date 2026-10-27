@@ -248,6 +248,12 @@ if (-not $SkipServices) {
         & icacls $DataRoot /grant "*S-1-5-19:(OI)(CI)M" /Q | Out-Null        # LOCAL SERVICE: modificación
         Write-Ok "Permisos mínimos otorgados a LOCAL SERVICE"
     }
+    # Secretos (.env), backups y logs contienen claves y datos personales: fuera del alcance de los usuarios del servidor.
+    $svcRights = $ServiceAccount -eq "LocalService"
+    Set-PrivateAcl $EnvFile $(if ($svcRights) { "R" } else { "" })
+    Set-PrivateAcl $Dirs.Logs $(if ($svcRights) { "M" } else { "" })
+    Set-PrivateAcl $Dirs.Backups
+    Write-Ok "Permisos restringidos: backend\.env, backups y logs"
     $pgService = (Get-Service "postgresql*" | Select-Object -First 1).Name
 
     $definitions = @(

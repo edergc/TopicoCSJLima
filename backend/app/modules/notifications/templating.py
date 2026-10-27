@@ -8,6 +8,8 @@ from jinja2.sandbox import SandboxedEnvironment
 from app.core.errors import BusinessRuleError
 
 _env = SandboxedEnvironment(autoescape=False, trim_blocks=False, keep_trailing_newline=True)
+# HTML: las variables (nombres importados del Excel, sede...) se escapan para que no inyecten marcado.
+_html_env = SandboxedEnvironment(autoescape=True, trim_blocks=False, keep_trailing_newline=True)
 
 SAMPLE_CONTEXT: dict[str, Any] = {
     "worker_first_name": "Juan",
@@ -27,6 +29,10 @@ SAMPLE_CONTEXT: dict[str, Any] = {
 
 def render(source: str, context: dict[str, Any]) -> str:
     return _env.from_string(source).render(**context)
+
+
+def render_html(source: str, context: dict[str, Any]) -> str:
+    return _html_env.from_string(source).render(**context)
 
 
 def validate_template(*sources: str | None) -> None:

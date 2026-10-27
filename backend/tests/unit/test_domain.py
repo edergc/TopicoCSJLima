@@ -98,3 +98,22 @@ def test_priority_call_order_respects_fairness_cap() -> None:
     assert [t for t, _ in call_order(waiting, lambda w: w[1], streak=2, limit=2)][:2] == [1, 3]
     # Sin personas en orden normal, se sigue con los prioritarios
     assert [t for t, _ in call_order([(7, True), (8, True), (9, True)], lambda w: w[1], streak=5, limit=2)] == [7, 8, 9]
+
+
+def test_spreadsheet_safe_neutralizes_formulas() -> None:
+    from app.shared.text import spreadsheet_safe
+
+    assert spreadsheet_safe('=HYPERLINK("http://x","clic")') == '\'=HYPERLINK("http://x","clic")'
+    assert spreadsheet_safe("+51 999") == "'+51 999"
+    assert spreadsheet_safe("@SUM(A1)") == "'@SUM(A1)"
+    assert spreadsheet_safe("Pérez") == "Pérez"
+    assert spreadsheet_safe(-5) == -5
+
+
+def test_html_templates_escape_variables() -> None:
+    from app.modules.notifications.templating import render, render_html
+
+    ctx = {"worker_first_name": "<b>Juan</b>"}
+    assert render_html("<p>Hola {{ worker_first_name }}</p>", ctx) == "<p>Hola &lt;b&gt;Juan&lt;/b&gt;</p>"
+    # El texto plano no se escapa (no es HTML)
+    assert render("Hola {{ worker_first_name }}", ctx) == "Hola <b>Juan</b>"

@@ -16,6 +16,7 @@ from app.modules.reports import service as reports
 from app.modules.reports.documents import ReportMeta
 from app.modules.reports.schemas import ReportSummaryOut
 from app.modules.sites.models import Site
+from app.shared.text import spreadsheet_safe
 
 router = APIRouter(prefix="/reports", tags=["Reportes"])
 
@@ -38,7 +39,7 @@ def _fmt(value: object) -> object:
         return value.astimezone(INSTITUTION_TZ).strftime("%d/%m/%Y %H:%M")
     if isinstance(value, date):
         return value.strftime("%d/%m/%Y")
-    return "" if value is None else value
+    return "" if value is None else spreadsheet_safe(value)
 
 
 def _stream(rows: list[dict[str, Any]], fmt: str, filename: str) -> StreamingResponse:

@@ -25,7 +25,16 @@
 			roll_size 50MiB
 			roll_keep 20
 		}
-		format json
+		# Datos personales en la URL (DNI, código de turno, búsquedas): no se guardan en el log.
+		format filter {
+			request>uri query {
+				replace document_number REDACTED
+				replace ticket_code REDACTED
+				replace q REDACTED
+				replace username REDACTED
+			}
+			wrap json
+		}
 	}
 
 	header {
