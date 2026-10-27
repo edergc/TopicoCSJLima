@@ -1,19 +1,66 @@
 """Logging técnico estructurado (JSON) — separado de la auditoría funcional.
 
 - Consola: legible en desarrollo, JSON si LOG_JSON_CONSOLE=true.
-- Archivo: JSON, rotación diaria, retención configurable (logs/app.log).
+- Archivo: JSON, un archivo por día (logs/app-AAAA-MM-DD.log), retención configurable.
 Cada línea incluye request_id cuando existe, para correlacionar con la auditoría.
 """
 
+import contextlib
 import logging
-import logging.handlers
+import re
 import sys
+from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import structlog
 
+from app.core.clock import INSTITUTION_TZ
 from app.core.config import Settings
 from app.core.context import get_request_context
+
+_DAILY_FILE_RE = re.compile(r"^app-(\d{4}-\d{2}-\d{2})\.log$")
+
+
+class DailyFileHandler(logging.FileHandler):
+    """Escribe en app-AAAA-MM-DD.log (fecha de Lima) y cambia de archivo al cambiar el día.
+
+    No renombra archivos: TimedRotatingFileHandler falla en Windows con varios workers de uvicorn,
+    porque un proceso no puede renombrar el archivo que otro mantiene abierto (WinError 32).
+    """
+
+    def __init__(self, directory: Path, retention_days: int) -> None:
+        self.directory = directory
+        self.retention_days = retention_days
+        self.day = self._today()
+        super().__init__(self._path(self.day), encoding="utf-8", delay=True)
+
+    @staticmethod
+    def _today() -> date:
+        return datetime.now(INSTITUTION_TZ).date()
+
+    def _path(self, day: date) -> Path:
+        return self.directory / f"app-{day.isoformat()}.log"
+
+    def emit(self, record: logging.LogRecord) -> None:
+        today = self._today()
+        if today != self.day:
+            if self.stream is not None:
+                self.stream.close()
+                self.stream = None
+            self.day = today
+            self.baseFilename = str(self._path(today))
+            self._purge()
+        super().emit(record)
+
+    def _purge(self) -> None:
+        oldest = self.day - timedelta(days=self.retention_days)
+        for file in self.directory.glob("app-*.log"):
+            match = _DAILY_FILE_RE.match(file.name)
+            if match and date.fromisoformat(match.group(1)) < oldest:
+                # Si otro proceso aún lo tiene abierto, se borrará en el próximo cambio de día.
+                with contextlib.suppress(OSError):
+                    file.unlink(missing_ok=True)
 
 
 def _add_request_context(_: Any, __: str, event_dict: dict[str, Any]) -> dict[str, Any]:
@@ -65,13 +112,7 @@ def configure_logging(settings: Settings) -> None:
 
     if settings.log_dir is not None:
         settings.log_dir.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.handlers.TimedRotatingFileHandler(
-            settings.log_dir / "app.log",
-            when="midnight",
-            backupCount=settings.log_retention_days,
-            encoding="utf-8",
-            utc=True,
-        )
+        file_handler = DailyFileHandler(settings.log_dir, settings.log_retention_days)
         file_handler.setFormatter(json_formatter)
         handlers.append(file_handler)
 

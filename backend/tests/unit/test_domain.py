@@ -117,3 +117,27 @@ def test_html_templates_escape_variables() -> None:
     assert render_html("<p>Hola {{ worker_first_name }}</p>", ctx) == "<p>Hola &lt;b&gt;Juan&lt;/b&gt;</p>"
     # El texto plano no se escapa (no es HTML)
     assert render("Hola {{ worker_first_name }}", ctx) == "Hola <b>Juan</b>"
+
+
+def test_daily_log_file_switches_day_and_purges_old(tmp_path: object, monkeypatch: pytest.MonkeyPatch) -> None:
+    import logging
+    from pathlib import Path
+
+    from app.core.logging import DailyFileHandler
+
+    directory = Path(str(tmp_path))
+    (directory / "app-2040-01-01.log").write_text("viejo\n", encoding="utf-8")
+    (directory / "app-2040-03-01.log").write_text("reciente\n", encoding="utf-8")
+    days = iter([dt.date(2040, 3, 10), dt.date(2040, 3, 10), dt.date(2040, 3, 11)])
+    monkeypatch.setattr(DailyFileHandler, "_today", staticmethod(lambda: next(days)))
+    handler = DailyFileHandler(directory, retention_days=30)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    try:
+        for msg in ("uno", "dos"):
+            handler.emit(logging.LogRecord("t", logging.INFO, __file__, 1, msg, None, None))
+    finally:
+        handler.close()
+    assert (directory / "app-2040-03-10.log").read_text(encoding="utf-8") == "uno\n"
+    assert (directory / "app-2040-03-11.log").read_text(encoding="utf-8") == "dos\n"
+    assert not (directory / "app-2040-01-01.log").exists()  # fuera de la retención
+    assert (directory / "app-2040-03-01.log").exists()

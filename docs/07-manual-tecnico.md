@@ -128,7 +128,7 @@ Scripts de soporte (`backend/scripts/`):
 
 ## 5. Observabilidad
 
-- **Logs técnicos JSON:** `logs/api/app.log`. Campos: `timestamp`, `level`, `logger`, `event`, `request_id`; `http_request` incluye método, ruta, estado, `elapsed_ms` e IP.
+- **Logs técnicos JSON:** `logs/api/app-AAAA-MM-DD.log` (un archivo por día). Campos: `timestamp`, `level`, `logger`, `event`, `request_id`; `http_request` incluye método, ruta, estado, `elapsed_ms` e IP.
 - **Eventos útiles para alertas:**
   - `unhandled_exception`: error 500;
   - `slow_query`: consulta mayor a `DB_SLOW_QUERY_MS`;

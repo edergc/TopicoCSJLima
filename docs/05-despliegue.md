@@ -233,9 +233,9 @@ Hace backup, instala dependencias, aplica migraciones, compila y publica el fron
 
 | Carpeta | Contenido |
 |---|---|
-| `api\app.log*` | Logs técnicos JSON (errores, solicitudes, correos), rotación diaria, 90 días |
+| `api\app-AAAA-MM-DD.log` | Logs técnicos JSON (errores, solicitudes, correos), un archivo por día, 90 días |
 | `api\TopicoCSJ-API.*.log` | Salida del servicio (arranque, errores fatales) |
-| `web\access.log` | Accesos HTTP (Caddy) |
+| `web\access.log` | Accesos HTTP (Caddy); DNI, código de turno y búsquedas se guardan como `REDACTED` |
 | `web\caddy.log` | Eventos del proxy y los certificados |
 | `backup\backup-AAAA-MM.log` | Backups, verificaciones y restauraciones |
 | `backup\audit-AAAA-MM.log` | Verificación diaria de la auditoría |
@@ -244,15 +244,20 @@ Cada respuesta de la API incluye la cabecera `X-Request-ID`, que aparece tambié
 
 ## 6. Seguridad del despliegue
 
-1. **Superficie mínima:** solo el puerto 42000 queda expuesto. La API y PostgreSQL no son accesibles desde la red, salvo que `pg_hba.conf` lo permita; conviene revisarlo.
+1. **Superficie mínima:** solo el puerto 42000 queda expuesto. La API escucha en 127.0.0.1 y las bases del Tópico rechazan conexiones de red (punto 6).
 2. **Protección de la IP del cliente:** Caddy reemplaza `X-Forwarded-For`, así que un cliente no puede falsear su IP en la auditoría (verificado en las pruebas de despliegue).
-3. **Cuenta de servicio:** si Python está instalado para todos los usuarios, los servicios corren como `LOCAL SERVICE`, con lectura del código y escritura solo en `TopicoCSJ-data`. Si Python está en el perfil de un usuario, se usa `LocalSystem` y el instalador lo advierte. **Recomendación:** reinstalar Python 3.12 "para todos los usuarios" y ejecutar de nuevo el instalador.
-4. **Secretos:**
-   - `backend\.env` contiene las contraseñas de la base de datos y el secreto JWT.
-   - Restrinja su acceso: `icacls backend\.env /inheritance:r /grant Administradores:F /grant "NT AUTHORITY\SYSTEM:F" /grant "NT AUTHORITY\LOCAL SERVICE:R"`.
-   - Nunca lo versione (está en `.gitignore`).
+3. **Cuenta de servicio:** los servicios corren como `LOCAL SERVICE`, con lectura del código y escritura solo en `TopicoCSJ-data`. Si Python está en el perfil de un usuario, el instalador le da a `LOCAL SERVICE` solo lectura sobre esa carpeta (no hace falta reinstalar Python). `-ServiceAccount LocalSystem` queda como opción explícita.
+4. **Secretos y datos personales:**
+   - `backend\.env` contiene las contraseñas de la base de datos y el secreto JWT; `backups` y `logs` contienen datos personales.
+   - El instalador los deja solo para Administradores y SYSTEM (`LOCAL SERVICE` lee `.env` y escribe en `logs`).
+   - Nunca versione `.env` (está en `.gitignore`).
 5. **Rotación de contraseñas de la base de datos:** vuelva a ejecutar `bootstrap.ps1` y luego `Restart-Service TopicoCSJ-API -Force; Start-Service TopicoCSJ-Web`.
-6. **PostgreSQL:** mantenga actualizado el servidor y limite en `pg_hba.conf` las redes que pueden conectarse.
+6. **PostgreSQL:** mantenga actualizado el servidor. Las bases del Tópico solo aceptan conexiones locales; en `pg_hba.conf`, antes de las reglas de red:
+   ```
+   host    topico_csj,topico_csj_test,topico_csj_verify all  0.0.0.0/0  reject
+   host    topico_csj,topico_csj_test,topico_csj_verify all  ::/0       reject
+   ```
+   Aplicar con `pg_ctl reload -D "C:\Program Files\PostgreSQL\16\data"` (sin reiniciar).
 
 ## 7. Desinstalación
 
@@ -271,7 +276,7 @@ Retira los servicios, la regla de firewall y las tareas programadas. **No** borr
 | El navegador advierte "sitio no seguro" | Falta el certificado raíz de la CA interna | Distribuya `root.crt` (sección 3.5) |
 | La pantalla carga, pero dice "No se pudo conectar con el servidor" | API detenida | `Get-Service TopicoCSJ-API`; revise `logs\api\` |
 | `/api/v1/health/ready` responde 503 | PostgreSQL no disponible | `Get-Service postgresql*`; revise las credenciales en `.env` |
-| No llegan correos | SMTP mal configurado o `EMAIL_BACKEND` distinto de `smtp` | `app.cli send-test-email`; revise `logs\api\app.log` (`notification_failed`) |
+| No llegan correos | SMTP mal configurado o `EMAIL_BACKEND` distinto de `smtp` | `app.cli send-test-email`; revise `logs\api\app-AAAA-MM-DD.log` (`notification_failed`) |
 | "Su sesión ha finalizado" continuamente | El reloj del servidor está desincronizado | Sincronice la hora (`w32tm /resync`) |
 | Usuario bloqueado | Varios intentos fallidos | Administración → Usuarios → Desbloquear |
 | `status.ps1` marca el backup en falla | La tarea no se ejecutó o falló | `logs\backup\`; ejecute `backup.ps1` manualmente |

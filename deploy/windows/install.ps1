@@ -233,12 +233,11 @@ Write-Ok "Caddyfile generado y validado ($siteAddress)"
 # ----------------------------------------------------------------------------- 5. Servicios
 if (-not $SkipServices) {
     Write-Step "Servicios de Windows"
-    if ($ServiceAccount -eq "auto") {
-        $ServiceAccount = if ($basePrefix -like "C:\Users\*") { "LocalSystem" } else { "LocalService" }
-        if ($ServiceAccount -eq "LocalSystem") {
-            Write-Warn "Python está instalado en un perfil de usuario ($basePrefix): se usará LocalSystem."
-            Write-Warn "Recomendado: instalar Python 3.12 'para todos los usuarios' y reinstalar para usar LocalService (mínimo privilegio)."
-        }
+    if ($ServiceAccount -eq "auto") { $ServiceAccount = "LocalService" }
+    if ($ServiceAccount -eq "LocalService" -and $basePrefix -like "C:\Users\*") {
+        # Python instalado en un perfil de usuario: LOCAL SERVICE solo necesita leerlo (no hace falta reinstalarlo).
+        & icacls $basePrefix /grant "*S-1-5-19:(OI)(CI)RX" /Q | Out-Null
+        Write-Ok "LOCAL SERVICE puede leer Python ($basePrefix)"
     }
     $accountXml = if ($ServiceAccount -eq "LocalService") {
         "<serviceaccount><domain>NT AUTHORITY</domain><user>LocalService</user></serviceaccount>"

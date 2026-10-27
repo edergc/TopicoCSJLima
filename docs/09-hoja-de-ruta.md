@@ -34,7 +34,7 @@ Son pasos para empezar a usar el sistema con datos reales.
 | 1.4 | Registrar los **consultorios y médicos reales** de cada sede | Administrador |
 | 1.5 | Confirmar con el área usuaria: tolerancia (hoy 10 min), capacidad, horario de **Anselmo Barreto** y textos de los correos | Área usuaria |
 | 1.6 | Ejecutar `database\bootstrap\bootstrap.ps1` para crear la base de **verificación semanal de backups** | TI |
-| 1.7 | Reinstalar Python «para todos los usuarios», para que el servicio no corra como LocalSystem (mejora de seguridad) | TI |
+| 1.7 | ✅ *Hecho el 27/10/2026:* los servicios corren como LOCAL SERVICE (sin reinstalar Python) | — |
 | 1.8 | Pedir a TI un **nombre DNS** (p. ej. `topico.csjlima.pj.gob.pe`) y un **certificado** reconocido, y pasar a HTTPS con un comando | TI |
 | 1.9 | Instalar la **TV de cada sala** en modo kiosko (ver `docs/05-despliegue.md` §3.9) | TI |
 | 1.10 | Capacitar a las encargadas (una hora) con el manual de usuario | Desarrollo |
