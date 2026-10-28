@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowUpFromLine, ChevronRight, KeyRound, LogIn, Search, UserRound } from "lucide-react";
-import { useState } from "react";
+import { cloneElement, useState, type ReactElement } from "react";
 import { useForm } from "react-hook-form";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -41,12 +41,19 @@ function saveRemembered(username: string | null): void {
   }
 }
 
-/** Campo con ícono a la izquierda (el ícono es decorativo: la etiqueta la da <Field>). */
-function WithIcon({ icon: Icon, children }: { icon: typeof UserRound; children: React.ReactNode }) {
+/**
+ * Campo con ícono a la izquierda (decorativo). <Field> inyecta id y atributos ARIA en su hijo directo:
+ * aquí se reenvían al control real para que la etiqueta y los mensajes de error queden asociados.
+ */
+function WithIcon({
+  icon: Icon,
+  children,
+  ...fieldProps
+}: { icon: typeof UserRound; children: ReactElement<Record<string, unknown>> } & Record<string, unknown>) {
   return (
     <div className="relative">
       <Icon className="pointer-events-none absolute top-1/2 left-3.5 z-10 size-4 -translate-y-1/2 text-ink-soft" aria-hidden />
-      {children}
+      {cloneElement(children, fieldProps)}
     </div>
   );
 }
