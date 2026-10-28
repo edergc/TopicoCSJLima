@@ -24,6 +24,18 @@ Contenido:
 - Tras 5 intentos fallidos la cuenta se bloquea 15 minutos. Si lo necesita antes, el administrador puede desbloquearla.
 - Por seguridad, la sesión dura como máximo una jornada. Para salir use el menú con su nombre (arriba a la derecha) → **Cerrar sesión**.
 - Si trabaja en más de una sede, elija la **sede de trabajo** en la parte superior de la pantalla.
+- Si al escribir la contraseña aparece **«Bloq Mayús está activado»**, desactívelo: así evita intentos fallidos.
+
+### Olvidé mi contraseña
+
+1. En la pantalla de ingreso pulse **¿Olvidó su contraseña?** (junto a «Contraseña»).
+2. Escriba su **usuario** y pulse **Enviar enlace**.
+3. Revise su correo (también la carpeta de no deseados): llega un enlace que **vence en 30 minutos** y **sirve una sola vez**.
+4. Abra el enlace, escriba la **nueva contraseña** dos veces y pulse **Guardar contraseña**. Luego ingrese con ella.
+
+- Por seguridad, la pantalla responde lo mismo aunque el usuario no exista o no tenga correo.
+- Solo funciona si su usuario tiene **correo registrado**. Si no le llega el correo, pida al administrador que **restablezca** su contraseña (sección 5.1).
+- Al recuperar la contraseña se cierran sus sesiones abiertas y, si la cuenta estaba bloqueada por intentos fallidos, se desbloquea.
 
 ---
 
@@ -260,7 +272,7 @@ Debajo, las pestañas configuran la **sede elegida en el selector superior**:
 
 ### 5.1 Usuarios y roles
 
-- **Nuevo usuario:** usuario, nombre, correo, **roles** y **sedes autorizadas**. El sistema genera una **contraseña temporal** que se muestra **una sola vez**: entréguela de forma segura.
+- **Nuevo usuario:** usuario, nombre, correo (necesario para que pueda **recuperar su contraseña** por su cuenta), **roles** y **sedes autorizadas**. El sistema genera una **contraseña temporal** que se muestra **una sola vez**: entréguela de forma segura.
 - Desde la lista puede **restablecer** la contraseña, **desbloquear** o **desactivar** una cuenta.
 - La pestaña **Roles y permisos** permite ajustar qué puede hacer cada rol. Todo cambio queda auditado.
 

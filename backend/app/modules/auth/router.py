@@ -20,7 +20,15 @@ from app.modules.auth.dependencies import (
     FactoryDep,
     SettingsDep,
 )
-from app.modules.auth.schemas import ChangePasswordIn, LoginIn, MeOut, SiteRef, TokenOut
+from app.modules.auth.schemas import (
+    ChangePasswordIn,
+    LoginIn,
+    MeOut,
+    PasswordResetConfirmIn,
+    PasswordResetRequestIn,
+    SiteRef,
+    TokenOut,
+)
 from app.modules.auth.service import AuthService, IssuedSession
 from app.modules.users.models import AppUser
 
@@ -134,3 +142,32 @@ def change_password(
     session = AuthService(db, clock, settings, factory).change_password(user, body.current_password, body.new_password)
     _set_refresh_cookie(response, session, settings)
     return _token_out(session)
+
+
+@router.post("/password-reset/request", status_code=204, summary="Pedir un enlace para restablecer la contraseña")
+@limiter.limit("5/minute")
+def request_password_reset(
+    request: Request,
+    body: PasswordResetRequestIn,
+    db: DbDep,
+    clock: ClockDep,
+    settings: SettingsDep,
+    factory: FactoryDep,
+) -> Response:
+    # Responde igual exista o no el usuario: no permite averiguar qué usuarios hay.
+    AuthService(db, clock, settings, factory).request_password_reset(body.username)
+    return Response(status_code=204)
+
+
+@router.post("/password-reset/confirm", status_code=204, summary="Definir una nueva contraseña con el enlace recibido")
+@limiter.limit("10/minute")
+def confirm_password_reset(
+    request: Request,
+    body: PasswordResetConfirmIn,
+    db: DbDep,
+    clock: ClockDep,
+    settings: SettingsDep,
+    factory: FactoryDep,
+) -> Response:
+    AuthService(db, clock, settings, factory).confirm_password_reset(body.token, body.new_password)
+    return Response(status_code=204)

@@ -124,3 +124,17 @@ class RefreshToken(Base):
     user_agent: Mapped[str | None] = mapped_column(String(500))
 
     user: Mapped[AppUser] = relationship(lazy="joined", innerjoin=True)
+
+
+class PasswordReset(Base):
+    __tablename__ = "password_reset"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("app_user.id"))
+    token_hash: Mapped[str] = mapped_column(String(64))
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ip: Mapped[str | None] = mapped_column(INET)
+
+    user: Mapped[AppUser] = relationship(lazy="joined", innerjoin=True)

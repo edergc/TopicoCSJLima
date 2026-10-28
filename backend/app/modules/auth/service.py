@@ -1,4 +1,4 @@
-"""Casos de uso de autenticación: login, refresh rotativo, logout y cambio de contraseña."""
+"""Casos de uso de autenticación: login, refresh rotativo, logout, cambio y recuperación de contraseña."""
 
 import re
 import uuid
@@ -13,12 +13,16 @@ from app.core.config import Settings
 from app.core.context import get_request_context
 from app.core.errors import BusinessRuleError, ForbiddenError, UnauthorizedError
 from app.core.security import create_access_token, hash_password, new_opaque_token, sha256_hex, verify_password
-from app.modules.admin.parameters import get_int
+from app.modules.admin.parameters import get_int, get_str
 from app.modules.audit import service as audit
 from app.modules.auth.dependencies import to_current_user
 from app.modules.auth.principal import CurrentUser
 from app.modules.auth.providers import provider_for
-from app.modules.users.models import AppUser, RefreshToken
+from app.modules.users.models import AppUser, PasswordReset, RefreshToken
+
+# Entre dos pedidos de enlace de recuperación del mismo usuario (evita llenar su buzón).
+_RESET_REQUEST_INTERVAL = timedelta(minutes=2)
+RESET_TEMPLATE = "PASSWORD_RESET"
 
 # Si dos pestañas refrescan a la vez, la segunda usa un token recién rotado: no es un robo.
 _ROTATION_GRACE = timedelta(seconds=30)
@@ -173,7 +177,139 @@ class AuthService:
         self.db.commit()
         return session
 
+    # ------------------------------------------------------ recuperar contraseña
+    def request_password_reset(self, username: str) -> None:
+        """Envía por correo un enlace de un solo uso. Nunca revela si el usuario existe o tiene correo."""
+        from app.modules.notifications import service as notifications
+        from app.modules.ratings.service import public_base_url
+
+        now = self.clock.now()
+        username = username.strip().lower()
+        user = self.db.scalar(select(AppUser).where(AppUser.username == username).with_for_update(of=AppUser))
+        base = public_base_url(self.settings)
+        reason = None
+        if user is None:
+            reason = "USER_NOT_FOUND"
+        elif not user.is_active:
+            reason = "ACCOUNT_DISABLED"
+        elif user.auth_provider != "LOCAL":
+            reason = "EXTERNAL_PROVIDER"
+        elif not user.email:
+            reason = "NO_EMAIL"
+        elif not base:
+            reason = "NO_PUBLIC_URL"
+        elif self.db.scalar(
+            select(PasswordReset.id).where(
+                PasswordReset.user_id == user.id,
+                PasswordReset.used_at.is_(None),
+                PasswordReset.requested_at > now - _RESET_REQUEST_INTERVAL,
+            )
+        ):
+            reason = "RECENT_REQUEST"
+        if reason is not None:
+            self.db.rollback()
+            self._audit_reset_failure(username, user, reason)
+            return
+        assert user is not None
+        assert user.email is not None
+        assert base is not None
+
+        self._invalidate_resets(user.id, now)
+        minutes = max(get_int(self.db, "auth.password_reset_minutes", 30), 5)
+        plain = new_opaque_token()
+        self.db.add(
+            PasswordReset(
+                user_id=user.id,
+                token_hash=sha256_hex(plain),
+                requested_at=now,
+                expires_at=now + timedelta(minutes=minutes),
+                ip=get_request_context().ip,
+            )
+        )
+        sent = notifications.enqueue_direct(
+            self.db,
+            template_code=RESET_TEMPLATE,
+            recipient=user.email,
+            context={
+                "full_name": user.full_name,
+                "username": user.username,
+                "reset_url": f"{base}/recuperar-clave#{plain}",
+                "valid_minutes": minutes,
+                "institution_name": get_str(self.db, "institution.name", "Corte Superior de Justicia de Lima"),
+            },
+            now=now,
+            created_by=None,
+        )
+        if not sent:
+            self.db.rollback()
+            self._audit_reset_failure(username, user, "TEMPLATE_INACTIVE")
+            return
+        audit.record(
+            self.db,
+            action="PASSWORD_RESET_REQUEST",
+            actor=to_current_user(user),
+            resource_type="user",
+            resource_id=user.public_id,
+        )
+        self.db.commit()
+
+    def confirm_password_reset(self, token: str, new_password: str) -> None:
+        now = self.clock.now()
+        reset = self.db.scalar(
+            select(PasswordReset)
+            .where(PasswordReset.token_hash == sha256_hex(token.strip()))
+            .with_for_update(of=PasswordReset)
+        )
+        if reset is None or reset.used_at is not None:
+            raise BusinessRuleError("RESET_LINK_INVALID")
+        if reset.expires_at <= now:
+            raise BusinessRuleError("RESET_LINK_EXPIRED")
+        user = reset.user
+        if not user.is_active or user.auth_provider != "LOCAL":
+            raise BusinessRuleError("RESET_LINK_INVALID")
+        validate_password_policy(self.db, new_password, user.username)
+
+        user.password_hash = hash_password(new_password)
+        user.password_changed_at = now
+        user.must_change_password = False
+        # Quien recupera su contraseña también recupera el acceso si estaba bloqueado por intentos fallidos.
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        self._invalidate_resets(user.id, now)
+        self.db.execute(
+            update(RefreshToken)
+            .where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=now, revoked_reason="PASSWORD_CHANGED")
+        )
+        audit.record(
+            self.db,
+            action="PASSWORD_RESET_CONFIRM",
+            actor=to_current_user(user),
+            resource_type="user",
+            resource_id=user.public_id,
+        )
+        self.db.commit()
+
     # -------------------------------------------------------------- internos
+    def _invalidate_resets(self, user_id: int, now: datetime) -> None:
+        self.db.execute(
+            update(PasswordReset)
+            .where(PasswordReset.user_id == user_id, PasswordReset.used_at.is_(None))
+            .values(used_at=now)
+        )
+
+    def _audit_reset_failure(self, username: str, user: AppUser | None, reason: str) -> None:
+        audit.record_isolated(
+            self.factory,
+            action="PASSWORD_RESET_REQUEST",
+            actor=to_current_user(user) if user else None,
+            username=username[:50],
+            result="FAILURE",
+            resource_type="user",
+            resource_id=user.public_id if user else None,
+            reason=reason,
+        )
+
     def _issue(self, user: AppUser, *, family_id: uuid.UUID, expires_at: datetime) -> IssuedSession:
         now = self.clock.now()
         access, expires_in = create_access_token(

@@ -16,6 +16,15 @@ class ChangePasswordIn(ApiModel):
     new_password: Annotated[str, StringConstraints(min_length=1, max_length=128, strip_whitespace=False)]
 
 
+class PasswordResetRequestIn(ApiModel):
+    username: Annotated[str, StringConstraints(min_length=1, max_length=50)]
+
+
+class PasswordResetConfirmIn(ApiModel):
+    token: Annotated[str, StringConstraints(min_length=16, max_length=100)]
+    new_password: Annotated[str, StringConstraints(min_length=1, max_length=128, strip_whitespace=False)]
+
+
 class SiteRef(ApiOut):
     id: int
     code: str

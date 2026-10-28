@@ -50,6 +50,8 @@ El catálogo completo de códigos y mensajes está en `backend/app/core/errors.p
 | POST | `/auth/logout` | Revoca la sesión |
 | GET | `/auth/me` | Perfil, roles, permisos y sedes |
 | POST | `/auth/change-password` | Cambio de contraseña propia (cierra las demás sesiones) |
+| POST | `/auth/password-reset/request` | `{username}` → 204 siempre (no revela si el usuario existe). Si existe, está activo y tiene correo, envía un enlace `…/recuperar-clave#<token>` de un solo uso que vence en `auth.password_reset_minutes` (30). Un pedido repetido dentro de 2 minutos no envía otro correo. Rate limit: 5/min |
+| POST | `/auth/password-reset/confirm` | `{token, new_password}` → 204. Aplica la política de contraseña, cierra todas las sesiones y desbloquea la cuenta (`RESET_LINK_INVALID`, `RESET_LINK_EXPIRED`). Rate limit: 10/min |
 
 ### Operación (mesa de la encargada)
 | Método | Ruta | Permiso | Descripción |

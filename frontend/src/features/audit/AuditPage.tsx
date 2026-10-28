@@ -29,6 +29,8 @@ const ACTION_LABEL: Record<string, string> = {
   LOGIN: "Inicio de sesión",
   LOGOUT: "Cierre de sesión",
   PASSWORD_CHANGE: "Cambio de contraseña",
+  PASSWORD_RESET_REQUEST: "Solicitud de recuperación de contraseña",
+  PASSWORD_RESET_CONFIRM: "Recuperación de contraseña",
   SESSION_REUSE_DETECTED: "Reutilización de sesión detectada",
   ACCESS_DENIED: "Acceso denegado",
   APPOINTMENT_REGISTER: "Registro de atención",

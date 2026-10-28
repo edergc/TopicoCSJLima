@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, KeyRound, X } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -10,21 +10,17 @@ import { homeFor } from "@/app/navigation";
 import { api } from "@/shared/api/client";
 import type { TokenResponse } from "@/shared/api/types";
 import { useAuth, useUser } from "@/shared/auth/AuthProvider";
-import { cn } from "@/shared/lib/cn";
 import { useDocumentTitle } from "@/shared/lib/hooks";
 import { errorMessage, notify } from "@/shared/lib/notify";
-import { Button, Callout, Card, Field, Input } from "@/shared/ui";
+import { Button, Callout, Card, Field, PasswordInput } from "@/shared/ui";
 
-const MIN_LENGTH = 10;
+import { newPasswordSchema } from "./password";
+import { PasswordRules } from "./PasswordRules";
 
 const schema = z
   .object({
     current_password: z.string().min(1, "Ingrese su contraseña actual."),
-    new_password: z
-      .string()
-      .min(MIN_LENGTH, `Debe tener al menos ${MIN_LENGTH} caracteres.`)
-      .regex(/[A-Za-zÁÉÍÓÚÑáéíóúñ]/, "Debe incluir letras.")
-      .regex(/\d/, "Debe incluir números."),
+    new_password: newPasswordSchema,
     confirm: z.string(),
   })
   .refine((v) => v.new_password === v.confirm, { path: ["confirm"], message: "Las contraseñas no coinciden." });
@@ -43,12 +39,6 @@ export default function ChangePasswordPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { current_password: "", new_password: "", confirm: "" } });
   const value = useWatch({ control, name: "new_password" });
-
-  const rules = [
-    { ok: value.length >= MIN_LENGTH, text: `Al menos ${MIN_LENGTH} caracteres` },
-    { ok: /[A-Za-z]/.test(value) && /\d/.test(value), text: "Letras y números" },
-    { ok: value.length > 0 && !value.toLowerCase().includes(user.username.toLowerCase()), text: "Sin su nombre de usuario" },
-  ];
 
   const onSubmit = handleSubmit(async ({ current_password, new_password }) => {
     setServerError(null);
@@ -81,21 +71,14 @@ export default function ChangePasswordPage() {
         <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
           {serverError && <Callout tone="danger">{serverError}</Callout>}
           <Field label="Contraseña actual" error={errors.current_password?.message}>
-            <Input type="password" autoComplete="current-password" autoFocus {...register("current_password")} />
+            <PasswordInput autoComplete="current-password" autoFocus {...register("current_password")} />
           </Field>
           <Field label="Nueva contraseña" error={errors.new_password?.message}>
-            <Input type="password" autoComplete="new-password" {...register("new_password")} />
+            <PasswordInput autoComplete="new-password" {...register("new_password")} />
           </Field>
-          <ul className="grid gap-1.5 text-[0.8125rem]" aria-label="Requisitos de la contraseña">
-            {rules.map((rule) => (
-              <li key={rule.text} className={cn("flex items-center gap-2", rule.ok ? "text-success" : "text-ink-soft")}>
-                {rule.ok ? <Check className="size-3.5" aria-hidden /> : <X className="size-3.5" aria-hidden />}
-                {rule.text}
-              </li>
-            ))}
-          </ul>
+          <PasswordRules value={value} username={user.username} />
           <Field label="Confirmar nueva contraseña" error={errors.confirm?.message}>
-            <Input type="password" autoComplete="new-password" {...register("confirm")} />
+            <PasswordInput autoComplete="new-password" {...register("confirm")} />
           </Field>
           <Button type="submit" size="lg" className="w-full" loading={isSubmitting} icon={<KeyRound className="size-4" />}>
             Guardar contraseña

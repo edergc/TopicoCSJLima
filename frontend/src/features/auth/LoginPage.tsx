@@ -1,19 +1,19 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LockKeyhole, LogIn, ShieldCheck, Timer, Users } from "lucide-react";
+import { ArrowUpFromLine, ChevronRight, KeyRound, LogIn, Search, UserRound } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 
-import { AccessibilityMenu } from "@/shared/a11y/AccessibilityMenu";
-import { useBranding } from "@/shared/branding/branding";
 import { FullScreenLoader } from "@/app/guards";
-import { BrandMark } from "@/app/layout/BrandMark";
 import { homeFor } from "@/app/navigation";
 import { useAuth } from "@/shared/auth/AuthProvider";
-import { errorMessage } from "@/shared/lib/notify";
 import { useDocumentTitle } from "@/shared/lib/hooks";
+import { errorMessage } from "@/shared/lib/notify";
 import { Button, Callout, Field, Input, PasswordInput } from "@/shared/ui";
+
+import { AuthLayout } from "./AuthLayout";
+import { capsLockOn } from "./password";
 
 const schema = z.object({
   username: z.string().trim().min(1, "Ingrese su usuario."),
@@ -21,24 +21,61 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
-const HIGHLIGHTS = [
-  { icon: Timer, text: "Turnos en orden de registro y cola en tiempo real" },
-  { icon: Users, text: "Operación por sede con trazabilidad completa" },
-  { icon: ShieldCheck, text: "Datos administrativos protegidos; sin información clínica" },
-];
+// «Recordar mi usuario»: solo el nombre de usuario, en este equipo (nunca la contraseña).
+const REMEMBER_KEY = "topico.lastUser";
+
+function readRemembered(): string {
+  try {
+    return localStorage.getItem(REMEMBER_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function saveRemembered(username: string | null): void {
+  try {
+    if (username) localStorage.setItem(REMEMBER_KEY, username);
+    else localStorage.removeItem(REMEMBER_KEY);
+  } catch {
+    /* sin almacenamiento disponible */
+  }
+}
+
+/** Campo con ícono a la izquierda (el ícono es decorativo: la etiqueta la da <Field>). */
+function WithIcon({ icon: Icon, children }: { icon: typeof UserRound; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <Icon className="pointer-events-none absolute top-1/2 left-3.5 z-10 size-4 -translate-y-1/2 text-ink-soft" aria-hidden />
+      {children}
+    </div>
+  );
+}
+
+/** Estado de navegación con el que otras pantallas dejan un aviso en el ingreso. */
+export interface LoginNotice {
+  notice?: string;
+  username?: string;
+  from?: string;
+}
 
 export default function LoginPage() {
-  const branding = useBranding();
   useDocumentTitle("Iniciar sesión");
   const { status, user, login, can } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const state = (location.state as LoginNotice | null) ?? {};
   const [serverError, setServerError] = useState<string | null>(null);
+  const [capsLock, setCapsLock] = useState(false);
+  const [remembered] = useState(readRemembered);
+  const [remember, setRemember] = useState(Boolean(remembered));
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { username: state.username ?? remembered, password: "" },
+  });
 
   if (status === "loading") return <FullScreenLoader />;
   if (status === "authenticated" && user) return <Navigate to="/" replace />;
@@ -47,9 +84,9 @@ export default function LoginPage() {
     setServerError(null);
     try {
       const me = await login(username, password);
-      const from = (location.state as { from?: string } | null)?.from;
+      saveRemembered(remember ? username.trim() : null);
       const permissions = new Set(me.permissions);
-      navigate(me.must_change_password ? "/cambiar-clave" : (from ?? homeFor((p) => permissions.has(p) || can(p))), {
+      navigate(me.must_change_password ? "/cambiar-clave" : (state.from ?? homeFor((p) => permissions.has(p) || can(p))), {
         replace: true,
       });
     } catch (error) {
@@ -58,76 +95,79 @@ export default function LoginPage() {
   });
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-      <section className="relative hidden overflow-hidden bg-brand-900 p-12 text-white lg:flex lg:flex-col">
-        <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_10%_10%,var(--color-brand-600)_0%,transparent_60%),radial-gradient(60%_50%_at_90%_100%,var(--color-brand-800)_0%,transparent_70%)]" aria-hidden />
-        <div
-          className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:44px_44px]"
-          aria-hidden
-        />
-        <div className="relative flex items-center gap-3">
-          <BrandMark />
-          <div className="leading-tight">
-            <p className="text-xs font-medium tracking-[0.12em] text-white/60 uppercase">{branding.org_name}</p>
-            <p className="font-semibold">{branding.institution_name}</p>
-          </div>
-        </div>
-        <div className="relative mt-auto max-w-lg">
-          <p className="text-sm font-medium tracking-[0.1em] text-white/60 uppercase">Bienestar del trabajador</p>
-          <h1 className="mt-3 text-4xl leading-[1.1] font-semibold tracking-tight">
-            Sistema de Gestión de Atención del Tópico de Salud
-          </h1>
-          <p className="mt-4 text-base leading-relaxed text-white/75">
-            Registro, cola y seguimiento de las atenciones de los tópicos de las sedes Javier Alzamora Valdez y Anselmo
-            Barreto.
-          </p>
-          <ul className="mt-10 space-y-4">
-            {HIGHLIGHTS.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-center gap-3 text-sm text-white/85">
-                <span className="grid size-9 place-items-center rounded-lg bg-white/10 ring-1 ring-white/15">
-                  <Icon className="size-4" aria-hidden />
-                </span>
-                {text}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+    <AuthLayout title="Iniciar sesión" subtitle="Ingrese con su usuario (DNI) y la contraseña asignada por la administración.">
+      <form onSubmit={onSubmit} noValidate className="space-y-5">
+        {state.notice && !serverError && <Callout tone="success">{state.notice}</Callout>}
+        {serverError && <Callout tone="danger">{serverError}</Callout>}
+        <Field label="Usuario" error={errors.username?.message}>
+          <WithIcon icon={UserRound}>
+          <Input
+            autoComplete="username"
+            autoFocus={!state.username && !remembered}
+            autoCapitalize="none"
+            spellCheck={false}
+            className="h-12 pl-10 text-[0.9375rem]"
+            placeholder="Su usuario o DNI"
+            {...register("username")}
+          />
+          </WithIcon>
+        </Field>
+        <Field
+          label="Contraseña"
+          error={errors.password?.message}
+          hint={
+            capsLock ? (
+              <span className="flex items-center gap-1 text-warning">
+                <ArrowUpFromLine className="size-3.5" aria-hidden /> Bloq Mayús está activado.
+              </span>
+            ) : undefined
+          }
+          labelAction={
+            <Link to="/recuperar-clave" className="text-[0.8125rem] font-medium text-brand-700 hover:underline">
+              ¿Olvidó su contraseña?
+            </Link>
+          }
+        >
+          <WithIcon icon={KeyRound}>
+          <PasswordInput
+            autoComplete="current-password"
+            autoFocus={Boolean(state.username || remembered)}
+            className="h-12 pl-10 text-[0.9375rem]"
+            onKeyUp={(e) => setCapsLock(capsLockOn(e))}
+            onKeyDown={(e) => setCapsLock(capsLockOn(e))}
+            {...register("password")}
+          />
+          </WithIcon>
+        </Field>
+        <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm text-ink-muted select-none">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            className="size-4 rounded border-line-strong accent-brand-700"
+          />
+          Recordar mi usuario en este equipo
+        </label>
+        <Button type="submit" size="lg" className="h-12 w-full text-[0.9375rem]" loading={isSubmitting} icon={<LogIn className="size-4" />}>
+          Ingresar
+        </Button>
+      </form>
 
-      <section className="flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <BrandMark tone="dark" />
-            <div className="leading-tight">
-              <p className="font-semibold">Tópico de Salud</p>
-              <p className="text-xs text-ink-soft">{branding.institution_name}</p>
-            </div>
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <h2 className="text-2xl font-semibold tracking-tight">Iniciar sesión</h2>
-            <AccessibilityMenu />
-          </div>
-          <p className="mt-1 text-sm text-ink-muted">Ingrese con el usuario asignado por la administración.</p>
-
-          <form onSubmit={onSubmit} noValidate className="mt-8 space-y-5">
-            {serverError && <Callout tone="danger">{serverError}</Callout>}
-            <Field label="Usuario" error={errors.username?.message}>
-              <Input autoComplete="username" autoFocus autoCapitalize="none" spellCheck={false} className="h-11" {...register("username")} />
-            </Field>
-            <Field label="Contraseña" error={errors.password?.message}>
-              <PasswordInput autoComplete="current-password" className="h-11" {...register("password")} />
-            </Field>
-            <Button type="submit" size="lg" className="w-full" loading={isSubmitting} icon={<LogIn className="size-4" />}>
-              Ingresar
-            </Button>
-          </form>
-
-          <p className="mt-8 flex items-start gap-2 text-xs leading-relaxed text-ink-soft">
-            <LockKeyhole className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            Uso exclusivo del personal autorizado. Todas las acciones quedan registradas en la auditoría del sistema.
-          </p>
-        </div>
-      </section>
-    </div>
+      <div className="mt-7 border-t border-line pt-5">
+        <Link
+          to="/consulta"
+          className="group flex items-center gap-3 rounded-xl p-2 -m-2 transition hover:bg-sunken/70"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
+            <Search className="size-[18px]" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-ink">¿Es trabajador? Consulte su turno</span>
+            <span className="block text-[0.8125rem] text-ink-soft">Sin usuario: con su DNI y su código de turno.</span>
+          </span>
+          <ChevronRight className="size-4 text-ink-faint transition group-hover:translate-x-0.5 group-hover:text-brand-700" aria-hidden />
+        </Link>
+      </div>
+    </AuthLayout>
   );
 }

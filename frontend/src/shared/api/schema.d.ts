@@ -123,6 +123,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/password-reset/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pedir un enlace para restablecer la contraseña */
+        post: operations["request_password_reset_api_v1_auth_password_reset_request_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/password-reset/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Definir una nueva contraseña con el enlace recibido */
+        post: operations["confirm_password_reset_api_v1_auth_password_reset_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sites": {
         parameters: {
             query?: never;
@@ -2466,6 +2500,18 @@ export interface components {
              */
             updated_at: string;
         };
+        /** PasswordResetConfirmIn */
+        PasswordResetConfirmIn: {
+            /** Token */
+            token: string;
+            /** New Password */
+            new_password: string;
+        };
+        /** PasswordResetRequestIn */
+        PasswordResetRequestIn: {
+            /** Username */
+            username: string;
+        };
         /** PauseIn */
         PauseIn: {
             /** Reason */
@@ -3780,6 +3826,68 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TokenOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_password_reset_api_v1_auth_password_reset_request_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_password_reset_api_v1_auth_password_reset_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetConfirmIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

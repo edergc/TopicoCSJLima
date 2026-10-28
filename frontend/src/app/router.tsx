@@ -49,6 +49,7 @@ function NotFound() {
 
 export const router = createBrowserRouter([
   { path: "/login", lazy: page(() => import("@/features/auth/LoginPage")) },
+  { path: "/recuperar-clave", lazy: page(() => import("@/features/auth/RecoverPasswordPage")) },
   { path: "/consulta", lazy: page(() => import("@/features/public/PublicStatusPage")) },
   { path: "/calificar", lazy: page(() => import("@/features/public/RatingPage")) },
   { path: "/pantalla", lazy: page(() => import("@/features/display/DisplaySelectPage")) },

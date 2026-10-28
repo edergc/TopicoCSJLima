@@ -79,24 +79,36 @@ interface FieldProps {
   error?: string;
   hint?: ReactNode;
   required?: boolean;
+  /** Enlace junto a la etiqueta (p. ej., «¿Olvidó su contraseña?»). */
+  labelAction?: ReactNode;
   className?: string;
   children: ReactElement<{ id?: string; "aria-invalid"?: boolean; "aria-describedby"?: string }>;
 }
 
 /** Etiqueta + control + mensaje de ayuda/error, con asociación ARIA automática. */
-export function Field({ label, error, hint, required, className, children }: FieldProps) {
+export function Field({ label, error, hint, required, labelAction, className, children }: FieldProps) {
   const id = useId();
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  const labelEl = (
+    <label htmlFor={id} className="text-[0.8125rem] font-medium text-ink">
+      {label}
+      {required && (
+        <span className="ml-0.5 text-brand-700" aria-hidden>
+          *
+        </span>
+      )}
+    </label>
+  );
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label htmlFor={id} className="text-[0.8125rem] font-medium text-ink">
-        {label}
-        {required && (
-          <span className="ml-0.5 text-brand-700" aria-hidden>
-            *
-          </span>
-        )}
-      </label>
+      {labelAction ? (
+        <div className="flex items-baseline justify-between gap-3">
+          {labelEl}
+          {labelAction}
+        </div>
+      ) : (
+        labelEl
+      )}
       {cloneElement(children, { id, "aria-invalid": Boolean(error) || undefined, "aria-describedby": describedBy })}
       {error ? (
         <p id={`${id}-error`} className="flex items-center gap-1 text-[0.8125rem] text-danger" role="alert">

@@ -15,14 +15,22 @@ const FALLBACK: Branding = {
 };
 
 /** Identidad visual configurada (pública: también la usan el login, la consulta y la pantalla de sala). */
-export function useBranding(): Branding {
-  const { data } = useQuery({
+function useBrandingQuery() {
+  return useQuery({
     queryKey: ["branding"],
     queryFn: () => api.get<Branding>("/public/branding", undefined),
     staleTime: 5 * 60_000,
     retry: 1,
   });
-  return data ?? FALLBACK;
+}
+
+export function useBranding(): Branding {
+  return useBrandingQuery().data ?? FALLBACK;
+}
+
+/** false mientras se consulta por primera vez (evita mostrar la marca por defecto un instante antes del logo). */
+export function useBrandingReady(): boolean {
+  return !useBrandingQuery().isPending;
 }
 
 export function logoUrl(branding: Branding): string | null {

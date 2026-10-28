@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { ArrowLeft, LogIn, MapPin, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { AccessibilityMenu } from "@/shared/a11y/AccessibilityMenu";
 import { useBranding } from "@/shared/branding/branding";
@@ -69,7 +70,13 @@ export default function PublicStatusPage() {
 
   return (
     <div className="min-h-dvh bg-surface">
-      <header className="bg-brand-900 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-16 text-white">
+      <header className="bg-brand-900 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-16 text-white">
+        <Link
+          to="/login"
+          className="mx-auto mb-4 flex max-w-md items-center gap-1.5 text-[0.8125rem] font-medium text-white/75 hover:text-white"
+        >
+          <ArrowLeft className="size-4" aria-hidden /> Volver al inicio de sesión
+        </Link>
         <div className="mx-auto flex max-w-md items-center gap-3">
           <BrandMark />
           <div className="leading-tight">
@@ -179,6 +186,12 @@ export default function PublicStatusPage() {
           Por su privacidad, esta consulta solo muestra información de su propio turno. La hora es referencial y se actualiza
           automáticamente.
         </p>
+        <Link
+          to="/login"
+          className="flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-brand-700 hover:underline"
+        >
+          <LogIn className="size-4" aria-hidden /> ¿Es personal del tópico? Iniciar sesión
+        </Link>
       </main>
     </div>
   );

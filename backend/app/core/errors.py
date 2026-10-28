@@ -91,6 +91,8 @@ MESSAGES: dict[str, str] = {
     "PASSWORD_CHANGE_REQUIRED": "Debe cambiar su contraseña antes de continuar.",
     "PASSWORD_POLICY": "La contraseña no cumple la política de seguridad.",
     "PASSWORD_INCORRECT": "La contraseña actual es incorrecta.",
+    "RESET_LINK_INVALID": "El enlace para restablecer la contraseña no es válido o ya fue usado. Solicite uno nuevo.",
+    "RESET_LINK_EXPIRED": "El enlace para restablecer la contraseña venció. Solicite uno nuevo.",
     "USERNAME_TAKEN": "Ya existe un usuario con ese nombre de usuario.",
     # Trabajadores
     "WORKER_NOT_FOUND": "No existe un trabajador registrado con el documento indicado.",

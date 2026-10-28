@@ -14,6 +14,7 @@ EXPECTED_TABLES = {
     "site",
     "user_site",
     "refresh_token",
+    "password_reset",
     "system_parameter",
     "site_setting_version",
     "site_schedule",
@@ -79,7 +80,7 @@ def test_reference_data_loaded(app_db: psycopg.Connection) -> None:
     assert (
         scalar(app_db, "SELECT count(*) FROM site_schedule WHERE valid_from = DATE '2026-01-01'") == 20
     )  # 2 sedes x 5 días x 2 bloques
-    assert scalar(app_db, "SELECT count(*) FROM notification_template") == 6  # + resumen del día y calificación
+    assert scalar(app_db, "SELECT count(*) FROM notification_template") == 7  # + resumen del día, calificación y recuperación de contraseña
 
 
 def test_every_permission_is_assigned_to_some_role(app_db: psycopg.Connection) -> None:
