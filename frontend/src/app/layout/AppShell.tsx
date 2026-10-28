@@ -67,7 +67,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           );
         })}
       </nav>
-      <p className="px-5 pb-4 text-[0.6875rem] text-white/35">{branding.org_name} · v0.1</p>
+      <p className="px-5 pb-4 text-[0.6875rem] text-white/35">{branding.org_name} · {__APP_VERSION__}</p>
     </div>
   );
 }

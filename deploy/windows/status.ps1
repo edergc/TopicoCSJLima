@@ -41,7 +41,7 @@ foreach ($scheme in "https", "http") {
 Show "Salud (vía proxy)" ("$ready" -match '"database":"ok"') "$ready"
 
 $backups = Join-Path $DataRoot "backups"
-foreach ($item in @(@("last-backup", "Último backup", 26), @("last-verify", "Última restauración de prueba", 24 * 8), @("last-audit-verify", "Última verificación auditoría", 26))) {
+foreach ($item in @(@("last-backup", "Último backup", 26), @("last-verify", "Última restauración de prueba", (24 * 8)), @("last-audit-verify", "Última verificación auditoría", 26))) {
     $file = Join-Path $backups "$($item[0]).json"
     if (Test-Path $file) {
         $status = Get-Content $file -Raw | ConvertFrom-Json
