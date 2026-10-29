@@ -221,7 +221,13 @@ powershell -ExecutionPolicy Bypass -File deploy\windows\update.ps1
 
 Hace backup, instala dependencias, aplica migraciones, compila y publica el frontend, y **reinicia por completo** la API: detiene también los procesos de uvicorn que pudieran quedar vivos de un despliegue anterior (un `Restart-Service` simple puede dejarlos atendiendo con el código viejo). Solo detiene procesos cuyo ejecutable es el entorno virtual de este proyecto. Al final verifica `/api/v1/health`.
 
-**Numerar una versión** (p. ej. 1.3.0): cambiar el número en `backend/pyproject.toml` y en `frontend/package.json` (una prueba exige que coincidan), hacer commit, etiquetar `git tag -a v1.3 -m "…"` y `git push origin main --tags`, y publicar con `update.ps1`. La versión aparece en la barra lateral del sistema y en `/api/v1/health`.
+**Publicar una versión nueva** (un solo comando, con todos los cambios ya en commit):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy\windows\nueva-version.ps1 -Version 1.4.0 -Mensaje "Descripción breve"
+```
+
+Actualiza el número en `backend/pyproject.toml`, `frontend/package.json` y `package-lock.json`, ejecuta las pruebas del backend y del frontend (se detiene si alguna falla), hace commit, crea la etiqueta (`v1.4` para 1.4.0; `v1.4.1` para 1.4.1), sube a GitHub, publica con `update.ps1` y confirma la versión en `/api/v1/health`. Opciones: `-SinPruebas`, `-SinPublicar`. La versión aparece en la barra lateral del sistema y en `/api/v1/health`. Un commit o un push por sí solos **no** cambian la versión.
 
 ## 5. Operación diaria
 
