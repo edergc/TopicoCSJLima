@@ -68,7 +68,7 @@ try {
         Push-Location $frontend
         try {
             $out = Invoke-Native { & npx vitest run }
-            $summary = ($out | Select-String -Pattern "Tests " | Select-Object -Last 1)
+            $summary = ($out | Select-String -CaseSensitive -Pattern "^\s*Tests\s" | Select-Object -Last 1)
             if ($LASTEXITCODE -ne 0) { throw "Fallaron pruebas del frontend: $summary" }
             Write-Ok "$("$summary".Trim())"
         } finally { Pop-Location }
