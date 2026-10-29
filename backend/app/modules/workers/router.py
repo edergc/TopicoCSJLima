@@ -82,7 +82,7 @@ def worker_out(w: Worker, ctx: ServiceContext) -> WorkerOut:
 @router.get("/eligibility", response_model=EligibilityOut, summary="Búsqueda rápida por DNI y verificación EPS")
 def eligibility(
     ctx: Annotated[ServiceContext, Depends(require("worker:lookup"))],
-    document_number: Annotated[str, Query(min_length=5, max_length=12)],
+    document_number: Annotated[str, Query(min_length=8, max_length=12)],
 ) -> EligibilityOut:
     dni = workers.parse_dni(document_number)
     today = ctx.clock.today()

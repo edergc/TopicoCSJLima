@@ -27,6 +27,50 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   return <input ref={ref} className={cn(CONTROL, "h-10 px-3 text-sm", className)} {...props} />;
 });
 
+/** Deja solo dígitos 0-9 (también al pegar texto como «DNI: 4120-4384») y como máximo `max`. */
+export function onlyDigits(value: string, max = 8): string {
+  return value.replace(/[^0-9]/g, "").slice(0, max);
+}
+
+/**
+ * Campo de DNI: solo números y exactamente hasta 8 dígitos. Las letras y los símbolos no llegan a escribirse
+ * (ni al pegar). Funciona controlado (value/onChange) y con react-hook-form (register).
+ */
+export const DniInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function DniInput(
+  { className, onChange, ...props },
+  ref,
+) {
+  return (
+    <Input
+      ref={ref}
+      inputMode="numeric"
+      autoComplete="off"
+      maxLength={8}
+      pattern="[0-9]{8}"
+      title="8 dígitos, solo números"
+      placeholder="8 dígitos"
+      className={cn("tabular", className)}
+      {...props}
+      onChange={(e) => {
+        const clean = onlyDigits(e.target.value);
+        if (clean !== e.target.value) e.target.value = clean;
+        onChange?.(e);
+      }}
+      onPaste={(e) => {
+        // El navegador recortaría lo pegado a 8 caracteres ANTES de filtrar («DNI: 4120-4384» → «DNI: 412»):
+        // se extraen primero los dígitos y se insertan en la selección actual.
+        const pasted = e.clipboardData.getData("text");
+        const digits = pasted.replace(/[^0-9]/g, "");
+        if (digits === pasted) return;
+        e.preventDefault();
+        const el = e.currentTarget;
+        el.setRangeText(digits, el.selectionStart ?? el.value.length, el.selectionEnd ?? el.value.length, "end");
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+      }}
+    />
+  );
+});
+
 /** Contraseña con botón mostrar/ocultar. El id y los atributos ARIA llegan al <input> real. */
 export const PasswordInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function PasswordInput(
   { className, ...props },

@@ -6,7 +6,7 @@ import { useSite } from "@/shared/auth/SiteProvider";
 import { addDaysIso, fmt, todayIso } from "@/shared/lib/format";
 import { useDebounced, useDocumentTitle } from "@/shared/lib/hooks";
 import { CHANNEL_LABEL, STATUS } from "@/shared/lib/status";
-import { Button, Card, DataTable, Field, Input, PageHeader, Pagination, Select, StatusBadge, type Column } from "@/shared/ui";
+import { Button, Card, DataTable, DniInput, Field, Input, PageHeader, Pagination, Select, StatusBadge, type Column } from "@/shared/ui";
 
 import { useAppointmentSearch } from "./api";
 import { AppointmentDrawer } from "./components/AppointmentDrawer";
@@ -109,13 +109,7 @@ export default function AppointmentsPage() {
             </Select>
           </Field>
           <Field label="DNI">
-            <Input
-              inputMode="numeric"
-              placeholder="8 dígitos"
-              value={dni}
-              onChange={(e) => withReset(setDni)(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              className="tabular"
-            />
+            <DniInput value={dni} onChange={(e) => withReset(setDni)(e.target.value)} />
           </Field>
           <Button variant="ghost" onClick={reset} icon={<FilterX className="size-4" />}>
             Limpiar

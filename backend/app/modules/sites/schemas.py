@@ -129,8 +129,8 @@ class CapacityAdjustIn(ApiModel):
 
 
 DoctorName = Annotated[str, StringConstraints(min_length=3, max_length=150)]
-DoctorDni = Annotated[str, StringConstraints(pattern=r"^\d{8}$")]
-DoctorCmp = Annotated[str, StringConstraints(pattern=r"^\d{1,6}$")]
+DoctorDni = Annotated[str, StringConstraints(pattern=r"^[0-9]{8}$")]
+DoctorCmp = Annotated[str, StringConstraints(pattern=r"^[0-9]{1,6}$")]
 
 
 class DoctorIn(ApiModel):

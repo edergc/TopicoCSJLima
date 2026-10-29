@@ -11,7 +11,7 @@ from app.modules.audit.service import diff, snapshot
 from app.modules.auth.dependencies import ServiceContext
 from app.modules.workers.models import Department, Insurer, Worker, WorkerCoverage
 from app.modules.workers.schemas import CoverageIn, WorkerCreateIn, WorkerUpdateIn
-from app.shared.text import is_valid_dni, normalize_document, normalize_key
+from app.shared.text import is_valid_dni, normalize_document, normalize_key, strict_dni
 
 ELIGIBLE_INSURER = "RIMAC"
 
@@ -42,7 +42,8 @@ class Eligibility:
 
 
 def parse_dni(raw: str) -> str:
-    value = normalize_document(raw)
+    """DNI escrito por una persona: exactamente 8 dígitos (sin relleno de ceros)."""
+    value = strict_dni(raw)
     if not is_valid_dni(value):
         raise BusinessRuleError("INVALID_DOCUMENT")
     return value

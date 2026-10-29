@@ -12,7 +12,7 @@ import { cn } from "@/shared/lib/cn";
 import { fmt } from "@/shared/lib/format";
 import { useDocumentTitle } from "@/shared/lib/hooks";
 import { statusStyle } from "@/shared/lib/status";
-import { Button, Callout, Field, Input, StatusBadge } from "@/shared/ui";
+import { Button, Callout, DniInput, Field, Input, StatusBadge } from "@/shared/ui";
 
 const MESSAGES: Record<string, string> = {
   REGISTRADO: "Su solicitud está registrada. El día de la atención ingresará a la cola.",
@@ -99,14 +99,7 @@ export default function PublicStatusPage() {
             <p className="text-sm text-ink-muted">Ingrese su DNI y el código de turno que le indicó el tópico.</p>
           </div>
           <Field label="DNI">
-            <Input
-              inputMode="numeric"
-              autoComplete="off"
-              maxLength={8}
-              value={dni}
-              onChange={(e) => setDni(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              className="tabular h-12 text-lg tracking-widest"
-            />
+            <DniInput value={dni} onChange={(e) => setDni(e.target.value)} className="h-12 text-lg tracking-widest" />
           </Field>
           <Field label="Código de turno" hint="Por ejemplo: A-007">
             <Input

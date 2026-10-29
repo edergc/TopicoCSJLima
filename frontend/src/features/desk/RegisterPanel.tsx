@@ -17,7 +17,7 @@ import { useAuth } from "@/shared/auth/AuthProvider";
 import { cn } from "@/shared/lib/cn";
 import { fmt } from "@/shared/lib/format";
 import { errorMessage } from "@/shared/lib/notify";
-import { Button, Callout, Card, Field, Kbd, Segmented, Skeleton, StatusBadge, Textarea } from "@/shared/ui";
+import { Button, Callout, Card, Field, Kbd, onlyDigits, Segmented, Skeleton, StatusBadge, Textarea } from "@/shared/ui";
 
 import { useEligibility, useRegisterAppointment } from "@/features/appointments/api";
 import { PrioritySelect } from "./PriorityDialog";
@@ -155,10 +155,11 @@ export const RegisterPanel = forwardRef<RegisterPanelHandle, Props>(function Reg
             id="dni"
             value={dni}
             onChange={(e) => {
-              setDni(e.target.value.replace(/\D/g, "").slice(0, 8));
+              setDni(onlyDigits(e.target.value));
               registerMutation.reset();
             }}
             inputMode="numeric"
+            pattern="[0-9]{8}"
             autoComplete="off"
             autoFocus
             placeholder="00000000"

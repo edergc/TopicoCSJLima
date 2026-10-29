@@ -35,7 +35,7 @@ from app.modules.ratings import service as ratings
 from app.modules.sites.models import Site
 from app.modules.workers.models import Worker
 from app.shared.schemas import ApiModel, ApiOut
-from app.shared.text import is_valid_dni, mask_name, normalize_document, short_name
+from app.shared.text import is_valid_dni, mask_name, short_name, strict_dni
 
 router = APIRouter(prefix="/public", tags=["Consulta pública"])
 
@@ -64,12 +64,12 @@ def ticket_status(
     request: Request,
     db: DbDep,
     clock: ClockDep,
-    document_number: Annotated[str, Query(min_length=5, max_length=12)],
+    document_number: Annotated[str, Query(min_length=8, max_length=12)],
     ticket_code: Annotated[str, Query(min_length=5, max_length=7)],
 ) -> PublicTicketStatusOut:
     if not get_bool(db, "public_status.enabled", True):
         raise NotFoundError("PUBLIC_STATUS_DISABLED")
-    dni = normalize_document(document_number)
+    dni = strict_dni(document_number)
     code = ticket_code.strip().upper()
     if not is_valid_dni(dni) or not _TICKET_RE.match(code):
         raise NotFoundError("PUBLIC_TICKET_NOT_FOUND")

@@ -7,7 +7,7 @@ import { api } from "@/shared/api/client";
 import type { Doctor } from "@/shared/api/types";
 import { useAuth } from "@/shared/auth/AuthProvider";
 import { notify } from "@/shared/lib/notify";
-import { Badge, Button, Card, CardHeader, ConfirmDialog, EmptyState, Field, Input, Modal, Skeleton, Toggle } from "@/shared/ui";
+import { Badge, Button, Card, CardHeader, ConfirmDialog, DniInput, EmptyState, Field, Input, Modal, Skeleton, Toggle } from "@/shared/ui";
 
 import { DoctorAbsencesModal, DoctorScheduleModal, DoctorTodayBadge, scheduleSummary } from "./DoctorAvailability";
 
@@ -176,7 +176,7 @@ export function DoctorsTab({ siteId }: { siteId: number }) {
               <Input inputMode="numeric" maxLength={6} value={form.cmp} onChange={(e) => set({ cmp: e.target.value.replace(/\D/g, "") })} />
             </Field>
             <Field label="DNI">
-              <Input inputMode="numeric" maxLength={8} value={form.document_number} onChange={(e) => set({ document_number: e.target.value.replace(/\D/g, "") })} />
+              <DniInput value={form.document_number} onChange={(e) => set({ document_number: e.target.value })} placeholder="Opcional" />
             </Field>
             <Field label="Especialidad">
               <Input value={form.specialty} maxLength={80} onChange={(e) => set({ specialty: e.target.value })} />

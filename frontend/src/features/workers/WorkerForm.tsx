@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { Worker } from "@/shared/api/types";
 import { todayIso } from "@/shared/lib/format";
 import { errorMessage, notify } from "@/shared/lib/notify";
-import { Button, Callout, Field, Input, Modal, Select } from "@/shared/ui";
+import { Button, Callout, DniInput, Field, Input, Modal, Select } from "@/shared/ui";
 
 import { useCreateWorker, useDepartments, useUpdateWorker } from "./api";
 
@@ -100,7 +100,7 @@ export function WorkerFormModal({ worker, open, onClose }: { worker?: Worker; op
       <form id="worker-form" onSubmit={onSubmit} noValidate className="grid gap-4 sm:grid-cols-2">
         {mutation.isError && <Callout tone="danger" className="sm:col-span-2">{errorMessage(mutation.error)}</Callout>}
         <Field label="DNI" required error={errors.document_number?.message}>
-          <Input inputMode="numeric" maxLength={8} disabled={isEdit} className="tabular" {...register("document_number")} />
+          <DniInput disabled={isEdit} {...register("document_number")} />
         </Field>
         <Field label="Código de trabajador" error={errors.employee_code?.message}>
           <Input {...register("employee_code")} />

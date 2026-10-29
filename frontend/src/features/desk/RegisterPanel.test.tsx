@@ -63,6 +63,18 @@ describe("Panel de registro por DNI", () => {
     expect(calls.some((c) => c.path === "/api/v1/workers/eligibility")).toBe(true);
   });
 
+  it("no admite más de 8 dígitos y limpia lo que se pega", async () => {
+    mockApi();
+    renderWithProviders(<RegisterPanel siteId={1} availability={availability} onRegistered={vi.fn()} />);
+    const input = screen.getByLabelText("DNI del trabajador");
+    await userEvent.type(input, "1234567890");
+    expect(input).toHaveValue("12345678");
+    await userEvent.clear(input);
+    await userEvent.click(input);
+    await userEvent.paste("DNI: 4120-4384");
+    expect(input).toHaveValue("41204384");
+  });
+
   it("no permite registrar a un trabajador no habilitado (caso 7)", async () => {
     mockApi(
       route("GET", "/workers/eligibility", {

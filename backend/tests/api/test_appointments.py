@@ -226,7 +226,7 @@ def test_caso_7_worker_not_eligible(
     )
 
 
-def test_dni_with_lost_leading_zero_is_normalized(
+def test_dni_with_surrounding_spaces_is_accepted(
     client: TestClient, operator: Actor, make_worker: Callable[..., str]
 ) -> None:
     dni = make_worker()

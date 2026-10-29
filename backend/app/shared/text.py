@@ -4,7 +4,8 @@ import re
 import unicodedata
 from typing import cast
 
-_DNI_RE = re.compile(r"^\d{8}$")
+# [0-9] y no \d: en Python \d también acepta dígitos de otros alfabetos (árabes, devanagari…).
+_DNI_RE = re.compile(r"^[0-9]{8}$")
 _SPACES = re.compile(r"\s+")
 
 
@@ -34,7 +35,16 @@ def spreadsheet_safe[T](value: T) -> T:
 
 
 def is_valid_dni(value: str) -> bool:
-    return bool(_DNI_RE.match(value))
+    return bool(_DNI_RE.fullmatch(value))
+
+
+def strict_dni(raw: object) -> str:
+    """DNI ingresado a mano (pantallas, API): exactamente 8 dígitos 0-9, sin completar ceros.
+
+    Solo se toleran espacios al inicio o al final. El relleno de ceros iniciales es exclusivo de la
+    importación de Excel (normalize_document), donde Excel los pierde al tratar el DNI como número.
+    """
+    return "" if raw is None else str(raw).strip()
 
 
 def strip_accents(text: str) -> str:

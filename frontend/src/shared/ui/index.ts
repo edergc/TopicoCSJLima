@@ -14,6 +14,6 @@ export {
   Spinner,
   StatusBadge,
 } from "./Display";
-export { Field, Input, PasswordInput, SearchInput, Select, Textarea, Toggle } from "./Form";
+export { DniInput, Field, Input, onlyDigits, PasswordInput, SearchInput, Select, Textarea, Toggle } from "./Form";
 export { ConfirmDialog, Drawer, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, Modal, Tooltip } from "./Overlay";
 export { Segmented, Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
