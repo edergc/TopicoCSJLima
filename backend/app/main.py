@@ -4,8 +4,11 @@ Ejecución:
     uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000
 """
 
+import tomllib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from importlib import metadata
+from pathlib import Path
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,7 +27,20 @@ from app.core.ratelimit import limiter
 
 log = get_logger("app")
 
-VERSION = "0.1.0"
+
+def _read_version() -> str:
+    """Versión del sistema: única fuente en pyproject.toml (igual a frontend/package.json; lo verifica una prueba)."""
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    try:
+        return str(tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"])
+    except (OSError, KeyError, tomllib.TOMLDecodeError):  # pragma: no cover - instalación sin el archivo
+        try:
+            return metadata.version("topico-csj-backend")
+        except metadata.PackageNotFoundError:
+            return "0.0.0"
+
+
+VERSION = _read_version()
 
 
 def _routers() -> list[APIRouter]:

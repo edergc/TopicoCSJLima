@@ -219,6 +219,8 @@ powershell -ExecutionPolicy Bypass -File deploy\windows\update.ps1
 
 Hace backup, instala dependencias, aplica migraciones, compila y publica el frontend, y **reinicia por completo** la API: detiene también los procesos de uvicorn que pudieran quedar vivos de un despliegue anterior (un `Restart-Service` simple puede dejarlos atendiendo con el código viejo). Solo detiene procesos cuyo ejecutable es el entorno virtual de este proyecto. Al final verifica `/api/v1/health`.
 
+**Numerar una versión** (p. ej. 1.3.0): cambiar el número en `backend/pyproject.toml` y en `frontend/package.json` (una prueba exige que coincidan), hacer commit, etiquetar `git tag -a v1.3 -m "…"` y `git push origin main --tags`, y publicar con `update.ps1`. La versión aparece en la barra lateral del sistema y en `/api/v1/health`.
+
 ## 5. Operación diaria
 
 | Tarea | Comando |
