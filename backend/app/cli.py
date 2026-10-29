@@ -1,6 +1,7 @@
 """Comandos administrativos de línea de comandos.
 
-python -m app.cli create-admin --username admin --full-name "Nombre Apellido"
+python -m app.cli create-admin --username 12345678 --full-name "Nombre Apellido"   (usuario = DNI)
+python -m app.cli rename-user --from admin --to 12345678
 python -m app.cli verify-audit
 python -m app.cli send-test-email --to usuario@pj.gob.pe
 """
@@ -20,13 +21,17 @@ from app.modules.auth.service import validate_password_policy
 from app.modules.sites.models import Site
 from app.modules.users.models import AppUser, Role
 from app.modules.users.service import generate_temporary_password
+from app.shared.text import is_valid_dni
 
 
 def create_admin(username: str, full_name: str, email: str | None, temporary: bool = False) -> int:
     settings = get_settings()
     factory = build_session_factory(build_engine(settings.database_url, settings))
     with factory() as db:
-        username = username.strip().lower()
+        username = username.strip()
+        if not is_valid_dni(username):
+            print("El usuario es el DNI: exactamente 8 dígitos, solo números.", file=sys.stderr)
+            return 1
         if db.scalar(select(AppUser.id).where(AppUser.username == username)):
             print(f"El usuario '{username}' ya existe.", file=sys.stderr)
             return 1
@@ -73,6 +78,39 @@ def create_admin(username: str, full_name: str, email: str | None, temporary: bo
         return 0
 
 
+def rename_user(old: str, new: str) -> int:
+    """Renombra un usuario (p. ej. «admin» → su DNI): conserva contraseña, roles, sedes e historial."""
+    settings = get_settings()
+    factory = build_session_factory(build_engine(settings.database_url, settings))
+    new = new.strip()
+    if not is_valid_dni(new):
+        print("El nuevo usuario es el DNI: exactamente 8 dígitos, solo números.", file=sys.stderr)
+        return 1
+    with factory() as db:
+        user = db.scalar(select(AppUser).where(AppUser.username == old.strip().lower()))
+        if user is None:
+            print(f"No existe el usuario '{old}'.", file=sys.stderr)
+            return 1
+        if db.scalar(select(AppUser.id).where(AppUser.username == new)):
+            print(f"Ya existe un usuario '{new}'.", file=sys.stderr)
+            return 1
+        previous = user.username
+        user.username = new
+        db.flush()
+        audit.record(
+            db,
+            action="USER_RENAME",
+            username="cli",
+            resource_type="user",
+            resource_id=user.public_id,
+            before={"username": previous},
+            after={"username": new, "origin": "CLI"},
+        )
+        db.commit()
+    print(f"Usuario '{previous}' renombrado a '{new}'. Ingresa con '{new}' y la misma contraseña.")
+    return 0
+
+
 def verify_audit() -> int:
     settings = get_settings()
     engine = build_engine(settings.database_url, settings)
@@ -110,12 +148,17 @@ def main() -> int:
     p.add_argument(
         "--temporary", action="store_true", help="Genera una contraseña temporal (cambio obligatorio al ingresar)"
     )
+    p = sub.add_parser("rename-user", help="Renombrar un usuario a su DNI (conserva contraseña e historial)")
+    p.add_argument("--from", dest="old", required=True)
+    p.add_argument("--to", dest="new", required=True)
     sub.add_parser("verify-audit", help="Verificar la integridad de la auditoría")
     p = sub.add_parser("send-test-email", help="Probar la configuración de correo")
     p.add_argument("--to", required=True)
     args = parser.parse_args()
     if args.command == "create-admin":
         return create_admin(args.username, args.full_name, args.email, args.temporary)
+    if args.command == "rename-user":
+        return rename_user(args.old, args.new)
     if args.command == "verify-audit":
         return verify_audit()
     return send_test_email(args.to)

@@ -8,7 +8,7 @@ import { cn } from "@/shared/lib/cn";
 import { fmt } from "@/shared/lib/format";
 import { useDebounced, useDocumentTitle } from "@/shared/lib/hooks";
 import { errorMessage, notify } from "@/shared/lib/notify";
-import {
+import { DniInput,
   Badge,
   Button,
   Callout,
@@ -143,7 +143,7 @@ function UserFormModal({ user, onClose, onCreated }: { user?: User; onClose: () 
   const [roleCodes, setRoleCodes] = useState<string[]>(user?.roles ?? ["OPERATOR"]);
   const [siteIds, setSiteIds] = useState<number[]>(user?.sites.map((s) => s.id) ?? []);
   const mutation = user ? update : create;
-  const valid = /^[a-z0-9][a-z0-9._-]{2,49}$/.test(username.trim().toLowerCase()) && fullName.trim().length >= 3 && roleCodes.length > 0;
+  const valid = (Boolean(user) || /^[0-9]{8}$/.test(username.trim())) && fullName.trim().length >= 3 && roleCodes.length > 0;
 
   const submit = () => {
     const body = { full_name: fullName.trim(), email: email.trim() || null, role_codes: roleCodes, site_ids: siteIds };
@@ -176,8 +176,8 @@ function UserFormModal({ user, onClose, onCreated }: { user?: User; onClose: () 
       <div className="space-y-5">
         {mutation.isError && <Callout tone="danger">{errorMessage(mutation.error)}</Callout>}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Usuario" required hint="Minúsculas, sin espacios (p. ej., nombre.apellido).">
-            <Input value={username} onChange={(e) => setUsername(e.target.value)} disabled={Boolean(user)} autoCapitalize="none" />
+          <Field label="Usuario (DNI)" required hint="El usuario es el DNI de la persona: 8 dígitos.">
+            <DniInput value={username} onChange={(e) => setUsername(e.target.value)} disabled={Boolean(user)} />
           </Field>
           <Field label="Nombre completo" required>
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />

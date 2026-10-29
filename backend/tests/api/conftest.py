@@ -25,6 +25,7 @@ from app.modules.workers.models import Insurer, Worker, WorkerCoverage
 PASSWORD = "Clave-Segura-2026"
 _days = itertools.count()
 _dni = itertools.count(70_000_000)
+_usernames = itertools.count(30_000_000)
 _BASE = dt.date(2040, 1, 2)  # lunes
 
 
@@ -72,7 +73,7 @@ class Actor:
 @pytest.fixture
 def make_user(app: FastAPI, client: TestClient) -> Callable[..., Actor]:
     def factory(*roles: str, sites: tuple[str, ...] = ("ALZ",), login: bool = True, must_change: bool = False) -> Actor:
-        username = f"u.{uuid.uuid4().hex[:10]}"
+        username = f"{next(_usernames):08d}"  # el usuario es un DNI de 8 dígitos
         with app.state.session_factory() as s:
             user = AppUser(
                 username=username,

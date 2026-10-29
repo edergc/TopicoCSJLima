@@ -6,7 +6,6 @@ compartan la misma base (las atenciones no pueden borrarse, por diseño).
 
 import datetime as dt
 import itertools
-import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -69,8 +68,11 @@ def reason_id(conn: psycopg.Connection, reason_type: str, code: str | None = Non
     return int(scalar(conn, "SELECT id FROM reason WHERE type = %s AND code = %s", (reason_type, code)))
 
 
+_usernames = itertools.count(31_000_000)
+
+
 def create_user(conn: psycopg.Connection) -> int:
-    username = f"user.{uuid.uuid4().hex[:12]}"
+    username = f"{next(_usernames):08d}"  # el usuario es un DNI de 8 dígitos
     return int(
         scalar(
             conn,

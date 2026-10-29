@@ -158,7 +158,7 @@ try {
     $users = (Invoke-Native { & $VenvPython -c "import app.modules.registry;from sqlalchemy import func,select;from app.core.config import get_settings;from app.core.db import build_engine,build_session_factory;from app.modules.users.models import AppUser;s=get_settings();f=build_session_factory(build_engine(s.database_url,s));print(f().scalar(select(func.count()).select_from(AppUser)))" } | Select-Object -Last 1)
     if ("$users".Trim() -eq "0") {
         Write-Warn "No existen usuarios. Cree el administrador inicial:"
-        Write-Host "      cd `"$BackendDir`"; .\.venv\Scripts\python -m app.cli create-admin --username admin --full-name `"Nombre Apellido`""
+        Write-Host "      cd `"$BackendDir`"; .\.venv\Scripts\python -m app.cli create-admin --username 12345678 --full-name `"Nombre Apellido`""
     }
 }
 finally { Pop-Location }

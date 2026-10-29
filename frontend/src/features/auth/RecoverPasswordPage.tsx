@@ -8,7 +8,7 @@ import { z } from "zod";
 import { ApiError, api } from "@/shared/api/client";
 import { useDocumentTitle } from "@/shared/lib/hooks";
 import { errorMessage } from "@/shared/lib/notify";
-import { Button, Callout, Field, Input, PasswordInput } from "@/shared/ui";
+import { DniInput, Button, Callout, Field, PasswordInput } from "@/shared/ui";
 
 import { AuthLayout } from "./AuthLayout";
 import type { LoginNotice } from "./LoginPage";
@@ -37,7 +37,7 @@ export default function RecoverPasswordPage() {
 }
 
 const requestSchema = z.object({
-  username: z.string().trim().min(1, "Ingrese su usuario."),
+  username: z.string().trim().regex(/^[0-9]{8}$/, "Su usuario es su DNI: 8 dígitos, solo números."),
 });
 
 function RequestForm() {
@@ -89,8 +89,8 @@ function RequestForm() {
     >
       <form onSubmit={onSubmit} noValidate className="space-y-5">
         {serverError && <Callout tone="danger">{serverError}</Callout>}
-        <Field label="Usuario" error={errors.username?.message}>
-          <Input
+        <Field label="Usuario (DNI)" error={errors.username?.message}>
+          <DniInput
             autoComplete="username"
             autoFocus
             autoCapitalize="none"

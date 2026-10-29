@@ -20,7 +20,7 @@ def test_user_lifecycle_with_temporary_password(
     created = client.post(
         api("/admin/users"),
         json={
-            "username": "Maria.Lopez",
+            "username": " 04567890 ",  # DNI con cero a la izquierda; se recortan los espacios
             "full_name": "María López",
             "role_codes": ["OPERATOR"],
             "site_ids": [site_id(db, "BAR")],
@@ -29,15 +29,15 @@ def test_user_lifecycle_with_temporary_password(
     )
     assert created.status_code == 201, created.text
     body = created.json()
-    assert (body["username"], body["must_change_password"], body["roles"]) == ("maria.lopez", True, ["OPERATOR"])
+    assert (body["username"], body["must_change_password"], body["roles"]) == ("04567890", True, ["OPERATOR"])
     temporary = body["temporary_password"]
 
-    login = client.post(api("/auth/login"), json={"username": "maria.lopez", "password": temporary})
+    login = client.post(api("/auth/login"), json={"username": "04567890", "password": temporary})
     assert login.json()["user"]["must_change_password"] is True
 
     duplicate = client.post(
         api("/admin/users"),
-        json={"username": "maria.lopez", "full_name": "Otra", "role_codes": ["OPERATOR"]},
+        json={"username": "04567890", "full_name": "Otra", "role_codes": ["OPERATOR"]},
         headers=admin.headers,
     )
     assert duplicate.json()["code"] == "USERNAME_TAKEN"

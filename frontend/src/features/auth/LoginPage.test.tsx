@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AuthProvider } from "@/shared/auth/AuthProvider";
@@ -20,10 +21,22 @@ describe("Inicio de sesión", () => {
       </AuthProvider>,
     );
 
-    const user = await screen.findByLabelText("Usuario", { selector: "input" });
+    const user = await screen.findByLabelText("Usuario (DNI)", { selector: "input" });
     expect(user).toHaveAttribute("autocomplete", "username");
     expect(screen.getByLabelText("Contraseña", { selector: "input" })).toHaveAttribute("autocomplete", "current-password");
     expect(screen.getByRole("checkbox", { name: /recordar mi usuario/i })).not.toBeChecked();
+  });
+
+  it("el usuario es el DNI: solo 8 dígitos, sin letras (admite ceros)", async () => {
+    mockApi(route("POST", "/auth/refresh", { code: "UNAUTHORIZED", message: "" }, 401));
+    renderWithProviders(
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>,
+    );
+    const user = await screen.findByLabelText("Usuario (DNI)", { selector: "input" });
+    await userEvent.type(user, "admin0012a3450999");
+    expect(user).toHaveValue("00123450");
   });
 
   it("recuerda solo el usuario guardado en este equipo", async () => {
@@ -35,7 +48,7 @@ describe("Inicio de sesión", () => {
       </AuthProvider>,
     );
 
-    expect(await screen.findByLabelText("Usuario", { selector: "input" })).toHaveValue("40000003");
+    expect(await screen.findByLabelText("Usuario (DNI)", { selector: "input" })).toHaveValue("40000003");
     expect(screen.getByRole("checkbox", { name: /recordar mi usuario/i })).toBeChecked();
   });
 });

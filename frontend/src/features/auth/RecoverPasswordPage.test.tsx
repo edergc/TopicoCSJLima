@@ -16,7 +16,7 @@ describe("Recuperar contraseña", () => {
     const { calls } = mockApi(route("POST", "/auth/password-reset/request", undefined, 204));
     renderWithProviders(<RecoverPasswordPage />);
 
-    await userEvent.type(screen.getByLabelText("Usuario"), "40000003");
+    await userEvent.type(screen.getByLabelText("Usuario (DNI)"), "40000003");
     await userEvent.click(screen.getByRole("button", { name: /enviar enlace/i }));
 
     expect(await screen.findByText("Revise su correo")).toBeInTheDocument();

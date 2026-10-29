@@ -107,12 +107,14 @@ El instalador:
 
 ```powershell
 cd backend
-.\.venv\Scripts\python -m app.cli create-admin --username admin --full-name "Nombre Apellido"
+.\.venv\Scripts\python -m app.cli create-admin --username 12345678 --full-name "Nombre Apellido"
 # o con contraseña temporal generada (cambio obligatorio en el primer ingreso):
-.\.venv\Scripts\python -m app.cli create-admin --username admin --full-name "Nombre Apellido" --temporary
+.\.venv\Scripts\python -m app.cli create-admin --username 12345678 --full-name "Nombre Apellido" --temporary
 ```
 
 Pide la contraseña de forma interactiva, crea el usuario con acceso a todas las sedes y lo registra en la auditoría. Los demás usuarios se crean desde **Administración → Usuarios y roles**.
+
+**El usuario de ingreso es el DNI de la persona** (exactamente 8 dígitos; admite ceros a la izquierda y a la derecha). Para pasar una cuenta existente a su DNI sin perder contraseña ni historial: `.\.venv\Scripts\python -m app.cli rename-user --from <usuario> --to <DNI>` (queda en la auditoría). La migración 0012 no se aplica mientras exista algún usuario que no sea un DNI.
 
 ### 3.5 HTTP o HTTPS — decisión vigente
 

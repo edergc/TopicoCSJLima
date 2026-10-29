@@ -10,13 +10,13 @@ import { homeFor } from "@/app/navigation";
 import { useAuth } from "@/shared/auth/AuthProvider";
 import { useDocumentTitle } from "@/shared/lib/hooks";
 import { errorMessage } from "@/shared/lib/notify";
-import { Button, Callout, Field, Input, PasswordInput } from "@/shared/ui";
+import { Button, Callout, DniInput, Field, PasswordInput } from "@/shared/ui";
 
 import { AuthLayout } from "./AuthLayout";
 import { capsLockOn } from "./password";
 
 const schema = z.object({
-  username: z.string().trim().min(1, "Ingrese su usuario."),
+  username: z.string().trim().regex(/^[0-9]{8}$/, "Su usuario es su DNI: 8 dígitos, solo números."),
   password: z.string().min(1, "Ingrese su contraseña."),
 });
 type FormValues = z.infer<typeof schema>;
@@ -26,7 +26,8 @@ const REMEMBER_KEY = "topico.lastUser";
 
 function readRemembered(): string {
   try {
-    return localStorage.getItem(REMEMBER_KEY) ?? "";
+    const value = localStorage.getItem(REMEMBER_KEY) ?? "";
+    return /^[0-9]{8}$/.test(value) ? value : ""; // un usuario antiguo que no es DNI se descarta
   } catch {
     return "";
   }
@@ -102,19 +103,17 @@ export default function LoginPage() {
   });
 
   return (
-    <AuthLayout title="Iniciar sesión" subtitle="Ingrese con su usuario (DNI) y la contraseña asignada por la administración.">
+    <AuthLayout title="Iniciar sesión" subtitle="Ingrese con su DNI y la contraseña asignada por la administración.">
       <form onSubmit={onSubmit} noValidate className="space-y-5">
         {state.notice && !serverError && <Callout tone="success">{state.notice}</Callout>}
         {serverError && <Callout tone="danger">{serverError}</Callout>}
-        <Field label="Usuario" error={errors.username?.message}>
+        <Field label="Usuario (DNI)" error={errors.username?.message}>
           <WithIcon icon={UserRound}>
-          <Input
+          <DniInput
             autoComplete="username"
             autoFocus={!state.username && !remembered}
-            autoCapitalize="none"
-            spellCheck={false}
             className="h-12 pl-10 text-[0.9375rem]"
-            placeholder="Su usuario o DNI"
+            placeholder="Su DNI (8 dígitos)"
             {...register("username")}
           />
           </WithIcon>

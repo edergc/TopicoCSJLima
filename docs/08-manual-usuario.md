@@ -272,7 +272,7 @@ Debajo, las pestañas configuran la **sede elegida en el selector superior**:
 
 ### 5.1 Usuarios y roles
 
-- **Nuevo usuario:** usuario, nombre, correo (necesario para que pueda **recuperar su contraseña** por su cuenta), **roles** y **sedes autorizadas**. El sistema genera una **contraseña temporal** que se muestra **una sola vez**: entréguela de forma segura.
+- **Nuevo usuario:** usuario = **DNI de la persona** (8 dígitos, solo números), nombre, correo (necesario para que pueda **recuperar su contraseña** por su cuenta), **roles** y **sedes autorizadas**. El sistema genera una **contraseña temporal** que se muestra **una sola vez**: entréguela de forma segura.
 - Desde la lista puede **restablecer** la contraseña, **desbloquear** o **desactivar** una cuenta.
 - La pestaña **Roles y permisos** permite ajustar qué puede hacer cada rol. Todo cambio queda auditado.
 

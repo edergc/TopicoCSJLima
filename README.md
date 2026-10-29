@@ -59,7 +59,7 @@ Es un monolito modular: sin microservicios, sin colas externas y sin dependencia
 git clone https://github.com/edergc/TopicoCSJLima.git; cd TopicoCSJLima
 powershell -ExecutionPolicy Bypass -File database\bootstrap\bootstrap.ps1   # roles, bases de datos, .env
 powershell -ExecutionPolicy Bypass -File deploy\windows\install.ps1         # servicios, HTTPS, backups
-cd backend; .\.venv\Scripts\python -m app.cli create-admin --username admin --full-name "Nombre Apellido"
+cd backend; .\.venv\Scripts\python -m app.cli create-admin --username 12345678 --full-name "Nombre Apellido"
 ```
 
 Acceso: `https://<servidor>:42000` (este servidor, por ahora: `http://172.20.1.51:42000`) · Diagnóstico: `deploy\windows\status.ps1`
