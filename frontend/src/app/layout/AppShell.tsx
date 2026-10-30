@@ -6,6 +6,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { NAVIGATION } from "@/app/navigation";
 import { api } from "@/shared/api/client";
 import { useAuth, useUser } from "@/shared/auth/AuthProvider";
+import { IdleLogout } from "@/shared/auth/IdleLogout";
 import { useSite } from "@/shared/auth/SiteProvider";
 import { cn } from "@/shared/lib/cn";
 import { fmt, todayIso } from "@/shared/lib/format";
@@ -194,6 +195,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <IdleLogout />
     </div>
   );
 }

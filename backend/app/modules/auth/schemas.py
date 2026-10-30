@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from pydantic import StringConstraints
+from pydantic import Field, StringConstraints
 
 from app.shared.schemas import ApiModel, ApiOut
 
@@ -41,6 +41,7 @@ class MeOut(ApiOut):
     roles: list[str]
     permissions: list[str]
     sites: list[SiteRef]
+    idle_timeout_minutes: int = Field(description="Minutos sin uso antes de cerrar la sesión (0 = no cerrar).")
 
 
 class TokenOut(ApiOut):

@@ -9,10 +9,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import select
+from sqlalchemy.orm import object_session
 
 from app.core.config import API_PREFIX, Settings
 from app.core.errors import ForbiddenError
 from app.core.ratelimit import limiter
+from app.modules.admin.parameters import get_int
 from app.modules.auth.dependencies import (
     AuthenticatedUser,
     ClockDep,
@@ -47,7 +49,14 @@ def me_out(user: AppUser) -> MeOut:
         roles=sorted(r.code for r in user.roles if r.is_active),
         permissions=sorted(user.permission_codes),
         sites=[SiteRef.model_validate(s) for s in sorted(user.sites, key=lambda s: s.id) if s.is_active],
+        idle_timeout_minutes=_idle_minutes(user),
     )
+
+
+def _idle_minutes(user: AppUser) -> int:
+    db = object_session(user)
+    minutes = get_int(db, "auth.idle_timeout_minutes", 20) if db is not None else 20
+    return min(max(minutes, 0), 480)
 
 
 def _require_xhr(request: Request) -> None:

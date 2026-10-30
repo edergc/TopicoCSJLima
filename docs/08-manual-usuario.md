@@ -22,7 +22,7 @@ Contenido:
 ![Inicio de sesión](manual/img/01-login.png)
 
 - Tras 5 intentos fallidos la cuenta se bloquea 15 minutos. Si lo necesita antes, el administrador puede desbloquearla.
-- Por seguridad, la sesión dura como máximo una jornada. Para salir use el menú con su nombre (arriba a la derecha) → **Cerrar sesión**.
+- Por seguridad, la sesión dura como máximo una jornada (10 horas) y **se cierra sola tras 20 minutos sin usar el sistema**. Un minuto antes aparece el aviso «¿Sigue ahí?»: pulse **Seguir conectado** para continuar. Usar el sistema en otra pestaña también cuenta como actividad. Para salir use el menú con su nombre (arriba a la derecha) → **Cerrar sesión**.
 - Si trabaja en más de una sede, elija la **sede de trabajo** en la parte superior de la pantalla.
 - Si al escribir la contraseña aparece **«Bloq Mayús está activado»**, desactívelo: así evita intentos fallidos.
 
@@ -216,6 +216,8 @@ Por privacidad solo se muestra el **código de turno y el nombre abreviado** (no
 
 ## 4. Supervisión
 
+El rol **Supervisor(a)** corresponde a la jefatura de las encargadas del tópico (Bienestar): ve todas sus sedes asignadas, ajusta y cierra el día, los reportes y la **satisfacción del servicio** con los comentarios de los trabajadores.
+
 ### 4.0 Panel en vivo
 **Panel en vivo** muestra todas las sedes a la vez y se actualiza cada 10 segundos. Por sede indica:
 - personas en espera, en atención (con médico y consultorio), atendidos y cupos libres;
@@ -239,9 +241,17 @@ El botón **Exportar** descarga el reporte del periodo y la sede elegidos:
 
 Estos reportes no tienen datos personales, así que puede descargarlos cualquier usuario con acceso a Reportes. El **listado nominal** (PDF, Excel o CSV, con nombre y DNI de cada atención) requiere los permisos de exportación y de listado nominal. Toda descarga queda en la auditoría.
 
-**Satisfacción del servicio:** al finalizar cada atención, el trabajador recibe por correo un enlace para calificar el **trato** y el **tiempo de espera** (1 a 5 estrellas), con un comentario opcional. Es **anónimo**: los reportes solo muestran promedios, la distribución y los comentarios sin nombre. No se pregunta nada sobre la salud. El enlace vence en 7 días (parámetro `rating.valid_days`) y la encuesta se desactiva con `rating.enabled`.
+**Satisfacción del servicio:** al finalizar cada atención, el trabajador recibe por correo un enlace para calificar el **trato** y el **tiempo de espera** (1 a 5 estrellas), con un comentario opcional. Es **anónimo**: no se guarda el DNI ni el nombre del trabajador. En **Reportes**, todos ven los promedios y la distribución; los **comentarios** solo los ve la supervisión (permiso *rating:read*: Supervisor, Administrador y Auditor), no la encargada. No se pregunta nada sobre la salud. El enlace vence en 7 días (parámetro `rating.valid_days`) y la encuesta se desactiva con `rating.enabled`.
 
 La tarjeta **Atenciones por médico** muestra cuántas atenciones finalizó cada médico y su duración promedio.
+
+### 4.1.1 Satisfacción del servicio
+Menú **Gestión → Satisfacción** (solo supervisión). Reúne la opinión de los trabajadores:
+
+- **Indicadores:** promedio del trato y del tiempo de espera (1 a 5), respuestas recibidas y tasa de respuesta, y cuántas traen comentario.
+- **Evolución mensual**, **distribución por estrellas**, y resultados **por sede** y **por médico**.
+- **Todos los comentarios**, del más reciente al más antiguo, con su fecha, sede, médico y notas. Se pueden filtrar por sede, periodo, médico y nota del trato (por ejemplo, solo los de 1 o 2 estrellas para atender reclamos).
+- **Exportar → PDF o Excel:** el informe completo con todos los comentarios, según los filtros elegidos. Cada descarga queda en la auditoría.
 
 ![Reportes](manual/img/07-reportes.png)
 

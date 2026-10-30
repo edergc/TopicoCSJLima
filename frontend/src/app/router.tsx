@@ -70,6 +70,7 @@ export const router = createBrowserRouter([
           { path: "trabajadores", lazy: page(() => import("@/features/workers/WorkersPage"), ["worker:read"]) },
           { path: "importaciones", lazy: page(() => import("@/features/imports/ImportsPage"), ["import:manage"]) },
           { path: "reportes", lazy: page(() => import("@/features/reports/ReportsPage"), ["report:read"]) },
+          { path: "satisfaccion", lazy: page(() => import("@/features/reports/SatisfactionPage"), ["rating:read"]) },
           { path: "auditoria", lazy: page(() => import("@/features/audit/AuditPage"), ["audit:read"]) },
           { path: "admin/usuarios", lazy: page(() => import("@/features/admin/UsersPage"), ["user:read", "role:read"]) },
           { path: "admin/sedes", lazy: page(() => import("@/features/admin/SitesPage"), ["site:configure"]) },

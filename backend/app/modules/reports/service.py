@@ -51,7 +51,7 @@ def _minutes(later: Any, earlier: Any) -> Any:
     return cast(extract("epoch", later - earlier), Float) / 60.0
 
 
-def summary(db: Session, f: ReportFilter) -> dict[str, Any]:
+def summary(db: Session, f: ReportFilter, *, include_comments: bool = False) -> dict[str, Any]:
     base = and_(
         Appointment.site_id.in_(f.site_ids),
         Appointment.service_date.between(f.date_from, f.date_to),
@@ -178,7 +178,7 @@ def summary(db: Session, f: ReportFilter) -> dict[str, Any]:
         "by_hour": [{"hour": int(h), "count": c} for h, c in by_hour],
         "by_department": [{"department": name, "count": c} for name, c in by_department],
         "by_channel": [{"channel": ch, "count": c} for ch, c in by_channel],
-        "rating": ratings.summary(db, f.site_ids, f.date_from, f.date_to),
+        "rating": ratings.summary(db, f.site_ids, f.date_from, f.date_to, include_comments=include_comments),
         "by_doctor": [{"doctor": name, "attended": c, "avg_service_minutes": rnd(avg)} for name, c, avg in by_doctor],
     }
 

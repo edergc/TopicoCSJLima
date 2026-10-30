@@ -989,6 +989,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/satisfaction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Satisfacción del servicio: indicadores, evolución y todos los comentarios (anónimos) */
+        get: operations["satisfaction_api_v1_reports_satisfaction_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/satisfaction/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exportar el reporte de satisfacción con sus comentarios (Excel o PDF) */
+        get: operations["satisfaction_export_api_v1_reports_satisfaction_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sites/{site_id}/pause": {
         parameters: {
             query?: never;
@@ -2373,6 +2407,11 @@ export interface components {
             permissions: string[];
             /** Sites */
             sites: components["schemas"]["SiteRef"][];
+            /**
+             * Idle Timeout Minutes
+             * @description Minutos sin uso antes de cerrar la sesión (0 = no cerrar).
+             */
+            idle_timeout_minutes: number;
         };
         /** NotificationOut */
         NotificationOut: {
@@ -3031,6 +3070,105 @@ export interface components {
             sort_order?: number | null;
             /** Is Active */
             is_active?: boolean | null;
+        };
+        /** SatisfactionCommentOut */
+        SatisfactionCommentOut: {
+            /**
+             * Service Date
+             * Format: date
+             */
+            service_date: string;
+            /**
+             * Submitted At
+             * Format: date-time
+             */
+            submitted_at: string;
+            /** Site Name */
+            site_name: string;
+            /** Doctor */
+            doctor: string | null;
+            /** Score */
+            score: number;
+            /** Wait Score */
+            wait_score: number | null;
+            /** Comment */
+            comment: string;
+        };
+        /** SatisfactionDoctorOut */
+        SatisfactionDoctorOut: {
+            /** Count */
+            count: number;
+            /** Avg Score */
+            avg_score: number | null;
+            /** Avg Wait Score */
+            avg_wait_score: number | null;
+            /** Doctor */
+            doctor: string;
+        };
+        /** SatisfactionMonthOut */
+        SatisfactionMonthOut: {
+            /** Count */
+            count: number;
+            /** Avg Score */
+            avg_score: number | null;
+            /** Avg Wait Score */
+            avg_wait_score: number | null;
+            /** Month */
+            month: string;
+        };
+        /** SatisfactionReportOut */
+        SatisfactionReportOut: {
+            /**
+             * Date From
+             * Format: date
+             */
+            date_from: string;
+            /**
+             * Date To
+             * Format: date
+             */
+            date_to: string;
+            /** Invited */
+            invited: number;
+            /** Count */
+            count: number;
+            /** Response Pct */
+            response_pct: number | null;
+            /** With Comment */
+            with_comment: number;
+            /** Avg Score */
+            avg_score: number | null;
+            /** Avg Wait Score */
+            avg_wait_score: number | null;
+            /** Distribution */
+            distribution: components["schemas"]["RatingBucketOut"][];
+            /** Wait Distribution */
+            wait_distribution: components["schemas"]["RatingBucketOut"][];
+            /** By Month */
+            by_month: components["schemas"]["SatisfactionMonthOut"][];
+            /** By Site */
+            by_site: components["schemas"]["SatisfactionSiteOut"][];
+            /** By Doctor */
+            by_doctor: components["schemas"]["SatisfactionDoctorOut"][];
+            /** Comments Total */
+            comments_total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Comments */
+            comments: components["schemas"]["SatisfactionCommentOut"][];
+        };
+        /** SatisfactionSiteOut */
+        SatisfactionSiteOut: {
+            /** Count */
+            count: number;
+            /** Avg Score */
+            avg_score: number | null;
+            /** Avg Wait Score */
+            avg_wait_score: number | null;
+            /** Site Name */
+            site_name: string;
         };
         /** ScheduleBlockIn */
         ScheduleBlockIn: {
@@ -5864,6 +6002,79 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 site_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    satisfaction_api_v1_reports_satisfaction_get: {
+        parameters: {
+            query?: {
+                date_from?: string | null;
+                date_to?: string | null;
+                site_id?: number | null;
+                doctor_id?: number | null;
+                score?: number | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SatisfactionReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    satisfaction_export_api_v1_reports_satisfaction_export_get: {
+        parameters: {
+            query?: {
+                format?: "xlsx" | "pdf";
+                date_from?: string | null;
+                date_to?: string | null;
+                site_id?: number | null;
+                doctor_id?: number | null;
+                score?: number | null;
             };
             header?: never;
             path?: never;

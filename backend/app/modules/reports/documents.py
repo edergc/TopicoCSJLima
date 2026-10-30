@@ -9,6 +9,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
+from xml.sax.saxutils import escape
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -299,7 +300,7 @@ def _pdf_table(
         if value is None:
             return "—"
         if isinstance(value, str) and len(value) > wrap_from:
-            return Paragraph(value, _STYLES["cell"])
+            return Paragraph(escape(value), _STYLES["cell"])  # texto libre: no es marcado de reportlab
         return value
 
     data = [headers] + [[fmt(v) for v in r] for r in rows]
@@ -538,5 +539,145 @@ def nominal_pdf(rows: list[dict[str, Any]], meta: ReportMeta) -> bytes:
         _pdf_table(headers, data or [["—"] * len(headers)], [width * r for r in ratios], wrap_from=14),
     ]
     deco = _page_decorator(meta, title)
+    doc.build(story, onFirstPage=deco, onLaterPages=deco)
+    return out.getvalue()
+
+
+# ======================================================================= Satisfacción del servicio
+SATISFACTION_TITLE = "Satisfacción del servicio"
+_MONTHS = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic")
+_GROUP_HEADERS = ["Respuestas", "Trato (1-5)", "Espera (1-5)"]
+
+
+def _month_label(value: str) -> str:
+    year, month = value.split("-")
+    return f"{_MONTHS[int(month) - 1]} {year}"
+
+
+def _satisfaction_kpis(data: dict[str, Any]) -> list[tuple[str, str]]:
+    return [
+        ("Invitaciones enviadas", _num(data["invited"])),
+        ("Respuestas recibidas", _num(data["count"])),
+        ("Tasa de respuesta", _num(data["response_pct"], " %")),
+        ("Trato (promedio 1-5)", _num(data["avg_score"])),
+        ("Tiempo de espera (promedio 1-5)", _num(data["avg_wait_score"])),
+        ("Respuestas con comentario", _num(data["with_comment"])),
+    ]
+
+
+def _group_rows(rows: list[dict[str, Any]], key: str, label: Any = None) -> list[list[Any]]:
+    return [[label(r[key]) if label else r[key], r["count"], r["avg_score"], r["avg_wait_score"]] for r in rows]
+
+
+def _distribution_rows(data: dict[str, Any]) -> list[list[Any]]:
+    waits = {b["score"]: b["count"] for b in data["wait_distribution"]}
+    return [
+        [f"{b['score']} estrella{'s' if b['score'] > 1 else ''}", b["count"], waits.get(b["score"], 0)]
+        for b in reversed(data["distribution"])
+    ]
+
+
+def _comment_rows(data: dict[str, Any]) -> list[list[Any]]:
+    return [
+        [c["service_date"], c["site_name"], c["doctor"] or "—", c["score"], c["wait_score"], c["comment"]]
+        for c in data["comments"]
+    ]
+
+
+COMMENT_HEADERS = ["Fecha", "Sede", "Médico", "Trato", "Espera", "Comentario"]
+_ANONYMOUS_NOTE = "Calificación anónima: no registra el DNI ni el nombre del trabajador."
+
+
+def satisfaction_xlsx(data: dict[str, Any], meta: ReportMeta) -> bytes:
+    _use_brand(meta)
+    wb = Workbook()
+    ws = wb.active
+    assert ws is not None
+    ws.title = "Resumen"
+    row = _xl_title(ws, f"{SATISFACTION_TITLE} — Tópico de Salud", meta)
+    row = _xl_table(ws, row, ["Indicador", "Valor"], [list(k) for k in _satisfaction_kpis(data)], [34, 18])
+    row = _xl_table(ws, row + 1, ["Calificación", "Trato", "Tiempo de espera"], _distribution_rows(data))
+    ws.cell(row=row + 1, column=1, value=_ANONYMOUS_NOTE).font = Font(italic=True, size=9, color="78716C")
+
+    sheets: list[tuple[str, list[str], list[list[Any]], list[int]]] = [
+        ("Por mes", ["Mes", *_GROUP_HEADERS], _group_rows(data["by_month"], "month", _month_label), [14, 12, 12, 12]),
+        ("Por sede", ["Sede", *_GROUP_HEADERS], _group_rows(data["by_site"], "site_name"), [30, 12, 12, 12]),
+        ("Por médico", ["Médico", *_GROUP_HEADERS], _group_rows(data["by_doctor"], "doctor"), [40, 12, 12, 12]),
+        ("Comentarios", COMMENT_HEADERS, _comment_rows(data), [12, 22, 30, 8, 8, 90]),
+    ]
+    for name, headers, rows, widths in sheets:
+        sheet = wb.create_sheet(name)
+        start = _xl_title(sheet, f"{SATISFACTION_TITLE} — {name}", meta)
+        _xl_table(sheet, start, headers, rows, widths)
+        sheet.freeze_panes = sheet.cell(row=start + 1, column=1)
+        if name == "Comentarios":
+            for cells in sheet.iter_rows(min_row=start + 1, min_col=6, max_col=6):
+                for cell in cells:
+                    cell.alignment = Alignment(wrap_text=True, vertical="top")
+    out = io.BytesIO()
+    wb.save(out)
+    return out.getvalue()
+
+
+def satisfaction_pdf(data: dict[str, Any], meta: ReportMeta) -> bytes:
+    _use_brand(meta)
+    out = io.BytesIO()
+    doc = SimpleDocTemplate(
+        out,
+        pagesize=A4,
+        leftMargin=15 * mm,
+        rightMargin=15 * mm,
+        topMargin=24 * mm,
+        bottomMargin=18 * mm,
+        title=f"{SATISFACTION_TITLE} {meta.period}",
+        author=meta.institution,
+    )
+    width = doc.width
+    kpis = _pdf_table(
+        ["Indicador", "Valor"], [list(k) for k in _satisfaction_kpis(data)], [width * 0.6, width * 0.4], 1
+    )
+    story: list[Any] = [
+        Paragraph(f"{SATISFACTION_TITLE} del Tópico de Salud", _STYLES["title"]),
+        Spacer(1, 3),
+        Paragraph(f"Periodo: <b>{meta.period}</b> &nbsp;·&nbsp; Sede(s): <b>{meta.sites}</b>", _STYLES["meta"]),
+        Spacer(1, 8),
+        kpis,
+        Spacer(1, 2),
+        Paragraph(_ANONYMOUS_NOTE, _STYLES["note"]),
+    ]
+
+    def section(name: str, table: Table) -> None:
+        story.append(KeepTogether([Paragraph(name, _h2()), table]))
+
+    group_widths = [width * 0.46, width * 0.18, width * 0.18, width * 0.18]
+    section(
+        "Distribución de calificaciones",
+        _pdf_table(["Calificación", "Trato", "Tiempo de espera"], _distribution_rows(data), [width / 3] * 3, 1),
+    )
+    if data["by_month"]:
+        section(
+            "Evolución por mes",
+            _pdf_table(["Mes", *_GROUP_HEADERS], _group_rows(data["by_month"], "month", _month_label), group_widths, 1),
+        )
+    if data["by_site"]:
+        section(
+            "Por sede",
+            _pdf_table(["Sede", *_GROUP_HEADERS], _group_rows(data["by_site"], "site_name"), group_widths, 1),
+        )
+    if data["by_doctor"]:
+        section(
+            "Por médico",
+            _pdf_table(["Médico", *_GROUP_HEADERS], _group_rows(data["by_doctor"], "doctor"), group_widths, 1),
+        )
+    story.append(Paragraph(f"Comentarios ({len(data['comments'])})", _h2()))
+    story.append(
+        _pdf_table(
+            COMMENT_HEADERS,
+            _comment_rows(data) or [["—", "", "", "", "", "Sin comentarios en el periodo"]],
+            [width * w for w in (0.11, 0.13, 0.17, 0.07, 0.07, 0.45)],
+            wrap_from=14,
+        )
+    )
+    deco = _page_decorator(meta, SATISFACTION_TITLE)
     doc.build(story, onFirstPage=deco, onLaterPages=deco)
     return out.getvalue()

@@ -1,25 +1,25 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { BarChart3, CalendarCheck2, Clock3, Download, FileSpreadsheet, FileText, Gauge, MessageSquareQuote, Star, Stethoscope, Timer, UserX } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
 
 import { api } from "@/shared/api/client";
 import type { components } from "@/shared/api/schema";
 import { useAuth } from "@/shared/auth/AuthProvider";
-import { useSite } from "@/shared/auth/SiteProvider";
 import { BarList } from "@/shared/charts/BarList";
 import { ColumnChart, type ChartSeries } from "@/shared/charts/ColumnChart";
-import { addDaysIso, fmt, todayIso } from "@/shared/lib/format";
+import { fmt } from "@/shared/lib/format";
 import { useDocumentTitle } from "@/shared/lib/hooks";
 import { notify } from "@/shared/lib/notify";
 import { CHANNEL_LABEL } from "@/shared/lib/status";
+
+import { PeriodFilter, usePeriod } from "./PeriodFilter";
 import {
   Button,
   Card,
   CardHeader,
   DataTable,
   EmptyState,
-  Field,
-  Input,
   KpiCard,
   Menu,
   MenuContent,
@@ -28,8 +28,6 @@ import {
   MenuSeparator,
   MenuTrigger,
   PageHeader,
-  Segmented,
-  Select,
   Skeleton,
   type Column,
 } from "@/shared/ui";
@@ -46,20 +44,11 @@ const OUTCOME_SERIES: ChartSeries[] = [
 ];
 const SINGLE_SERIES_COLOR = "#93263a"; // granate institucional (validado para marcas de datos)
 
-const PRESETS = { "7": 7, "30": 30, "90": 90 } as const;
-
 export default function ReportsPage() {
   useDocumentTitle("Reportes");
   const { can } = useAuth();
-  const { sites } = useSite();
-  const today = todayIso();
-  const [siteId, setSiteId] = useState("");
-  const [preset, setPreset] = useState<"7" | "30" | "90" | "custom">("30");
-  const [from, setFrom] = useState(addDaysIso(today, -29));
-  const [to, setTo] = useState(today);
-
-  const range = preset === "custom" ? { from, to } : { from: addDaysIso(today, -(PRESETS[preset] - 1)), to: today };
-  const params = { date_from: range.from, date_to: range.to, site_id: siteId || undefined };
+  const period = usePeriod();
+  const { params } = period;
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["reports", params],
     queryFn: () => api.get<Summary>("/reports/summary", params),
@@ -158,45 +147,7 @@ export default function ReportsPage() {
         }
       />
 
-      <div className="flex flex-wrap items-end gap-3">
-        <Field label="Sede" className="w-56">
-          <Select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
-            <option value="">Todas mis sedes</option>
-            {sites.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.short_name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <div className="flex flex-col gap-1.5">
-          <span className="text-[0.8125rem] font-medium">Periodo</span>
-          <Segmented
-            label="Periodo"
-            value={preset}
-            onChange={setPreset}
-            options={[
-              { value: "7", label: "7 días" },
-              { value: "30", label: "30 días" },
-              { value: "90", label: "90 días" },
-              { value: "custom", label: "Personalizado" },
-            ]}
-          />
-        </div>
-        {preset === "custom" && (
-          <>
-            <Field label="Desde">
-              <Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
-            </Field>
-            <Field label="Hasta">
-              <Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} />
-            </Field>
-          </>
-        )}
-        <p className="tabular ml-auto pb-2 text-[0.8125rem] text-ink-soft">
-          {fmt.date(range.from)} – {fmt.date(range.to)}
-        </p>
-      </div>
+      <PeriodFilter period={period} />
 
       {isLoading || !totals ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
@@ -319,7 +270,7 @@ export default function ReportsPage() {
                 description={`Calificación anónima: ${data.rating.count} respuesta(s) de ${data.rating.invited} invitación(es) enviadas al finalizar la atención.`}
                 icon={<Star className="size-[18px]" />}
               />
-              <div className="grid gap-6 p-5 lg:grid-cols-[220px_1fr_1.2fr]">
+              <div className={`grid gap-6 p-5 ${can("rating:read") ? "lg:grid-cols-[220px_1fr_1.2fr]" : "lg:grid-cols-[220px_1fr]"}`}>
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs font-medium tracking-wide text-ink-soft uppercase">Trato</p>
@@ -341,9 +292,15 @@ export default function ReportsPage() {
                   color={SINGLE_SERIES_COLOR}
                   items={[...data.rating.distribution].reverse().map((b) => ({ label: `${b.score} estrella${b.score > 1 ? "s" : ""}`, value: b.count }))}
                 />
+                {can("rating:read") && (
                 <div>
-                  <p className="mb-2 flex items-center gap-1.5 text-[0.8125rem] font-medium text-ink-muted">
-                    <MessageSquareQuote className="size-4" aria-hidden /> Comentarios recientes
+                  <p className="mb-2 flex items-center justify-between gap-1.5 text-[0.8125rem] font-medium text-ink-muted">
+                    <span className="flex items-center gap-1.5">
+                      <MessageSquareQuote className="size-4" aria-hidden /> Comentarios recientes
+                    </span>
+                    <Link to="/satisfaccion" className="text-brand-700 hover:underline">
+                      Ver todos y exportar
+                    </Link>
                   </p>
                   {data.rating.comments.length === 0 ? (
                     <p className="text-sm text-ink-soft">Sin comentarios en el periodo.</p>
@@ -360,6 +317,7 @@ export default function ReportsPage() {
                     </ul>
                   )}
                 </div>
+                )}
               </div>
             </Card>
           )}

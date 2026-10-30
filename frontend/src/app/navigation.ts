@@ -1,16 +1,4 @@
-import {
-  Building2,
-  FileSpreadsheet,
-  LayoutGrid,
-  MonitorDot,
-  ListChecks,
-  type LucideIcon,
-  BarChart3,
-  Settings2,
-  ShieldCheck,
-  UserCog,
-  Users,
-} from "lucide-react";
+import { BarChart3, Building2, FileSpreadsheet, LayoutGrid, ListChecks, MonitorDot, Settings2, ShieldCheck, Star, UserCog, Users, type LucideIcon } from "lucide-react";
 
 export interface NavItem {
   to: string;
@@ -40,6 +28,7 @@ export const NAVIGATION: NavGroup[] = [
       { to: "/trabajadores", label: "Trabajadores", icon: Users, permissions: ["worker:read"] },
       { to: "/importaciones", label: "Importaciones", icon: FileSpreadsheet, permissions: ["import:manage"] },
       { to: "/reportes", label: "Reportes", icon: BarChart3, permissions: ["report:read"] },
+      { to: "/satisfaccion", label: "Satisfacción", icon: Star, permissions: ["rating:read"] },
     ],
   },
   {

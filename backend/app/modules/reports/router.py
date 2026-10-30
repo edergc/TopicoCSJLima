@@ -11,10 +11,11 @@ from sqlalchemy import select
 from app.core.clock import INSTITUTION_TZ
 from app.modules.auth.dependencies import ServiceContext, require
 from app.modules.branding import service as branding
+from app.modules.ratings import service as ratings
 from app.modules.reports import documents
 from app.modules.reports import service as reports
 from app.modules.reports.documents import ReportMeta
-from app.modules.reports.schemas import ReportSummaryOut
+from app.modules.reports.schemas import ReportSummaryOut, SatisfactionReportOut
 from app.modules.sites.models import Site
 from app.shared.text import spreadsheet_safe
 
@@ -31,7 +32,7 @@ def summary(
     site_id: int | None = None,
 ) -> dict[str, Any]:
     f = reports.resolve_filter(ctx, date_from, date_to, site_id)
-    return reports.summary(ctx.db, f)
+    return reports.summary(ctx.db, f, include_comments="rating:read" in ctx.user.permissions)
 
 
 def _fmt(value: object) -> object:
@@ -154,3 +155,71 @@ def export(
     if format == "xlsx" and report == "summary":
         return _file(documents.summary_xlsx(data, _meta(ctx, f)), "xlsx", filename)
     return _stream(data["by_day"], format, filename)
+
+
+def _satisfaction(
+    ctx: ServiceContext,
+    date_from: date | None,
+    date_to: date | None,
+    site_id: int | None,
+    doctor_id: int | None,
+    score: int | None,
+    page: int,
+    page_size: int,
+) -> tuple[reports.ReportFilter, dict[str, Any]]:
+    f = reports.resolve_filter(ctx, date_from, date_to, site_id)
+    data = ratings.report(
+        ctx.db, f.site_ids, f.date_from, f.date_to, doctor_id=doctor_id, score=score, page=page, page_size=page_size
+    )
+    return f, data
+
+
+@router.get(
+    "/satisfaction",
+    response_model=SatisfactionReportOut,
+    summary="Satisfacción del servicio: indicadores, evolución y todos los comentarios (anónimos)",
+)
+def satisfaction(
+    ctx: Annotated[ServiceContext, Depends(require("rating:read"))],
+    date_from: date | None = None,
+    date_to: date | None = None,
+    site_id: int | None = None,
+    doctor_id: int | None = None,
+    score: Annotated[int | None, Query(ge=1, le=5)] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 25,
+) -> dict[str, Any]:
+    return _satisfaction(ctx, date_from, date_to, site_id, doctor_id, score, page, page_size)[1]
+
+
+@router.get("/satisfaction/export", summary="Exportar el reporte de satisfacción con sus comentarios (Excel o PDF)")
+def satisfaction_export(
+    ctx: Annotated[ServiceContext, Depends(require("rating:read"))],
+    format: Annotated[Literal["xlsx", "pdf"], Query()] = "xlsx",
+    date_from: date | None = None,
+    date_to: date | None = None,
+    site_id: int | None = None,
+    doctor_id: int | None = None,
+    score: Annotated[int | None, Query(ge=1, le=5)] = None,
+) -> StreamingResponse:
+    f, data = _satisfaction(ctx, date_from, date_to, site_id, doctor_id, score, 1, ratings.MAX_EXPORT_COMMENTS)
+    ctx.audit(
+        action="REPORT_EXPORT",
+        resource_type="report",
+        resource_id="satisfaction",
+        metadata={
+            "format": format,
+            "date_from": f.date_from,
+            "date_to": f.date_to,
+            "site_ids": f.site_ids,
+            "doctor_id": doctor_id,
+            "score": score,
+            "rows": len(data["comments"]),
+            "nominal": False,
+        },
+    )
+    ctx.db.commit()
+    filename = f"satisfaccion_{f.date_from:%Y%m%d}_{f.date_to:%Y%m%d}"
+    if format == "pdf":
+        return _file(documents.satisfaction_pdf(data, _meta(ctx, f)), "pdf", filename)
+    return _file(documents.satisfaction_xlsx(data, _meta(ctx, f)), "xlsx", filename)

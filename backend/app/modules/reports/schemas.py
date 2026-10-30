@@ -1,6 +1,6 @@
 """Contrato de los reportes agregados (sin datos personales)."""
 
-from datetime import date
+from datetime import date, datetime
 
 from app.shared.schemas import ApiOut
 
@@ -84,3 +84,51 @@ class ReportSummaryOut(ApiOut):
     by_channel: list[ReportChannelOut]
     by_doctor: list[ReportDoctorOut]
     rating: RatingSummaryOut
+
+
+class SatisfactionGroupOut(ApiOut):
+    count: int
+    avg_score: float | None
+    avg_wait_score: float | None
+
+
+class SatisfactionMonthOut(SatisfactionGroupOut):
+    month: str
+
+
+class SatisfactionSiteOut(SatisfactionGroupOut):
+    site_name: str
+
+
+class SatisfactionDoctorOut(SatisfactionGroupOut):
+    doctor: str
+
+
+class SatisfactionCommentOut(ApiOut):
+    service_date: date
+    submitted_at: datetime
+    site_name: str
+    doctor: str | None
+    score: int
+    wait_score: int | None
+    comment: str
+
+
+class SatisfactionReportOut(ApiOut):
+    date_from: date
+    date_to: date
+    invited: int
+    count: int
+    response_pct: float | None
+    with_comment: int
+    avg_score: float | None
+    avg_wait_score: float | None
+    distribution: list[RatingBucketOut]
+    wait_distribution: list[RatingBucketOut]
+    by_month: list[SatisfactionMonthOut]
+    by_site: list[SatisfactionSiteOut]
+    by_doctor: list[SatisfactionDoctorOut]
+    comments_total: int
+    page: int
+    page_size: int
+    comments: list[SatisfactionCommentOut]
