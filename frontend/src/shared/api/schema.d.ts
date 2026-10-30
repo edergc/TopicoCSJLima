@@ -2204,6 +2204,8 @@ export interface components {
             worker: components["schemas"]["WorkerSummaryOut"] | null;
             coverage: components["schemas"]["CoverageOut"] | null;
             active_appointment: components["schemas"]["TodayAppointmentOut"] | null;
+            /** @description Atención ya finalizada hoy: no puede registrarse otra (una por día). */
+            attended_today?: components["schemas"]["TodayAppointmentOut"] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -3484,6 +3486,8 @@ export interface components {
              * Format: date
              */
             service_date: string;
+            /** Finished At */
+            finished_at?: string | null;
         };
         /** TokenOut */
         TokenOut: {

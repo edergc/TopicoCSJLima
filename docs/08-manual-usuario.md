@@ -70,6 +70,7 @@ La pantalla se actualiza sola cada pocos segundos.
 2. El sistema verifica automáticamente al trabajador:
    - ✅ **Habilitado · EPS Rímac vigente**: puede registrarlo.
    - ❌ **No habilitado**: no existe, está inactivo o no tiene cobertura EPS Rímac. No se puede registrar.
+   - ⚠️ **Ya fue atendido hoy**: el trabajador ya tuvo una atención finalizada hoy (en cualquier sede). Solo se permite **una atención por día**, así que no se puede registrar otra.
    - ⚠️ **Ya tiene turno**: se muestra su turno actual.
    - También indica si el trabajador **tiene correo**: si no lo tiene, no recibirá avisos, así que infórmele su turno de palabra.
 
@@ -92,6 +93,7 @@ La pantalla se actualiza sola cada pocos segundos.
 | "El horario de registro de atenciones para hoy ha concluido" | Se superó la hora de cierre de registros |
 | "El tópico de esta sede no atiende en la fecha seleccionada" | Día marcado como cerrado (feriado u otro motivo) |
 | "Según la configuración de la sede, el trabajador no puede volver a registrarse hoy" | Ya se le marcó como no presentado hoy |
+| "El trabajador ya fue atendido ese día" | Ya tuvo una atención finalizada hoy: solo se permite una por día |
 
 ### 2.2 Llamar, atender y finalizar
 

@@ -208,6 +208,23 @@ def test_worker_cannot_have_two_active_appointments_same_day(app_db: psycopg.Con
     register(app_db, bar, worker, user_id)  # tras cancelar sí puede volver a registrarse
 
 
+def test_worker_attended_cannot_register_again_same_day(app_db: psycopg.Connection, user_id: int) -> None:
+    date = unique_date()
+    alz = open_day(app_db, site_id(app_db, "ALZ"), date)
+    bar = open_day(app_db, site_id(app_db, "BAR"), date)
+    worker = create_worker(app_db)
+    appt, _, _ = register(app_db, alz, worker, user_id)
+    for step in ("LLAMADO", "EN_ATENCION", "ATENDIDO"):
+        transition(app_db, appt, step, user_id)
+
+    with expect_violation(errors.CheckViolation, "ck_appointment_one_attention_per_day"):
+        register(app_db, alz, worker, user_id)
+    with expect_violation(errors.CheckViolation, "ck_appointment_one_attention_per_day"):
+        register(app_db, bar, worker, user_id)  # tampoco en la otra sede
+    other_day = open_day(app_db, site_id(app_db, "ALZ"), unique_date())
+    register(app_db, other_day, worker, user_id)  # otro día sí
+
+
 # ---------------------------------------------------------------------------
 # Máquina de estados
 # ---------------------------------------------------------------------------

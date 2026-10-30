@@ -87,7 +87,7 @@ def eligibility(
     dni = workers.parse_dni(document_number)
     today = ctx.clock.today()
     result = workers.check_eligibility(ctx.db, dni, today)
-    active = None
+    active = attended = None
     if result.worker is not None:
         appt = ctx.db.scalar(
             select(Appointment)
@@ -100,14 +100,18 @@ def eligibility(
             .limit(1)
         )
         if appt is not None:
-            active = TodayAppointmentOut(
-                public_id=appt.public_id,
-                ticket_code=appt.ticket_code,
-                status=appt.status,
-                site_id=appt.site_id,
-                site_name=appt.site.name,
-                service_date=appt.service_date,
+            active = _today_out(appt)
+        done = ctx.db.scalar(
+            select(Appointment)
+            .where(
+                Appointment.worker_id == result.worker.id,
+                Appointment.service_date == today,
+                Appointment.status == "ATENDIDO",
             )
+            .order_by(Appointment.finished_at.desc())
+            .limit(1)
+        )
+        attended = _today_out(done) if done is not None else None
     return EligibilityOut(
         document_number=dni,
         found=result.worker is not None,
@@ -117,6 +121,19 @@ def eligibility(
         worker=summary_out(result.worker) if result.worker else None,
         coverage=coverage_out(result.coverage) if result.coverage else None,
         active_appointment=active,
+        attended_today=attended,
+    )
+
+
+def _today_out(appt: Appointment) -> TodayAppointmentOut:
+    return TodayAppointmentOut(
+        public_id=appt.public_id,
+        ticket_code=appt.ticket_code,
+        status=appt.status,
+        site_id=appt.site_id,
+        site_name=appt.site.name,
+        service_date=appt.service_date,
+        finished_at=appt.finished_at,
     )
 
 

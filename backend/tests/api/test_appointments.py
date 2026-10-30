@@ -247,6 +247,29 @@ def test_one_active_appointment_per_worker_per_day(
     assert other_site.json()["code"] == "WORKER_ALREADY_HAS_APPOINTMENT"
 
 
+def test_one_attention_per_worker_per_day(
+    client: TestClient, operator: Actor, make_user: Callable[..., Actor], make_worker: Callable[..., str], db: Session
+) -> None:
+    dni = make_worker()
+    appt = register(client, operator, site_id(db), dni).json()
+    url = api(f"/appointments/{appt['public_id']}")
+    client.post(f"{url}/call", json={}, headers=operator.headers)
+    client.post(f"{url}/start", json={}, headers=operator.headers)
+    assert client.post(f"{url}/finish", json={}, headers=operator.headers).status_code == 200
+
+    lookup = client.get(api("/workers/eligibility"), params={"document_number": dni}, headers=operator.headers).json()
+    assert lookup["active_appointment"] is None
+    assert lookup["attended_today"]["ticket_code"] == appt["ticket_code"]
+    assert lookup["attended_today"]["finished_at"] is not None
+
+    again = register(client, operator, site_id(db), dni)
+    assert (again.status_code, again.json()["code"]) == (409, "WORKER_ALREADY_ATTENDED_TODAY")
+    assert appt["ticket_code"] in again.json()["message"]
+    both = make_user("SUPERVISOR", sites=("ALZ", "BAR"))
+    other_site = register(client, both, site_id(db, "BAR"), dni)
+    assert other_site.json()["code"] == "WORKER_ALREADY_ATTENDED_TODAY"  # en ninguna sede
+
+
 def test_no_show_cannot_reregister_by_default(
     client: TestClient, operator: Actor, make_worker: Callable[..., str], db: Session, clock: FixedClock
 ) -> None:

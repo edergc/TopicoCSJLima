@@ -513,6 +513,16 @@ class AppointmentService:
                 f"El trabajador ya tiene el turno {active.ticket_code} ({active.site.short_name}) para esa fecha.",
                 details={"ticket_code": active.ticket_code, "public_id": str(active.public_id)},
             )
+        # Una sola atención por trabajador y día (en cualquier sede): si ya fue atendido, no puede registrarse otra.
+        attended = next((a for a in previous if a.status == Status.ATENDIDO), None)
+        if attended is not None:
+            when = f" a las {attended.finished_at.astimezone(self.clock.tz):%H:%M}" if attended.finished_at else ""
+            raise ConflictError(
+                "WORKER_ALREADY_ATTENDED_TODAY",
+                f"El trabajador ya fue atendido ese día{when} (turno {attended.ticket_code}, "
+                f"{attended.site.short_name}). Solo se permite una atención por día.",
+                details={"ticket_code": attended.ticket_code, "public_id": str(attended.public_id)},
+            )
         statuses = {a.status for a in previous}
         if Status.NO_PRESENTADO in statuses and not setting.allow_reregister_after_no_show:
             raise BusinessRuleError("REREGISTER_NOT_ALLOWED")

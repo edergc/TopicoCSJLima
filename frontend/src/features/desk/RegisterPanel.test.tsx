@@ -51,6 +51,7 @@ describe("Panel de registro por DNI", () => {
         worker,
         coverage: null,
         active_appointment: null,
+        attended_today: null,
       }),
     );
     renderWithProviders(<RegisterPanel siteId={1} availability={availability} onRegistered={vi.fn()} />);
@@ -86,11 +87,42 @@ describe("Panel de registro por DNI", () => {
         worker,
         coverage: null,
         active_appointment: null,
+        attended_today: null,
       }),
     );
     renderWithProviders(<RegisterPanel siteId={1} availability={availability} onRegistered={vi.fn()} />);
     await userEvent.type(screen.getByLabelText("DNI del trabajador"), "01234567");
     expect(await screen.findByText("El trabajador no cuenta con cobertura EPS Rímac vigente.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Registrar turno/ })).toBeDisabled();
+  });
+
+  it("no permite registrar a quien ya fue atendido hoy (una atención por día)", async () => {
+    mockApi(
+      route("GET", "/workers/eligibility", {
+        document_number: "01234567",
+        found: true,
+        eligible: true,
+        code: null,
+        message: "ok",
+        worker,
+        coverage: null,
+        active_appointment: null,
+        attended_today: {
+          public_id: "00000000-0000-0000-0000-000000000001",
+          ticket_code: "A-004",
+          status: "ATENDIDO",
+          site_id: 1,
+          site_name: "Sede Javier Alzamora Valdez",
+          service_date: "2026-10-30",
+          finished_at: "2026-10-30T14:20:00Z",
+        },
+      }),
+    );
+    renderWithProviders(<RegisterPanel siteId={1} availability={availability} onRegistered={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText("DNI del trabajador"), "01234567");
+    expect(await screen.findByText("Ya fue atendido hoy")).toBeInTheDocument();
+    expect(screen.getByText(/Turno A-004 · Sede Javier Alzamora Valdez · finalizado a las 09:20/)).toBeInTheDocument();
+    expect(screen.queryByText("Canal de la solicitud")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Registrar turno/ })).toBeDisabled();
   });
 
@@ -106,6 +138,7 @@ describe("Panel de registro por DNI", () => {
         worker,
         coverage: null,
         active_appointment: null,
+        attended_today: null,
       }),
       route("POST", "/appointments", { ticket_code: "A-015", public_id: "a1" }, 201),
     );
@@ -136,6 +169,7 @@ describe("Panel de registro por DNI", () => {
         worker,
         coverage: null,
         active_appointment: null,
+        attended_today: null,
       }),
     );
     const full = {

@@ -106,8 +106,9 @@ export const RegisterPanel = forwardRef<RegisterPanelHandle, Props>(function Reg
 
   const data = eligibility.data;
   const active = data?.active_appointment;
+  const attended = data?.attended_today; // una sola atención por día: ya fue atendido
   const blocked = availability && !availability.can_register ? availability.blocker_message : null;
-  const canRegister = can("appointment:create") && data?.eligible && !active && !blocked;
+  const canRegister = can("appointment:create") && data?.eligible && !active && !attended && !blocked;
 
   const submit = () => {
     if (!canRegister || !data) return;
@@ -183,10 +184,17 @@ export const RegisterPanel = forwardRef<RegisterPanelHandle, Props>(function Reg
                 </span>
               </Callout>
             )}
+            {!active && attended && (
+              <Callout tone="warning" title="Ya fue atendido hoy">
+                Turno {attended.ticket_code} · {attended.site_name}
+                {attended.finished_at ? ` · finalizado a las ${fmt.time(attended.finished_at)}` : ""}. Solo se permite una atención
+                por trabajador al día.
+              </Callout>
+            )}
           </>
         )}
 
-        {data?.eligible && !active && (
+        {data?.eligible && !active && !attended && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-[0.8125rem] font-medium">Canal de la solicitud</span>

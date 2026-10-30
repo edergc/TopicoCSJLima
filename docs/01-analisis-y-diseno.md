@@ -68,7 +68,7 @@ Se usan para diseñar, pero cada uno debe confirmarse.
 | S5 | El identificador es DNI de 8 dígitos. El modelo admite otros tipos de documento (CE) por si existieran. |
 | S6 | El servidor es **on-premise en la LAN**, sin Internet garantizado. Hay un servidor SMTP institucional accesible desde la LAN. |
 | S7 | El personal médico no usa el sistema. Es la encargada quien marca inicio y fin. |
-| S8 | Un trabajador tiene como máximo **una atención activa por día** (en cualquier sede). |
+| S8 | Un trabajador tiene como máximo **una atención activa por día** (en cualquier sede) y, si ya fue **atendido** ese día, no puede registrar otra (una atención por día). |
 | S9 | Los trabajadores **no** consultan desde fuera de la red institucional en la Fase 1. |
 | S10 | El Excel de trabajadores EPS Rímac es la **fuente de verdad** de la habilitación y se reemplaza o actualiza por importación periódica. |
 
@@ -138,6 +138,7 @@ Se usan para diseñar, pero cada uno debe confirmarse.
 
 ### 4.5 Unicidad
 - **RN-17** Un trabajador no puede tener dos atenciones activas el mismo día (garantizado por la BD).
+- **RN-17b** Un trabajador que ya fue **atendido** en el día no puede registrar otra atención ese día, en ninguna sede (`WORKER_ALREADY_ATTENDED_TODAY`; garantizado también por el disparador `trg_appointment_one_attention_per_day`, migración 0015). Si la atención anterior fue cancelada o el trabajador no se presentó, rige la configuración de la sede.
 
 ### 4.6 Cancelación, no presentación y anulación
 - **RN-18** Cancelar exige motivo (catálogo) y admite observación opcional. Nunca se elimina el registro.
@@ -420,7 +421,7 @@ COMMIT
 Tres capas de defensa:
 1. **Bloqueo de fila** (`FOR UPDATE`) sobre el día-sede: dos encargadas que registran al mismo tiempo se ordenan y la segunda ve el cupo ya ocupado. El bloqueo solo afecta a esa sede y ese día, y dura milisegundos.
 2. **CHECK en BD** `occupied_count <= capacity`: aunque hubiera un error en el código, PostgreSQL rechaza el exceso.
-3. **Índice único parcial**: impide dos atenciones activas del mismo trabajador el mismo día.
+3. **Índice único parcial**: impide dos atenciones activas del mismo trabajador el mismo día; un **disparador** impide registrar otra si ya fue atendido ese día.
 
 Las transiciones que liberan cupo (cancelar, no presentado, anular) bloquean la misma fila y decrementan el contador en la misma transacción. Un job de verificación nocturno compara `occupied_count` con un `COUNT` real y alerta si hay diferencias.
 
@@ -452,7 +453,7 @@ Las respuestas exitosas devuelven el recurso directamente, tipado con su schema 
 | `GET /health`, `GET /health/ready` | público | liveness / verificación de BD |
 | `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` · `GET /auth/me` | — | sesión; `me` devuelve permisos y sedes |
 | `POST /auth/change-password` | autenticado | |
-| `GET /workers/eligibility?document_number=` | `worker:lookup` | **búsqueda rápida de la mesa**: trabajador (datos mínimos) + elegibilidad + atención activa de hoy |
+| `GET /workers/eligibility?document_number=` | `worker:lookup` | **búsqueda rápida de la mesa**: trabajador (datos mínimos) + elegibilidad + atención activa de hoy + atención ya finalizada hoy (`attended_today`) |
 | `GET /workers?q=&page=` · `GET /workers/{id}` · `POST /workers` · `PATCH /workers/{id}` | `worker:read` / `worker:manage` | administración |
 | `GET /sites` · `GET /sites/{id}/availability?date=` | `site:read` | capacidad, ocupados, disponibles, estado del día |
 | `GET /sites/{id}/queue?date=` | `queue:read` | cola más KPI del dashboard, en una sola llamada (optimiza el polling) |

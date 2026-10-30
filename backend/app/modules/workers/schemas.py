@@ -66,6 +66,7 @@ class TodayAppointmentOut(ApiOut):
     site_id: int
     site_name: str
     service_date: date
+    finished_at: datetime | None = None
 
 
 class EligibilityOut(ApiOut):
@@ -77,6 +78,9 @@ class EligibilityOut(ApiOut):
     worker: WorkerSummaryOut | None
     coverage: CoverageOut | None
     active_appointment: TodayAppointmentOut | None
+    attended_today: TodayAppointmentOut | None = Field(
+        default=None, description="Atención ya finalizada hoy: no puede registrarse otra (una por día)."
+    )
 
 
 class WorkerCreateIn(ApiModel):
