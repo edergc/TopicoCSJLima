@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "topico-csj-backend"
-version = "1.3.0"
+version = "1.4.0"
 description = "Backend del Sistema Integral de Gestión de Atención del Tópico de Salud — CSJ Lima"
 requires-python = ">=3.12"
 dependencies = [
