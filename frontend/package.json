@@ -1,7 +1,7 @@
 {
   "name": "topico-csj-frontend",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.4.1",
   "type": "module",
   "description": "Frontend del Sistema Integral de Gestión de Atención del Tópico de Salud — CSJ Lima",
   "scripts": {
