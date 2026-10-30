@@ -159,8 +159,10 @@ Cuando está habilitada:
 - la Mesa muestra el distintivo **Prioritaria**; la **pantalla de sala no muestra la categoría**, solo el orden;
 - cada asignación o retiro queda en la línea de tiempo de la atención y en la auditoría. Las categorías se administran en *Catálogos → Motivos* (tipo «Prioridad»).
 
-### 2.8 Ticket impreso
-Tras registrar un turno, el botón **Imprimir turno** imprime un ticket (impresora térmica de 80 mm o una hoja A6) con el turno, la sede, las personas delante, la hora estimada y un **código QR**. Al escanearlo con el celular se abre la consulta del turno con el DNI y el código ya cargados. También se puede reimprimir desde el detalle de la atención.
+### 2.8 Ticket del turno: impreso y por correo
+**Ticket impreso.** Tras registrar un turno, el botón **Imprimir turno** imprime un ticket (impresora térmica de 80 mm o una hoja A6, en blanco y negro) con el logo y el nombre de la institución, la sede, el **turno destacado**, la marca de **atención preferente** si corresponde, el nombre abreviado del trabajador, las personas delante, la hora estimada, un **código QR** y los pasos a seguir. Al escanear el QR con el celular se abre la consulta del turno con el DNI y el código ya cargados. También se puede reimprimir desde el detalle de la atención (si ya fue llamado, muestra el consultorio).
+
+**Ticket digital por correo.** Si el trabajador tiene **correo institucional** registrado y la sede tiene las notificaciones activas, al registrar el turno recibe un correo con el ticket: el turno en grande, sede, fecha, personas delante y hora estimada, el botón **Ver mi turno en tiempo real** y los pasos a seguir. Además lleva **adjunto el ticket en PDF con el QR**, para mostrarlo en el celular o imprimirlo. El saludo del correo se edita en **Catálogos → Plantillas** (plantilla *APPT_REGISTERED*). Si el trabajador no tiene correo, la notificación queda como *omitida* en el detalle de la atención.
 
 ### 2.9 Pausar la atención
 **Pausar atención** (refrigerio, emergencia, reunión…) pide un motivo y una duración aproximada:

@@ -4,7 +4,8 @@ import { useAuth } from "@/shared/auth/AuthProvider";
 import { CHANNEL_LABEL, statusStyle } from "@/shared/lib/status";
 import { fmt } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/cn";
-import { printTicket } from "@/shared/lib/printTicket";
+import { useBranding } from "@/shared/branding/branding";
+import { printTicket, ticketBrand } from "@/shared/lib/printTicket";
 import { Badge, Button, DefinitionList, Drawer, Skeleton, StatusBadge } from "@/shared/ui";
 
 import { useAppointment, useAppointmentEvents, useAppointmentNotifications, useResendNotification } from "../api";
@@ -46,6 +47,7 @@ const NOTIFICATION_STATUS: Record<string, string> = {
 /** Detalle de una atención: datos, línea de tiempo (trazabilidad) y correos enviados. */
 export function AppointmentDrawer({ appointmentId, onClose }: { appointmentId: string | null; onClose: () => void }) {
   const { can } = useAuth();
+  const branding = useBranding();
   const { data: appointment } = useAppointment(appointmentId);
   const { data: events, isLoading: loadingEvents } = useAppointmentEvents(appointmentId);
   const canSeeNotifications = can("notification:read");
@@ -69,7 +71,7 @@ export function AppointmentDrawer({ appointmentId, onClose }: { appointmentId: s
       description={appointment ? `${appointment.site_name} · ${fmt.date(appointment.service_date)}` : undefined}
       footer={
         appointment && ["REGISTRADO", "EN_ESPERA", "LLAMADO"].includes(appointment.status) ? (
-          <Button variant="secondary" icon={<Printer className="size-4" />} onClick={() => printTicket(appointment)}>
+          <Button variant="secondary" icon={<Printer className="size-4" />} onClick={() => printTicket(appointment, ticketBrand(branding))}>
             Imprimir turno
           </Button>
         ) : undefined

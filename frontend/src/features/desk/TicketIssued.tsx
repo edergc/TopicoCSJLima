@@ -4,10 +4,12 @@ import type { Appointment } from "@/shared/api/types";
 import { fmt } from "@/shared/lib/format";
 import { Button, IconButton } from "@/shared/ui";
 
-import { printTicket } from "@/shared/lib/printTicket";
+import { useBranding } from "@/shared/branding/branding";
+import { printTicket, ticketBrand } from "@/shared/lib/printTicket";
 
 /** Confirmación prominente del turno generado: la encargada lo dicta por teléfono. */
 export function TicketIssued({ appointment, onDismiss }: { appointment: Appointment; onDismiss: () => void }) {
+  const branding = useBranding();
   return (
     <div
       role="status"
@@ -46,7 +48,7 @@ export function TicketIssued({ appointment, onDismiss }: { appointment: Appointm
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => printTicket(appointment)}
+          onClick={() => printTicket(appointment, ticketBrand(branding))}
           icon={<Printer className="size-4" />}
           className="bg-white text-brand-800 hover:bg-white/90"
         >

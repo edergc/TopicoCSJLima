@@ -24,6 +24,8 @@ SAMPLE_CONTEXT: dict[str, Any] = {
     "reason_label": "Ya no requiere la atención",
     "institution_name": "Corte Superior de Justicia de Lima",
     "public_status_url": "https://topico.csjlima.local/consulta",
+    "worker_name": "Juan Pérez R.",
+    "status_link": "https://topico.csjlima.local/consulta#dni=12345678&turno=A-007",
 }
 
 

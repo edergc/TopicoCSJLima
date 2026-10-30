@@ -27,4 +27,16 @@ describe("ticket impreso", () => {
     expect(html).toContain("<svg");
     expect(html).not.toContain("41204384"); // el DNI solo va codificado en el QR
   });
+
+  it("muestra la institución configurada, el logo, la prioridad y quién va primero", () => {
+    const html = ticketHtml(
+      { ...appointment, people_ahead: 0, priority_label: "Gestante", room_name: "Consultorio 2" } as Appointment,
+      { org_name: "Poder Judicial del Perú", institution_name: "Corte <Lima>", logo_url: "/api/v1/public/branding/logo?v=1" },
+    );
+    expect(html).toContain("Corte &lt;Lima&gt;");
+    expect(html).toContain(`<img class="logo" src="${window.location.origin}/api/v1/public/branding/logo?v=1"`);
+    expect(html).toContain("Atención preferente · Gestante");
+    expect(html).toContain("Ninguna: es el siguiente");
+    expect(html).toContain("Consultorio 2");
+  });
 });
