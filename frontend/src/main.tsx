@@ -12,7 +12,9 @@ import { applyA11y } from "@/shared/a11y/preferences";
 import { createQueryClient } from "@/shared/api/queryClient";
 import { AuthProvider } from "@/shared/auth/AuthProvider";
 import { BrandingEffect } from "@/shared/branding/branding";
+import { installStaleVersionReload } from "@/shared/lib/staleVersion";
 
+installStaleVersionReload(); // pestañas con una versión anterior en memoria → recarga una vez
 applyA11y(); // tamaño de letra y contraste guardados en este equipo, antes del primer dibujo
 const queryClient = createQueryClient();
 

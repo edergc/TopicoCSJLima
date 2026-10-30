@@ -2,6 +2,7 @@ import { FileQuestion } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { createBrowserRouter, Link, useRouteError } from "react-router-dom";
 
+import { importFresh, isStaleChunkError } from "@/shared/lib/staleVersion";
 import { Button, EmptyState } from "@/shared/ui";
 
 import { HomeRedirect, RequireAuth, RequirePermission } from "./guards";
@@ -10,7 +11,7 @@ import { AppShell } from "./layout/AppShell";
 /** Carga diferida por módulo: cada sección se descarga solo cuando se visita. */
 function page(loader: () => Promise<{ default: ComponentType }>, permissions?: string[]) {
   return async () => {
-    const { default: Component } = await loader();
+    const { default: Component } = await importFresh(loader);
     const element: ReactNode = <Component />;
     return {
       Component: () => (permissions ? <RequirePermission any={permissions}>{element}</RequirePermission> : element),
@@ -21,12 +22,17 @@ function page(loader: () => Promise<{ default: ComponentType }>, permissions?: s
 function RouteError() {
   const error = useRouteError();
   console.error(error);
+  const stale = isStaleChunkError(error);
   return (
     <EmptyState
       className="min-h-[60dvh]"
       icon={FileQuestion}
-      title="No se pudo mostrar esta página"
-      description="Recargue la página. Si el problema continúa, comuníquese con soporte."
+      title={stale ? "Hay una versión nueva del sistema" : "No se pudo mostrar esta página"}
+      description={
+        stale
+          ? "Recargue la página para usarla. Si el problema continúa, compruebe su conexión o comuníquese con soporte."
+          : "Recargue la página. Si el problema continúa, comuníquese con soporte."
+      }
       action={<Button onClick={() => window.location.reload()}>Recargar</Button>}
     />
   );

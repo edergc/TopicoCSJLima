@@ -58,8 +58,19 @@ try {
     $out = Invoke-Native { & npm run build }
     if ($LASTEXITCODE -ne 0) { throw "Falló el build: $($out | Out-String)" }
 } finally { Pop-Location }
-& robocopy (Join-Path $frontend "dist") (Join-Path $DataDir "web") /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
+# Los archivos de assets/ llevan un hash en el nombre: se agregan sin borrar los de versiones anteriores,
+# para que una pestaña abierta antes de esta publicación pueda seguir cargando sus secciones.
+# Los que tengan más de 30 días se eliminan.
+$dist = Join-Path $frontend "dist"
+$web = Join-Path $DataDir "web"
+& robocopy $dist $web /MIR /XD assets /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "No se pudo publicar el frontend (robocopy $LASTEXITCODE)" }
+& robocopy (Join-Path $dist "assets") (Join-Path $web "assets") /E /NFL /NDL /NJH /NJS /NP | Out-Null
+if ($LASTEXITCODE -ge 8) { throw "No se pudo publicar el frontend (robocopy assets $LASTEXITCODE)" }
+$current = @(Get-ChildItem (Join-Path $dist "assets") -File | ForEach-Object Name)
+Get-ChildItem (Join-Path $web "assets") -File |
+    Where-Object { $current -notcontains $_.Name -and $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
+    Remove-Item -Force -ErrorAction SilentlyContinue
 Write-Ok "Frontend publicado en $(Join-Path $DataDir 'web')"
 
 Write-Step "Reinicio completo de los servicios"
