@@ -58,9 +58,12 @@ try {
         Push-Location $backend
         $env:ENVIRONMENT = "development"
         try {
-            $out = Invoke-Native { & .\.venv\Scripts\python -m pytest -q -p no:logging }
+            $out = Invoke-Native { & .\.venv\Scripts\python -m pytest -q -p no:logging -rfE }
             $summary = ($out | Select-String -Pattern "passed|failed" | Select-Object -Last 1)
-            if ($LASTEXITCODE -ne 0) { throw "Fallaron pruebas del backend: $summary" }
+            if ($LASTEXITCODE -ne 0) {
+                $out | Select-String -Pattern "^(FAILED|ERROR) |^E   " | Select-Object -First 30 | ForEach-Object { Write-Host "    $_" }
+                throw "Fallaron pruebas del backend: $summary"
+            }
             Write-Ok "$summary"
         } finally { Remove-Item Env:ENVIRONMENT -ErrorAction SilentlyContinue; Pop-Location }
 
@@ -69,7 +72,10 @@ try {
         try {
             $out = Invoke-Native { & npx vitest run }
             $summary = ($out | Select-String -CaseSensitive -Pattern "^\s*Tests\s" | Select-Object -Last 1)
-            if ($LASTEXITCODE -ne 0) { throw "Fallaron pruebas del frontend: $summary" }
+            if ($LASTEXITCODE -ne 0) {
+                $out | Select-String -Pattern "FAIL |AssertionError|Expected|Received" | Select-Object -First 30 | ForEach-Object { Write-Host "    $_" }
+                throw "Fallaron pruebas del frontend: $summary"
+            }
             Write-Ok "$("$summary".Trim())"
         } finally { Pop-Location }
     }
