@@ -63,6 +63,7 @@ const FIELD_LABEL: Record<string, string> = {
   phone: "Teléfono",
   department_name: "Dependencia",
   employee_code: "Código",
+  work_site: "Sede",
   is_active: "Estado",
   coverage: "Cobertura",
 };
@@ -94,10 +95,12 @@ function Dropzone({ onFile, loading }: { onFile: (file: File) => void; loading: 
       <div className="grid size-14 place-items-center rounded-2xl bg-panel shadow-[var(--shadow-card)] ring-1 ring-line">
         <FileSpreadsheet className="size-7 text-status-done" aria-hidden />
       </div>
-      <p className="mt-4 text-[0.9375rem] font-semibold">Arrastre aquí el Excel de trabajadores con EPS Rímac</p>
+      <p className="mt-4 text-[0.9375rem] font-semibold">Arrastre aquí la relación EPS Rímac o la ficha del personal de RR.HH.</p>
       <p className="mt-1 max-w-md text-sm text-ink-soft">
         Formato .xlsx. Se reconocen columnas como DNI, APELLIDO PATERNO, APELLIDO MATERNO, NOMBRES, CORREO, SEXO,
-        DEPENDENCIA y FECHA DE NACIMIENTO. Nada se incorpora hasta que usted confirme.
+        DEPENDENCIA y FECHA DE NACIMIENTO. Si el archivo trae la columna TIENE_EPS (ficha del personal), solo se habilita a
+        quien tiene EPS Rímac vigente, y se aplican la sede, la situación (cesado) y la vigencia de la EPS. Nada se incorpora
+        hasta que usted confirme.
       </p>
       <input
         ref={inputRef}
@@ -296,7 +299,7 @@ function BatchReview({ batch, onBack }: { batch: ImportBatch; onBack: () => void
         <div className="space-y-4">
           <ul className="space-y-1 text-sm">
             <li>
-              <span className="tabular font-semibold">{batch.new_count}</span> trabajadores nuevos con cobertura EPS Rímac
+              <span className="tabular font-semibold">{batch.new_count}</span> trabajadores nuevos
             </li>
             <li>
               <span className="tabular font-semibold">{batch.update_count}</span> trabajadores con datos actualizados
@@ -310,7 +313,7 @@ function BatchReview({ batch, onBack }: { batch: ImportBatch; onBack: () => void
               checked={deactivateMissing}
               onChange={setDeactivateMissing}
               label="Terminar la cobertura de quienes no figuran en este archivo"
-              description="Úselo solo si el archivo es la relación COMPLETA vigente de trabajadores con EPS Rímac."
+              description="Úselo solo si el archivo es la relación COMPLETA vigente (de EPS Rímac o de todo el personal)."
             />
           </div>
           {deactivateMissing && (

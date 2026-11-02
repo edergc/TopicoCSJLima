@@ -1,7 +1,13 @@
-"""Lectura y normalización del Excel de trabajadores EPS Rímac.
+"""Lectura y normalización del Excel de trabajadores.
 
 Los encabezados se reconocen por sinónimos (sin tildes, mayúsculas/minúsculas indistintas),
 porque los Excel institucionales varían. Nunca se escribe en tablas finales desde aquí.
+
+Se aceptan dos formatos:
+- La relación de trabajadores con EPS Rímac: figurar en el archivo es tener cobertura.
+- La ficha única del personal de RR.HH. (compartida con el Sistema de Saludos): trae a todo el
+  personal y dice quién tiene EPS (`tiene_eps`), con qué aseguradora y con qué vigencia, además
+  de la sede y la situación (activo / cesado). Se reconoce por la columna `tiene_eps`.
 """
 
 import io
@@ -58,10 +64,24 @@ HEADER_SYNONYMS: dict[str, tuple[str, ...]] = {
     ),
     "employee_code": ("codigo", "cod_trabajador", "codigo_trabajador", "cod_planilla", "codigo_planilla"),
     "age": ("edad",),
+    # Ficha única de RR.HH.
+    "site_name": ("sede", "sede_trabajo", "sede_judicial", "local"),
+    "status": ("situacion", "situacion_laboral", "estado_laboral"),
+    "termination_date": ("fecha_cese", "fecha_de_cese"),
+    "has_eps": ("tiene_eps", "con_eps", "eps_vigente"),
+    "insurer_name": ("eps_aseguradora", "aseguradora", "entidad_eps"),
+    "coverage_from": ("eps_fecha_inicio", "inicio_cobertura", "fecha_inicio_eps", "inicio_eps"),
+    "coverage_to": ("eps_fecha_fin", "fin_cobertura", "fecha_fin_eps", "fin_eps"),
 }
 _SYNONYM_INDEX = {syn: target for target, syns in HEADER_SYNONYMS.items() for syn in syns}
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _PHONE_CLEAN = re.compile(r"[^\d+]")
+_YES = {"SI", "S", "X", "1", "TRUE", "VERDADERO"}
+_NO = {"NO", "N", "0", "FALSE", "FALSO"}
+_ACTIVE = {"ACTIVO", "ACTIVA", "VIGENTE", "LABORANDO", "LICENCIA", "VACACIONES"}
+_CEASED = {"CESADO", "CESADA", "CESE", "BAJA", "INACTIVO", "INACTIVA", "RETIRADO", "RETIRADA", "RENUNCIA"}
+# Aseguradora que habilita la atención en el tópico (workers.ELIGIBLE_INSURER), como se escribe en el Excel
+_ELIGIBLE_INSURER_NAMES = {"RIMAC", "RIMAC EPS", "RIMAC SEGUROS", "EPS RIMAC"}
 MAX_ROWS = 20_000
 
 WORKER_FIELDS = (
@@ -163,7 +183,7 @@ def _parse_rows(title: str, header: list[object], mapping: dict[str, str], rows:
         by_field = {
             mapping[str(h)]: v for h, v in zip(header, values, strict=False) if h is not None and str(h) in mapping
         }
-        normalize_row(row, by_field)
+        normalize_row(row, by_field, eps_column="has_eps" in fields)
         parsed.append(row)
     if not parsed:
         raise BusinessRuleError("IMPORT_EMPTY")
@@ -186,7 +206,7 @@ def _parse_date(value: object) -> date | None:
     raise ValueError(text)
 
 
-def normalize_row(row: ParsedRow, values: dict[str, object]) -> None:
+def normalize_row(row: ParsedRow, values: dict[str, object], *, eps_column: bool = False) -> None:
     n: dict[str, Any] = {}
 
     # Documento
@@ -259,4 +279,61 @@ def normalize_row(row: ParsedRow, values: dict[str, object]) -> None:
     n["employee_code"] = code[:20] if code else None
     if values.get("age") is not None:
         row.warnings.append("La columna EDAD se ignora (la edad se calcula desde la fecha de nacimiento).")
+
+    site = _cell_text(values.get("site_name"))
+    n["site_name"] = normalize_key(site) if site else None
+    _normalize_status(row, values, n)
+    _normalize_eps(row, values, n, eps_column)
     row.normalized = n
+
+
+def _date_field(row: ParsedRow, values: dict[str, object], key: str, label: str) -> str | None:
+    try:
+        value = _parse_date(values.get(key))
+    except ValueError:
+        row.warnings.append(f"{label} no reconocida: '{values.get(key)}' (se deja vacía).")
+        return None
+    return value.isoformat() if value else None
+
+
+def _normalize_status(row: ParsedRow, values: dict[str, object], n: dict[str, Any]) -> None:
+    raw = normalize_key(_cell_text(values.get("status")) or "")
+    status = "ACTIVE" if raw in _ACTIVE else "CEASED" if raw in _CEASED else None
+    if raw and status is None:
+        row.warnings.append(f"Situación no reconocida: '{raw}' (use Activo, Licencia o Cesado).")
+    n["status"] = status
+    n["termination_date"] = (
+        _date_field(row, values, "termination_date", "Fecha de cese") if status == "CEASED" else None
+    )
+
+
+def _normalize_eps(row: ParsedRow, values: dict[str, object], n: dict[str, Any], eps_column: bool) -> None:
+    """Decide si la fila habilita la atención (`eps_covered`) y con qué vigencia.
+
+    Sin la columna `tiene_eps` el archivo es la relación EPS Rímac: figurar en ella es tener cobertura.
+    """
+    n["coverage_from"] = _date_field(row, values, "coverage_from", "Fecha de inicio de la EPS")
+    n["coverage_to"] = _date_field(row, values, "coverage_to", "Fecha de fin de la EPS")
+    if n["coverage_from"] and n["coverage_to"] and n["coverage_to"] < n["coverage_from"]:
+        row.warnings.append("La fecha de fin de la EPS es anterior a la de inicio (se ignora el fin).")
+        n["coverage_to"] = None
+    if not eps_column:
+        n["eps_covered"] = True
+        return
+    raw = normalize_key(_cell_text(values.get("has_eps")) or "")
+    insurer = normalize_key(_cell_text(values.get("insurer_name")) or "")
+    covered = False
+    if raw in _YES:
+        covered = not insurer or insurer in _ELIGIBLE_INSURER_NAMES
+        if not covered:
+            row.warnings.append(
+                f"EPS {insurer}: el tópico atiende solo a trabajadores con EPS Rímac (queda sin cobertura)."
+            )
+    elif raw not in _NO:
+        if raw:
+            row.warnings.append(f"Valor de «tiene_eps» no reconocido: '{raw}' (use Sí o No; queda sin cobertura).")
+        else:
+            row.warnings.append("Sin dato en «tiene_eps»: queda sin cobertura.")
+    if n["status"] == "CEASED":
+        covered = False
+    n["eps_covered"] = covered

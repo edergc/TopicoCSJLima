@@ -1,5 +1,6 @@
 """Importación de Excel: validación en staging, previsualización, confirmación y trazabilidad."""
 
+import datetime as dt
 import io
 import itertools
 from collections.abc import Callable
@@ -9,6 +10,7 @@ from openpyxl import Workbook
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.clock import FixedClock
 from app.modules.workers.models import Worker
 
 from .conftest import Actor, api
@@ -136,3 +138,105 @@ def test_combined_name_column_and_discard(client: TestClient, make_user: Callabl
 
 def test_operator_cannot_import(client: TestClient, operator: Actor) -> None:
     assert upload(client, operator, make_xlsx([])).status_code == 403
+
+
+FICHA_RRHH = [
+    "dni", "apellido_paterno", "apellido_materno", "nombres", "sexo", "correo", "sede", "dependencia", "cargo",
+    "situacion", "fecha_cese", "tiene_eps", "eps_aseguradora", "eps_fecha_inicio", "eps_fecha_fin",
+]  # fmt: skip
+
+
+def eligibility(client: TestClient, actor: Actor, dni: str) -> dict[str, object]:
+    response = client.get(api("/workers/eligibility"), params={"document_number": dni}, headers=actor.headers)
+    data: dict[str, object] = response.json()
+    return data
+
+
+def test_ficha_unica_de_rrhh_respeta_eps_sede_y_cese(
+    client: TestClient,
+    make_user: Callable[..., Actor],
+    make_worker: Callable[..., str],
+    db: Session,
+    clock: FixedClock,
+) -> None:
+    """La ficha única del personal trae a todos: solo habilita a quien tiene EPS Rímac vigente."""
+    admin, operator = make_user("ADMIN", sites=("ALZ", "BAR")), make_user("OPERATOR")
+    today = clock.today()
+    con_eps, sin_eps, otra_eps, futura, sin_dato = unique_dnis(5)
+    cesado, pierde_eps, vence = make_worker(), make_worker(), make_worker()
+    ayer = today - dt.timedelta(days=1)
+    content = make_xlsx(
+        [
+            [con_eps, "QUISPE", "HUAMÁN", "Rosa", "Mujer", "rq@pj.gob.pe", "SEDE ANSELMO BARRETO", "Mesa de Partes",
+             "Técnico", "Activo", None, "Sí", "Rímac", today - dt.timedelta(days=30), None],
+            [sin_eps, "PÉREZ", "ROJAS", "Juan", "Hombre", None, "SEDE LA MAR", None, None, "Activo", None, "No",
+             None, None, None],
+            [otra_eps, "DÍAZ", None, "Eva", "Mujer", None, None, None, None, "Activo", None, "Sí", "Pacífico",
+             None, None],
+            [futura, "LUNA", None, "Raúl", "Hombre", None, None, None, None, "Activo", None, "Sí", "Rímac",
+             today + dt.timedelta(days=10), None],
+            [sin_dato, "SOTO", None, "Ada", "Mujer", None, None, None, None, "Activo", None, None, None, None, None],
+            [cesado, "ROJAS", "VEGA", "ANA MARIA", "Mujer", None, None, None, None, "Cesado", ayer, "Sí", "Rímac",
+             None, None],
+            [pierde_eps, "ROJAS", "VEGA", "ANA MARIA", None, None, None, None, None, "Activo", None, "No", None,
+             None, None],
+            [vence, "ROJAS", "VEGA", "ANA MARIA", None, None, None, None, None, "Licencia", None, "Sí", "Rímac",
+             None, today + dt.timedelta(days=60)],
+        ],
+        header=FICHA_RRHH,
+        title_rows=0,
+    )  # fmt: skip
+    batch = upload(client, admin, content).json()
+    assert (batch["new_count"], batch["update_count"], batch["error_count"]) == (5, 3, 0)
+    assert {"sede", "situacion", "tiene_eps"} <= set(batch["column_mapping"]["mapped"])
+    rows = {
+        r["normalized"]["document_number"]: r
+        for r in client.get(api(f"/imports/{batch['public_id']}/rows"), headers=admin.headers).json()["items"]
+    }
+    assert any("EPS Rímac" in w for w in rows[otra_eps]["warnings"])
+    assert any("tiene_eps" in w for w in rows[sin_dato]["warnings"])
+    assert rows[cesado]["changes"]["is_active"] == [True, False]
+    assert rows[cesado]["changes"]["coverage"] == ["VIGENTE", "SIN COBERTURA"]
+    assert rows[pierde_eps]["changes"] == {"coverage": ["VIGENTE", "SIN COBERTURA"]}
+    assert rows[vence]["changes"]["coverage"][1].startswith("HASTA ")
+
+    confirmed = client.post(api(f"/imports/{batch['public_id']}/confirm"), json={}, headers=admin.headers)
+    assert confirmed.json()["status"] == "CONFIRMED"
+
+    assert eligibility(client, operator, con_eps)["eligible"] is True
+    for dni in (sin_eps, otra_eps, futura, sin_dato, pierde_eps):
+        assert eligibility(client, operator, dni)["code"] == "WORKER_NOT_ELIGIBLE", dni
+    assert eligibility(client, operator, cesado)["code"] == "WORKER_INACTIVE"
+    assert eligibility(client, operator, vence)["eligible"] is True  # en licencia sigue activo
+
+    def worker(dni: str) -> Worker:
+        found = db.scalar(select(Worker).where(Worker.document_number == dni))
+        assert found is not None
+        return found
+
+    nuevo = worker(con_eps)
+    assert nuevo.work_site is not None
+    assert nuevo.work_site.code == "BAR"
+    assert nuevo.coverages[0].valid_from == today  # una cobertura no se registra hacia atrás
+    sin = worker(sin_eps)
+    assert sin.is_active
+    assert sin.work_site_id is None
+    assert not sin.coverages
+    assert worker(futura).coverages[0].valid_from == today + dt.timedelta(days=10)
+    baja = worker(cesado)
+    assert not baja.is_active
+    assert baja.coverages[0].valid_to == ayer
+    assert "Cesado" in (baja.deactivation_reason or "")
+    assert worker(vence).coverages[0].valid_to == today + dt.timedelta(days=60)
+
+
+def test_relacion_eps_sin_columna_tiene_eps_mantiene_el_formato_anterior(
+    client: TestClient, make_user: Callable[..., Actor]
+) -> None:
+    """La relación EPS Rímac de siempre (sin «tiene_eps»): figurar en ella es tener cobertura."""
+    admin = make_user("ADMIN")
+    (dni,) = unique_dnis(1)
+    content = make_xlsx([[dni, "GARCÍA", "Luis", "Activo"]], header=["DNI", "APELLIDO PATERNO", "NOMBRES", "SITUACION"])
+    batch = upload(client, admin, content).json()
+    client.post(api(f"/imports/{batch['public_id']}/confirm"), json={}, headers=admin.headers)
+    assert eligibility(client, make_user("OPERATOR"), dni)["eligible"] is True

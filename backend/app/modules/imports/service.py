@@ -2,6 +2,7 @@
 
 import hashlib
 import uuid
+from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
 
@@ -14,8 +15,10 @@ from app.modules.audit import service as audit
 from app.modules.auth.dependencies import ServiceContext
 from app.modules.imports.models import ImportBatch, ImportRow
 from app.modules.imports.parsing import WORKER_FIELDS, ParsedRow, read_workbook
+from app.modules.sites.models import Site
 from app.modules.workers import service as workers
 from app.modules.workers.models import Department, Worker, WorkerCoverage
+from app.shared.text import normalize_key
 
 log = get_logger(__name__)
 
@@ -37,7 +40,61 @@ def _current_values(worker: Worker) -> dict[str, Any]:
     }
 
 
-def _changes(worker: Worker, normalized: dict[str, Any], today: date) -> dict[str, list[Any]]:
+@dataclass(frozen=True)
+class CoveragePlan:
+    """Qué hacer con la cobertura EPS Rímac de un trabajador según su fila del Excel."""
+
+    action: str  # OPEN (nueva cobertura) | END (terminar la vigente) | SET_END (cambiar su fecha de fin)
+    start: date | None = None
+    end: date | None = None
+
+
+def _iso(value: str | None) -> date | None:
+    return date.fromisoformat(value) if value else None
+
+
+def coverage_plan(coverages: list[WorkerCoverage], n: dict[str, Any], today: date) -> CoveragePlan | None:
+    """Plan de cobertura para la aseguradora elegible; `coverages` son las del trabajador con ella."""
+    current = next((c for c in coverages if c.covers(today)), None)
+    wanted = bool(n.get("eps_covered", True)) and n.get("status") != "CEASED"
+    end = _iso(n.get("coverage_to"))
+    if wanted and end is not None and end < today:
+        wanted = False  # la cobertura que informa el archivo ya venció
+    if not wanted:
+        if current is None:
+            return None
+        yesterday = today - timedelta(days=1)
+        cut = min(_iso(n.get("termination_date")) or end or yesterday, yesterday)
+        return CoveragePlan("END", end=max(cut, current.valid_from))
+    if current is not None:
+        if end is not None and end != current.valid_to:
+            return CoveragePlan("SET_END", end=end)
+        return None
+    start = max(_iso(n.get("coverage_from")) or today, today)
+    # La nueva vigencia no puede solaparse con otra ya registrada (anterior o futura).
+    for c in coverages:
+        if (c.valid_to is None or c.valid_to >= start) and (end is None or c.valid_from <= end):
+            return None
+    return CoveragePlan("OPEN", start=start, end=end)
+
+
+def _eligible_coverages(worker: Worker) -> list[WorkerCoverage]:
+    return [c for c in worker.coverages if c.insurer.code == workers.ELIGIBLE_INSURER]
+
+
+def _site_keys(db: Session) -> dict[str, Site]:
+    return {normalize_key(s.name).removeprefix("SEDE ").strip(): s for s in db.scalars(select(Site))}
+
+
+def site_for(sites: dict[str, Site], name: str | None) -> Site | None:
+    """Sede del tópico que corresponde al nombre del Excel («SEDE ANSELMO BARRETO» → Anselmo Barreto)."""
+    if not name:
+        return None
+    key = name.removeprefix("SEDE ").strip()
+    return sites.get(key)
+
+
+def _changes(worker: Worker, normalized: dict[str, Any], today: date, sites: dict[str, Site]) -> dict[str, list[Any]]:
     current = _current_values(worker)
     changes: dict[str, list[Any]] = {}
     for field in WORKER_FIELDS:
@@ -45,11 +102,29 @@ def _changes(worker: Worker, normalized: dict[str, Any], today: date) -> dict[st
         # Un dato vacío en el Excel no borra un dato existente.
         if new is not None and new != current[field]:
             changes[field] = [current[field], new]
-    if not worker.is_active:
+    if normalized.get("site_name"):
+        site = site_for(sites, normalized["site_name"])
+        if (site.id if site else None) != worker.work_site_id:
+            before = worker.work_site.short_name if worker.work_site else None
+            changes["work_site"] = [before, site.short_name if site else "OTRA SEDE"]
+    ceased = normalized.get("status") == "CEASED"
+    if ceased and worker.is_active:
+        changes["is_active"] = [True, False]
+    elif not ceased and not worker.is_active:
         changes["is_active"] = [False, True]
-    if worker.coverage_on(today, workers.ELIGIBLE_INSURER) is None:
-        changes["coverage"] = ["SIN COBERTURA", "VIGENTE"]
+    plan = coverage_plan(_eligible_coverages(worker), normalized, today)
+    if plan is not None:
+        changes["coverage"] = _describe(plan, today)
     return changes
+
+
+def _describe(plan: CoveragePlan, today: date) -> list[Any]:
+    if plan.action == "OPEN":
+        start = plan.start or today
+        return ["SIN COBERTURA", "VIGENTE" if start == today else f"DESDE {start:%d/%m/%Y}"]
+    if plan.action == "END":
+        return ["VIGENTE", "SIN COBERTURA"]
+    return ["VIGENTE", f"HASTA {plan.end:%d/%m/%Y}" if plan.end else "VIGENTE"]
 
 
 class ImportService:
@@ -109,6 +184,7 @@ class ImportService:
 
     def _validate(self, batch: ImportBatch, rows: list[ParsedRow]) -> None:
         today = self.ctx.clock.today()
+        sites = _site_keys(self.db)
         dnis = {r.normalized.get("document_number") for r in rows if not r.errors}
         existing = {
             w.document_number: w
@@ -132,7 +208,7 @@ class ImportService:
                         outcome = "NEW"
                     else:
                         target = worker.id
-                        changes = _changes(worker, row.normalized, today)
+                        changes = _changes(worker, row.normalized, today, sites)
                         outcome = "UPDATE" if changes else "UNCHANGED"
             records.append(
                 ImportRow(
@@ -198,7 +274,31 @@ class ImportService:
         today = self.ctx.clock.today()
         user_id = self.ctx.user.id
         insurer = workers.rimac(self.db)
+        sites = _site_keys(self.db)
         departments: dict[str, Department] = {}
+        ceased_reason = f"Cesado según la importación {batch.file_name}"[:200]
+
+        def apply_coverage(worker: Worker, plan: CoveragePlan | None) -> None:
+            if plan is None:
+                return
+            if plan.action == "OPEN":
+                self.db.add(
+                    WorkerCoverage(
+                        worker_id=worker.id,
+                        insurer_id=insurer.id,
+                        valid_from=plan.start,
+                        valid_to=plan.end,
+                        source_import_id=batch.id,
+                        created_by=user_id,
+                    )
+                )
+                return
+            current = worker.coverage_on(today, workers.ELIGIBLE_INSURER)
+            if current is not None:
+                current.valid_to = plan.end
+                if plan.action == "END":
+                    current.end_reason = f"Según la importación {batch.file_name}"[:200]
+                current.updated_by = user_id
 
         def department_id(name: str | None) -> int | None:
             if not name:
@@ -217,7 +317,9 @@ class ImportService:
         for row in rows:
             n = row.normalized or {}
             birth = date.fromisoformat(n["birth_date"]) if n.get("birth_date") else None
+            ceased = n.get("status") == "CEASED"
             if row.outcome == "NEW":
+                site = site_for(sites, n.get("site_name"))
                 worker = Worker(
                     document_type="DNI",
                     document_number=n["document_number"],
@@ -230,22 +332,17 @@ class ImportService:
                     phone=n.get("phone"),
                     employee_code=n.get("employee_code"),
                     department_id=department_id(n.get("department_name")),
-                    is_active=True,
+                    work_site_id=site.id if site else None,
+                    is_active=not ceased,
+                    deactivated_at=self.ctx.clock.now() if ceased else None,
+                    deactivation_reason=ceased_reason if ceased else None,
                     source_import_id=batch.id,
                     created_by=user_id,
                     updated_by=user_id,
                 )
                 self.db.add(worker)
                 self.db.flush()
-                self.db.add(
-                    WorkerCoverage(
-                        worker_id=worker.id,
-                        insurer_id=insurer.id,
-                        valid_from=today,
-                        source_import_id=batch.id,
-                        created_by=user_id,
-                    )
-                )
+                apply_coverage(worker, coverage_plan([], n, today))
                 listed_worker_ids.add(worker.id)
                 continue
 
@@ -261,20 +358,18 @@ class ImportService:
                     worker.department_id = department_id(new)
                 elif field == "birth_date":
                     worker.birth_date = date.fromisoformat(new) if new else None
-                elif field == "is_active":
+                elif field == "is_active" and new:
                     worker.is_active, worker.deactivated_at, worker.deactivation_reason = True, None, None
+                elif field == "is_active":
+                    worker.is_active, worker.deactivated_at = False, self.ctx.clock.now()
+                    worker.deactivation_reason = ceased_reason
+                elif field == "work_site":
+                    site = site_for(sites, n.get("site_name"))
+                    worker.work_site_id = site.id if site else None
                 elif field != "coverage":
                     setattr(worker, field, new)
-            if "coverage" in changes and worker.coverage_on(today, workers.ELIGIBLE_INSURER) is None:
-                self.db.add(
-                    WorkerCoverage(
-                        worker_id=worker.id,
-                        insurer_id=insurer.id,
-                        valid_from=today,
-                        source_import_id=batch.id,
-                        created_by=user_id,
-                    )
-                )
+            if "coverage" in changes:
+                apply_coverage(worker, coverage_plan(_eligible_coverages(worker), n, today))
             worker.source_import_id = batch.id
             worker.updated_by = user_id
         self.db.flush()
