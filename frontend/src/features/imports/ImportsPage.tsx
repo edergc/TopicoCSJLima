@@ -62,7 +62,7 @@ const FIELD_LABEL: Record<string, string> = {
   institutional_email: "Correo",
   phone: "Teléfono",
   department_name: "Dependencia",
-  employee_code: "Código",
+  employee_code: "Escalafón",
   work_site: "Sede",
   is_active: "Estado",
   coverage: "Cobertura",

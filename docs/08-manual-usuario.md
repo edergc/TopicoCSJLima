@@ -311,11 +311,11 @@ Debajo, las pestañas configuran la **sede elegida en el selector superior**:
 
   Se aceptan dos formatos:
   - **Relación EPS Rímac:** todos los que figuran en el archivo quedan con cobertura.
-  - **Ficha del personal de RR.HH.** (la misma plantilla que usa el Sistema de Saludos; se reconoce por la columna `tiene_eps`): trae a todo el personal, pero **solo habilita a quien tiene `tiene_eps` = Sí con EPS Rímac**. Además:
+  - **Ficha del personal de RR.HH.** (la misma plantilla que usa el Sistema de Saludos; se reconoce por la columna `tiene_eps_rimac` o `tiene_eps`): trae a todo el personal, pero **solo habilita a quien tiene `tiene_eps_rimac` = Sí**. Además:
     - `eps_fecha_inicio` y `eps_fecha_fin` fijan la vigencia: una cobertura futura empieza en su fecha y una con fin vence sola. Una cobertura nunca se registra hacia atrás.
     - `situacion` = Cesado desactiva al trabajador y termina su cobertura (a la `fecha_cese`, o ayer). «Licencia» cuenta como activo.
     - `sede` asigna la sede de trabajo cuando es Javier Alzamora Valdez o Anselmo Barreto.
-    - Quien figura con `tiene_eps` = No, otra aseguradora o la celda vacía queda registrado **sin cobertura** (la vista previa lo advierte).
+    - Quien figura con «No», otra aseguradora o la celda vacía queda registrado **sin cobertura** (la vista previa lo advierte).
 
 ![Importaciones](manual/img/11-importaciones.png)
 

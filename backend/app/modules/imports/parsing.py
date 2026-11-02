@@ -7,7 +7,8 @@ Se aceptan dos formatos:
 - La relación de trabajadores con EPS Rímac: figurar en el archivo es tener cobertura.
 - La ficha única del personal de RR.HH. (compartida con el Sistema de Saludos): trae a todo el
   personal y dice quién tiene EPS (`tiene_eps`), con qué aseguradora y con qué vigencia, además
-  de la sede y la situación (activo / cesado). Se reconoce por la columna `tiene_eps`.
+  de la sede y la situación (activo / cesado). Se reconoce por la columna `tiene_eps_rimac`
+  (o `tiene_eps`); sin aseguradora indicada, «Sí» se entiende como EPS Rímac.
 """
 
 import io
@@ -62,13 +63,23 @@ HEADER_SYNONYMS: dict[str, tuple[str, ...]] = {
         "unidad_organica",
         "oficina",
     ),
-    "employee_code": ("codigo", "cod_trabajador", "codigo_trabajador", "cod_planilla", "codigo_planilla"),
+    "employee_code": (
+        "escalafon",
+        "nro_escalafon",
+        "numero_escalafon",
+        "codigo_escalafon",
+        "codigo",
+        "cod_trabajador",
+        "codigo_trabajador",
+        "cod_planilla",
+        "codigo_planilla",
+    ),
     "age": ("edad",),
     # Ficha única de RR.HH.
     "site_name": ("sede", "sede_trabajo", "sede_judicial", "local"),
     "status": ("situacion", "situacion_laboral", "estado_laboral"),
     "termination_date": ("fecha_cese", "fecha_de_cese"),
-    "has_eps": ("tiene_eps", "con_eps", "eps_vigente"),
+    "has_eps": ("tiene_eps_rimac", "eps_rimac", "tiene_eps", "con_eps", "eps_vigente"),
     "insurer_name": ("eps_aseguradora", "aseguradora", "entidad_eps"),
     "coverage_from": ("eps_fecha_inicio", "inicio_cobertura", "fecha_inicio_eps", "inicio_eps"),
     "coverage_to": ("eps_fecha_fin", "fin_cobertura", "fecha_fin_eps", "fin_eps"),

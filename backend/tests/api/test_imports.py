@@ -240,3 +240,17 @@ def test_relacion_eps_sin_columna_tiene_eps_mantiene_el_formato_anterior(
     batch = upload(client, admin, content).json()
     client.post(api(f"/imports/{batch['public_id']}/confirm"), json={}, headers=admin.headers)
     assert eligibility(client, make_user("OPERATOR"), dni)["eligible"] is True
+
+
+def test_columna_tiene_eps_rimac(client: TestClient, make_user: Callable[..., Actor]) -> None:
+    """Con la columna «tiene_eps_rimac» (plantilla de RR.HH.), «Sí» habilita y «No» no."""
+    admin, operator = make_user("ADMIN"), make_user("OPERATOR")
+    si, no = unique_dnis(2)
+    header = ["dni", "escalafon", "apellido_paterno", "nombres", "tiene_eps_rimac"]
+    rows = [[si, "045219", "ALVA", "Rita", "Sí"], [no, None, "BRAVO", "Leo", "No"]]
+    content = make_xlsx(rows, header=header, title_rows=0)
+    batch = upload(client, admin, content).json()
+    assert batch["column_mapping"]["mapped"]["escalafon"] == "employee_code"
+    client.post(api(f"/imports/{batch['public_id']}/confirm"), json={}, headers=admin.headers)
+    assert eligibility(client, operator, si)["eligible"] is True
+    assert eligibility(client, operator, no)["code"] == "WORKER_NOT_ELIGIBLE"
